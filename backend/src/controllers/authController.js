@@ -5,9 +5,16 @@ const { validationResult } = require('express-validator');
 // Registro de nuevo negocio
 const registerBusiness = async (req, res) => {
   try {
+    console.log('🔍 [DEBUG] === REGISTRO INICIADO ===');
+    console.log('🔍 [DEBUG] req.body:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 [DEBUG] req.headers content-type:', req.headers['content-type']);
+    
     // Validar datos de entrada
     const errors = validationResult(req);
+    console.log('🔍 [DEBUG] Errores de validación:', errors.array());
+    
     if (!errors.isEmpty()) {
+      console.log('❌ [DEBUG] Hay errores de validación:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
@@ -16,13 +23,16 @@ const registerBusiness = async (req, res) => {
     }
 
     const { businessName, email, password, phone, address, description } = req.body;
+    console.log('🔍 [DEBUG] Datos extraídos exitosamente:', { businessName, email, phone, address });
 
     // Verificar si el email ya existe
+    console.log('🔍 [DEBUG] Verificando email existente...');
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
 
     if (existingUser) {
+      console.log('❌ [DEBUG] Email ya existe');
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado'
@@ -30,6 +40,7 @@ const registerBusiness = async (req, res) => {
     }
 
     // Generar slug único para el negocio
+    console.log('🔍 [DEBUG] Generando slug...');
     let slug = generateBusinessSlug(businessName);
     let slugExists = await prisma.business.findUnique({ where: { slug } });
     let counter = 1;
@@ -41,9 +52,11 @@ const registerBusiness = async (req, res) => {
     }
 
     // Hash de la contraseña
+    console.log('🔍 [DEBUG] Hasheando contraseña...');
     const hashedPassword = await hashPassword(password);
 
     // Crear negocio y usuario admin en una transacción
+    console.log('🔍 [DEBUG] Iniciando transacción...');
     const result = await prisma.$transaction(async (tx) => {
       // Crear el negocio
       const business = await tx.business.create({
@@ -74,9 +87,11 @@ const registerBusiness = async (req, res) => {
     });
 
     // Generar token JWT
+    console.log('🔍 [DEBUG] Generando token...');
     const token = generateToken(result.user.id, result.business.id);
     setTokenCookie(res, token);
 
+    console.log('✅ [DEBUG] === REGISTRO EXITOSO ===');
     res.status(201).json({
       success: true,
       message: 'Negocio registrado exitosamente',
@@ -97,7 +112,9 @@ const registerBusiness = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en registro:', error);
+    console.error('❌ [DEBUG] === ERROR EN REGISTRO ===');
+    console.error('❌ [DEBUG] Error:', error);
+    console.error('❌ [DEBUG] Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
