@@ -142,4 +142,22 @@ export const publicService = {
   },
 };
 
+// Dashboard APIs
+export const dashboardApi = {
+  getStats: async () => {
+    const response = await api.get('/dashboard/stats');
+    return response.data;
+  },
+
+  getUpcomingAppointments: async () => {
+    const response = await api.get('/appointments?upcoming=true&limit=10');
+    return response.data;
+  },
+
+  getTodayAppointments: async () => {
+    const response = await api.get('/appointments?today=true');
+    return response.data;
+  }
+};
+
 export default api; 
