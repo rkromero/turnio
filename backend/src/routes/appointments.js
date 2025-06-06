@@ -24,7 +24,7 @@ const createAppointmentValidation = [
     .withMessage('Email inválido'),
   body('clientPhone')
     .optional()
-    .isMobilePhone('es-AR')
+    .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
     .withMessage('Número de teléfono inválido'),
   body('serviceId')
     .notEmpty()

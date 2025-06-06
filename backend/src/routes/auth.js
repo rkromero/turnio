@@ -20,7 +20,7 @@ const registerValidation = [
     .withMessage('La contraseña debe tener al menos 6 caracteres'),
   body('phone')
     .optional()
-    .isMobilePhone('es-AR')
+    .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
     .withMessage('Número de teléfono inválido'),
 ];
 
