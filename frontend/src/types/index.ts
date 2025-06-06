@@ -155,4 +155,155 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterForm) => Promise<void>;
   logout: () => void;
+}
+
+// Configuración del negocio
+export interface BusinessConfig {
+  id: string;
+  name: string;
+  email: string;
+  slug: string;
+  planType: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+  maxAppointments: number;
+  logo?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
+  primaryColor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessConfigForm {
+  name?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
+  primaryColor?: string;
+  logo?: string;
+}
+
+// Horarios de trabajo
+export interface WorkingHours {
+  id: string;
+  userId: string;
+  dayOfWeek: number; // 0=Domingo, 1=Lunes, ..., 6=Sábado
+  startTime: string; // HH:MM formato
+  endTime: string; // HH:MM formato
+  isActive: boolean;
+}
+
+export interface WorkingHoursForm {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive?: boolean;
+}
+
+export interface UserWithWorkingHours extends User {
+  workingHours: WorkingHours[];
+}
+
+// Feriados
+export interface Holiday {
+  id: string;
+  businessId: string;
+  name: string;
+  date: string;
+  isRecurring: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HolidayForm {
+  name: string;
+  date: string;
+  isRecurring?: boolean;
+}
+
+// Estadísticas de uso del plan
+export interface PlanUsage {
+  planType: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+  usage: {
+    appointments: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    services: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    users: {
+      current: number;
+      limit: number;
+      percentage: number;
+    };
+    clients: {
+      total: number;
+    };
+  };
+}
+
+// Reportes
+export interface DashboardMetrics {
+  period: number;
+  revenue: number;
+  totalAppointments: number;
+  uniqueClients: number;
+  appointmentsByStatus: Array<{
+    status: string;
+    count: number;
+  }>;
+  popularServices: Array<{
+    serviceId: string;
+    _count: { id: number };
+    service: {
+      id: string;
+      name: string;
+      price: number;
+    };
+  }>;
+  dailyRevenue: Array<{
+    date: string;
+    amount: number;
+  }>;
+  hourlyStats: Array<{
+    hour: string;
+    count: number;
+  }>;
+}
+
+export interface RevenueReport {
+  totalRevenue: number;
+  totalAppointments: number;
+  data: Array<{
+    period: string;
+    revenue: number;
+    appointments: number;
+  }>;
+}
+
+export interface ServicesReport {
+  data: Array<{
+    service: Service;
+    totalAppointments: number;
+    completedAppointments: number;
+    cancelledAppointments: number;
+    noShowAppointments: number;
+    totalRevenue: number;
+  }>;
+}
+
+export interface ClientsReport {
+  data: Array<{
+    client: Client;
+    totalAppointments: number;
+    completedAppointments: number;
+    cancelledAppointments: number;
+    noShowAppointments: number;
+    totalSpent: number;
+    lastVisit: string | null;
+  }>;
 } 

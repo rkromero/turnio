@@ -6,6 +6,7 @@ import Services from '../pages/Services';
 import Appointments from '../pages/Appointments';
 import Clients from '../pages/Clients';
 import Reports from '../pages/Reports';
+import Settings from '../pages/Settings';
 
 const DashboardRouter: React.FC = () => {
   return (
@@ -16,6 +17,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={<Settings />} />
         
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -9,7 +9,18 @@ import type {
   Service,
   ServiceForm,
   BookingData,
-  Client
+  Client,
+  BusinessConfig,
+  BusinessConfigForm,
+  UserWithWorkingHours,
+  WorkingHoursForm,
+  Holiday,
+  HolidayForm,
+  PlanUsage,
+  DashboardMetrics,
+  RevenueReport,
+  ServicesReport,
+  ClientsReport
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
@@ -199,39 +210,91 @@ export const clientService = {
   },
 };
 
+// Servicios de configuración
+export const configService = {
+  // Configuración del negocio
+  getBusinessConfig: async (): Promise<BusinessConfig> => {
+    const response = await api.get<ApiResponse<BusinessConfig>>('/config/business');
+    return response.data.data!;
+  },
+
+  updateBusinessConfig: async (data: BusinessConfigForm): Promise<BusinessConfig> => {
+    const response = await api.put<ApiResponse<BusinessConfig>>('/config/business', data);
+    return response.data.data!;
+  },
+
+  // Horarios de trabajo
+  getWorkingHours: async (): Promise<UserWithWorkingHours[]> => {
+    const response = await api.get<ApiResponse<UserWithWorkingHours[]>>('/config/working-hours');
+    return response.data.data || [];
+  },
+
+  updateWorkingHours: async (userId: string, workingHours: WorkingHoursForm[]): Promise<UserWithWorkingHours> => {
+    const response = await api.put<ApiResponse<UserWithWorkingHours>>(`/config/working-hours/${userId}`, {
+      workingHours
+    });
+    return response.data.data!;
+  },
+
+  // Feriados
+  getHolidays: async (year?: number): Promise<Holiday[]> => {
+    const params = year ? { year: year.toString() } : {};
+    const response = await api.get<ApiResponse<Holiday[]>>('/config/holidays', { params });
+    return response.data.data || [];
+  },
+
+  createHoliday: async (data: HolidayForm): Promise<Holiday> => {
+    const response = await api.post<ApiResponse<Holiday>>('/config/holidays', data);
+    return response.data.data!;
+  },
+
+  updateHoliday: async (id: string, data: Partial<HolidayForm>): Promise<Holiday> => {
+    const response = await api.put<ApiResponse<Holiday>>(`/config/holidays/${id}`, data);
+    return response.data.data!;
+  },
+
+  deleteHoliday: async (id: string): Promise<void> => {
+    await api.delete(`/config/holidays/${id}`);
+  },
+
+  // Estadísticas de plan
+  getPlanUsage: async (): Promise<PlanUsage> => {
+    const response = await api.get<ApiResponse<PlanUsage>>('/config/plan-usage');
+    return response.data.data!;
+  }
+};
+
 // Servicios de reportes
 export const reportService = {
-  getDashboardMetrics: async (period?: number) => {
-    const response = await api.get('/reports/dashboard', {
-      params: { period }
-    });
-    return response.data;
+  getDashboardMetrics: async (period: number = 30): Promise<DashboardMetrics> => {
+    const response = await api.get<ApiResponse<DashboardMetrics>>(`/reports/dashboard?period=${period}`);
+    return response.data.data!;
   },
 
   getRevenueReport: async (params: {
     startDate: string;
     endDate: string;
     groupBy?: 'day' | 'week' | 'month';
-  }) => {
-    const response = await api.get('/reports/revenue', { params });
-    return response.data;
+  }): Promise<RevenueReport> => {
+    const response = await api.get<ApiResponse<RevenueReport>>('/reports/revenue', { params });
+    return response.data.data!;
   },
 
-  getServicesReport: async (params?: {
-    startDate?: string;
-    endDate?: string;
-  }) => {
-    const response = await api.get('/reports/services', { params });
-    return response.data;
+  getServicesReport: async (params: {
+    startDate: string;
+    endDate: string;
+  }): Promise<ServicesReport> => {
+    const response = await api.get<ApiResponse<ServicesReport>>('/reports/services', { params });
+    return response.data.data!;
   },
 
-  getClientsReport: async (params?: {
-    startDate?: string;
-    endDate?: string;
-  }) => {
-    const response = await api.get('/reports/clients', { params });
-    return response.data;
-  },
+  getClientsReport: async (params: {
+    startDate: string;
+    endDate: string;
+  }): Promise<ClientsReport> => {
+    const response = await api.get<ApiResponse<ClientsReport>>('/reports/clients', { params });
+    return response.data.data!;
+  }
 };
 
 export default api; 
