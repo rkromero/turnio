@@ -42,7 +42,7 @@ model User {
   id         String   @id @default(cuid())
   businessId String
   name       String
-  email      String
+  email      String   @unique
   password   String
   role       UserRole @default(EMPLOYEE)
   isActive   Boolean  @default(true)
@@ -56,7 +56,6 @@ model User {
   appointments Appointment[]
   workingHours WorkingHours[]
 
-  @@unique([businessId, email])
   @@map("users")
 }
 
