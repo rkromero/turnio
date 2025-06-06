@@ -120,6 +120,7 @@ export interface AppointmentForm {
   userId?: string;
   startTime: string;
   notes?: string;
+  status?: 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
 }
 
 export interface ServiceForm {
@@ -131,7 +132,7 @@ export interface ServiceForm {
 }
 
 // Tipos para respuestas de API
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
