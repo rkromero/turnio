@@ -2,16 +2,17 @@
 nixPkgs = ["nodejs_18"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
 cmds = [
-  "npx prisma generate",
-  "echo 'Prisma client generated successfully'"
+  "npm run build",
+  "echo 'Build completed - Prisma client generated'"
 ]
 
 [start]
 cmd = "npm start"
 
 [variables]
-NODE_ENV = "production" 
+NODE_ENV = "production"
+NPM_CONFIG_PRODUCTION = "false" 
