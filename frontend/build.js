@@ -9,11 +9,7 @@ console.log('🔧 Iniciando build del frontend TurnIO...');
 try {
   // Verificar que las dependencias estén instaladas
   console.log('📦 Verificando dependencias...');
-  if (!fs.existsSync('node_modules')) {
-    console.log('⚡ Instalando dependencias...');
-    execSync('npm install', { stdio: 'inherit' });
-  }
-
+  
   // Verificar archivos importantes
   console.log('📋 Verificando configuración...');
   const requiredFiles = ['package.json', 'vite.config.ts', 'tsconfig.json'];
@@ -29,15 +25,20 @@ try {
     fs.rmSync('dist', { recursive: true, force: true });
   }
 
+  // Configurar variables de entorno para el build
+  const buildEnv = {
+    ...process.env,
+    NODE_ENV: 'production',
+    VITE_API_URL: process.env.VITE_API_URL || process.env.RAILWAY_PRIVATE_DOMAIN ? `https://${process.env.RAILWAY_PRIVATE_DOMAIN}` : 'http://localhost:3000'
+  };
+
+  console.log('🌐 Configurando API URL:', buildEnv.VITE_API_URL);
+
   // Build con configuración específica para Railway
   console.log('⚡ Ejecutando build de Vite...');
-  execSync('npx vite build --mode production', { 
+  execSync('npx tsc -b && npx vite build --mode production', { 
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      NODE_ENV: 'production',
-      VITE_API_URL: process.env.VITE_API_URL || 'http://localhost:3000'
-    }
+    env: buildEnv
   });
 
   // Verificar que el build se creó correctamente
@@ -48,7 +49,12 @@ try {
   console.log('✅ Build del frontend completado exitosamente!');
   console.log('📁 Archivos generados en ./dist/');
   
+  // Mostrar información del build
+  const distStats = fs.readdirSync('dist');
+  console.log('📋 Archivos generados:', distStats.join(', '));
+  
 } catch (error) {
   console.error('❌ Error en build del frontend:', error.message);
+  console.error('📊 Detalles del error:', error);
   process.exit(1);
 } 

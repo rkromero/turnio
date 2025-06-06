@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_18"]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm ci --only=production=false"]
 
 [phases.build]
 cmds = ["npm run build"]
@@ -11,4 +11,5 @@ cmds = ["npm run build"]
 cmd = "npm run preview"
 
 [variables]
-NODE_ENV = "production" 
+NODE_ENV = "production"
+VITE_API_URL = "${RAILWAY_PUBLIC_DOMAIN:+https://$RAILWAY_PUBLIC_DOMAIN}" 
