@@ -5,7 +5,13 @@ nixPkgs = ["nodejs_18"]
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npx prisma generate"]
+cmds = [
+  "npx prisma generate",
+  "echo 'Prisma client generated successfully'"
+]
 
 [start]
-cmd = "npm start" 
+cmd = "npm start"
+
+[variables]
+NODE_ENV = "production" 
