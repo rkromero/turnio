@@ -64,24 +64,37 @@ if (process.env.NODE_ENV === 'development') {
 // Función para ejecutar migraciones
 async function runMigrations() {
   try {
-    console.log('🔄 Ejecutando migraciones de base de datos...');
-    const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
+    console.log('🔄 Sincronizando schema de base de datos...');
+    const { stdout, stderr } = await execAsync('npx prisma db push --accept-data-loss');
     
     if (stdout) {
-      console.log('✅ Migraciones ejecutadas exitosamente:');
+      console.log('✅ Schema sincronizado exitosamente:');
       console.log(stdout);
     }
     
     if (stderr && !stderr.includes('warn')) {
-      console.warn('⚠️ Advertencias de migraciones:', stderr);
+      console.warn('⚠️ Advertencias:', stderr);
     }
     
     return true;
   } catch (error) {
-    console.error('❌ Error ejecutando migraciones:', error.message);
+    console.error('❌ Error sincronizando schema:', error.message);
     if (error.stdout) console.log('stdout:', error.stdout);
     if (error.stderr) console.log('stderr:', error.stderr);
-    return false;
+    
+    // Intentar con migrate deploy como fallback
+    console.log('🔄 Intentando con migrate deploy...');
+    try {
+      const { stdout: stdout2, stderr: stderr2 } = await execAsync('npx prisma migrate deploy');
+      if (stdout2) {
+        console.log('✅ Migrate deploy exitoso:');
+        console.log(stdout2);
+      }
+      return true;
+    } catch (error2) {
+      console.error('❌ También falló migrate deploy:', error2.message);
+      return false;
+    }
   }
 }
 
@@ -91,7 +104,7 @@ async function startServer() {
     // 1. Ejecutar migraciones
     const migrationsSuccess = await runMigrations();
     if (!migrationsSuccess) {
-      console.error('❌ Fallo al ejecutar migraciones. Continuando de todas formas...');
+      console.error('❌ Fallo al sincronizar schema. Continuando de todas formas...');
     }
     
     // 2. Conectar a la base de datos
