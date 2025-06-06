@@ -22,17 +22,24 @@ const serviceRoutes = require('./routes/services');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configurar trust proxy para Railway/producción
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Middleware de seguridad
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting (configurado para proxies)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, // máximo 100 requests por ventana de tiempo
   message: {
     success: false,
     message: 'Demasiadas solicitudes, intenta de nuevo más tarde'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
