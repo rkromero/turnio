@@ -445,7 +445,16 @@ const getAvailableSlots = async (req, res) => {
     const availableSlots = [];
 
     for (const user of business.users) {
-      const workingHour = user.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
+      let workingHour = user.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
+      
+      // Si no hay horarios configurados, usar horarios por defecto (Lunes a Viernes 9-18)
+      if (!workingHour && dayOfWeek >= 1 && dayOfWeek <= 5) {
+        workingHour = {
+          startTime: '09:00',
+          endTime: '18:00'
+        };
+      }
+      
       if (!workingHour) continue;
 
       const [startHour, startMinute] = workingHour.startTime.split(':').map(Number);
@@ -467,8 +476,8 @@ const getAvailableSlots = async (req, res) => {
           // Verificar si el slot está ocupado
           const isOccupied = occupiedSlots.some(occupied => 
             occupied.userId === user.id &&
-            time < occupied.endTime &&
-            slotEnd > occupied.startTime
+            time < new Date(occupied.endTime) &&
+            slotEnd > new Date(occupied.startTime)
           );
 
           if (!isOccupied) {
@@ -477,6 +486,37 @@ const getAvailableSlots = async (req, res) => {
               userId: user.id,
               userName: user.name
             });
+          }
+        }
+      }
+    }
+
+    // Si no hay usuarios o no hay slots, crear slots básicos con el primer usuario
+    if (availableSlots.length === 0 && business.users.length > 0) {
+      const user = business.users[0];
+      const serviceDuration = service ? service.duration : 60;
+      
+      // Horarios por defecto: 9:00 - 18:00
+      for (let hour = 9; hour < 18; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const slotStart = new Date(targetDate);
+          slotStart.setHours(hour, minute, 0, 0);
+          
+          const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
+          
+          if (slotEnd.getHours() < 18 || (slotEnd.getHours() === 18 && slotEnd.getMinutes() === 0)) {
+            const isOccupied = occupiedSlots.some(occupied => 
+              slotStart < new Date(occupied.endTime) &&
+              slotEnd > new Date(occupied.startTime)
+            );
+
+            if (!isOccupied) {
+              availableSlots.push({
+                time: slotStart.toISOString(),
+                userId: user.id,
+                userName: user.name
+              });
+            }
           }
         }
       }
