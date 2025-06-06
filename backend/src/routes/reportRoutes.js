@@ -1,28 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const { 
+  getDashboardMetrics, 
+  getRevenueReport, 
+  getServicesReport, 
+  getClientsReport 
+} = require('../controllers/reportController');
 
-// Test simple functions first
-const testFunction = (req, res) => {
-  res.json({ message: 'Test route working', timestamp: new Date().toISOString() });
-};
+// Aplicar autenticación a todas las rutas
+router.use(authenticateToken);
 
-// GET /api/reports/dashboard - Test route
-router.get('/dashboard', authMiddleware, testFunction);
+// GET /api/reports/dashboard - Métricas generales del dashboard
+router.get('/dashboard', getDashboardMetrics);
 
-// GET /api/reports/revenue - Test route
-router.get('/revenue', authMiddleware, (req, res) => {
-  res.json({ message: 'Revenue endpoint working' });
-});
+// GET /api/reports/revenue - Reporte de ingresos
+router.get('/revenue', getRevenueReport);
 
-// GET /api/reports/services - Test route
-router.get('/services', authMiddleware, (req, res) => {
-  res.json({ message: 'Services endpoint working' });
-});
+// GET /api/reports/services - Reporte de servicios
+router.get('/services', getServicesReport);
 
-// GET /api/reports/clients - Test route
-router.get('/clients', authMiddleware, (req, res) => {
-  res.json({ message: 'Clients endpoint working' });
-});
+// GET /api/reports/clients - Reporte de clientes
+router.get('/clients', getClientsReport);
 
 module.exports = router; 
