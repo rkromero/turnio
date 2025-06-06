@@ -1,36 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Building2, Clock, Calendar, CreditCard } from 'lucide-react';
 import { configService } from '../services/api';
+import BusinessConfigTab from '../components/settings/BusinessConfigTab';
+import WorkingHoursTab from '../components/settings/WorkingHoursTab';
+import HolidaysTab from '../components/settings/HolidaysTab';
+import PlanUsageTab from '../components/settings/PlanUsageTab';
 import type { BusinessConfig, UserWithWorkingHours, Holiday, PlanUsage } from '../types';
-
-// Componentes temporales - los crearemos después
-const BusinessConfigTab = ({ businessConfig, onUpdate }: { businessConfig: BusinessConfig | null; onUpdate: (config: BusinessConfig) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-4">Configuración del Negocio</h3>
-    <p className="text-gray-600">Configuración del negocio en desarrollo...</p>
-  </div>
-);
-
-const WorkingHoursTab = ({ users, onUpdate }: { users: UserWithWorkingHours[]; onUpdate: (users: UserWithWorkingHours[]) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-4">Horarios de Trabajo</h3>
-    <p className="text-gray-600">Configuración de horarios en desarrollo...</p>
-  </div>
-);
-
-const HolidaysTab = ({ holidays, onUpdate }: { holidays: Holiday[]; onUpdate: (holidays: Holiday[]) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-4">Feriados</h3>
-    <p className="text-gray-600">Gestión de feriados en desarrollo...</p>
-  </div>
-);
-
-const PlanUsageTab = ({ planUsage }: { planUsage: PlanUsage | null }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-4">Información del Plan</h3>
-    <p className="text-gray-600">Estadísticas del plan en desarrollo...</p>
-  </div>
-);
 
 type TabType = 'business' | 'working-hours' | 'holidays' | 'plan';
 
