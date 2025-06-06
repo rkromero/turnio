@@ -1,0 +1,144 @@
+import axios from 'axios';
+import type { 
+  ApiResponse, 
+  AuthResponse, 
+  RegisterForm, 
+  LoginForm,
+  Appointment,
+  AppointmentForm,
+  Service,
+  ServiceForm,
+  BookingData
+} from '../types';
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+// Configurar axios
+const api = axios.create({
+  baseURL: `${BASE_URL}/api`,
+  withCredentials: true, // Para incluir cookies httpOnly
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptor para manejar errores globalmente
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Servicios de autenticación
+export const authService = {
+  register: async (data: RegisterForm): Promise<AuthResponse> => {
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
+    return response.data.data!;
+  },
+
+  login: async (data: LoginForm): Promise<AuthResponse> => {
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', data);
+    return response.data.data!;
+  },
+
+  logout: async (): Promise<void> => {
+    await api.post('/auth/logout');
+  },
+
+  getProfile: async (): Promise<AuthResponse> => {
+    const response = await api.get<ApiResponse<AuthResponse>>('/auth/profile');
+    return response.data.data!;
+  },
+};
+
+// Servicios de turnos
+export const appointmentService = {
+  getAppointments: async (params?: {
+    date?: string;
+    status?: string;
+    serviceId?: string;
+    userId?: string;
+  }): Promise<Appointment[]> => {
+    const response = await api.get<ApiResponse<Appointment[]>>('/appointments', { params });
+    return response.data.data || [];
+  },
+
+  createAppointment: async (data: AppointmentForm): Promise<Appointment> => {
+    const response = await api.post<ApiResponse<Appointment>>('/appointments', data);
+    return response.data.data!;
+  },
+
+  updateAppointment: async (id: string, data: Partial<AppointmentForm>): Promise<Appointment> => {
+    const response = await api.put<ApiResponse<Appointment>>(`/appointments/${id}`, data);
+    return response.data.data!;
+  },
+
+  cancelAppointment: async (id: string): Promise<void> => {
+    await api.delete(`/appointments/${id}`);
+  },
+
+  getAvailableSlots: async (businessSlug: string, params: {
+    date: string;
+    serviceId?: string;
+  }): Promise<BookingData> => {
+    const response = await api.get<ApiResponse<BookingData>>(
+      `/appointments/public/${businessSlug}/available-slots`,
+      { params }
+    );
+    return response.data.data!;
+  },
+};
+
+// Servicios de servicios
+export const serviceService = {
+  getServices: async (includeInactive?: boolean): Promise<Service[]> => {
+    const response = await api.get<ApiResponse<Service[]>>('/services', {
+      params: { includeInactive }
+    });
+    return response.data.data || [];
+  },
+
+  createService: async (data: ServiceForm): Promise<Service> => {
+    const response = await api.post<ApiResponse<Service>>('/services', data);
+    return response.data.data!;
+  },
+
+  updateService: async (id: string, data: Partial<ServiceForm>): Promise<Service> => {
+    const response = await api.put<ApiResponse<Service>>(`/services/${id}`, data);
+    return response.data.data!;
+  },
+
+  deleteService: async (id: string): Promise<void> => {
+    await api.delete(`/services/${id}`);
+  },
+
+  getServiceStats: async (params?: {
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const response = await api.get('/services/stats', { params });
+    return response.data.data || [];
+  },
+};
+
+// Servicio para reservas públicas
+export const publicService = {
+  bookAppointment: async (businessSlug: string, data: {
+    clientName: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    serviceId: string;
+    startTime: string;
+    notes?: string;
+  }) => {
+    const response = await api.post(`/public/${businessSlug}/book`, data);
+    return response.data.data;
+  },
+};
+
+export default api; 

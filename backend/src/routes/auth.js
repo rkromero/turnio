@@ -1,0 +1,46 @@
+const express = require('express');
+const { body } = require('express-validator');
+const { registerBusiness, login, logout, getProfile } = require('../controllers/authController');
+const { authenticateToken } = require('../middleware/auth');
+
+const router = express.Router();
+
+// Validaciones para registro
+const registerValidation = [
+  body('businessName')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El nombre del negocio debe tener entre 2 y 100 caracteres'),
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Email inválido'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('La contraseña debe tener al menos 6 caracteres'),
+  body('phone')
+    .optional()
+    .isMobilePhone('es-AR')
+    .withMessage('Número de teléfono inválido'),
+];
+
+// Validaciones para login
+const loginValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Email inválido'),
+  body('password')
+    .notEmpty()
+    .withMessage('La contraseña es requerida'),
+];
+
+// Rutas públicas
+router.post('/register', registerValidation, registerBusiness);
+router.post('/login', loginValidation, login);
+
+// Rutas protegidas
+router.post('/logout', authenticateToken, logout);
+router.get('/profile', authenticateToken, getProfile);
+
+module.exports = router; 
