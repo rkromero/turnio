@@ -26,8 +26,9 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado o inválido
+    // Solo redirigir a login si NO es una petición de profile
+    // (para evitar loop infinito en AuthContext)
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/profile')) {
       window.location.href = '/login';
     }
     return Promise.reject(error);
