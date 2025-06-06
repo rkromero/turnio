@@ -5,13 +5,10 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install"]
 
 [phases.build]
-cmds = [
-  "npx prisma generate",
-  "npx prisma migrate deploy"
-]
+cmds = ["npx prisma generate"]
 
 [start]
-cmd = "npm start"
+cmd = "npx prisma migrate deploy && npm start"
 
 [variables]
 NODE_ENV = "production"
