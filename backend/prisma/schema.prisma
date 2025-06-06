@@ -35,7 +35,6 @@ model Business {
   services     Service[]
   clients      Client[]
   appointments Appointment[]
-  workingHours WorkingHours[]
   holidays     Holiday[]
 
   @@map("businesses")
@@ -130,9 +129,8 @@ model WorkingHours {
   endTime   String // HH:MM formato
   isActive  Boolean @default(true)
 
-  // Relaciones
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business Business @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relaciones - Solo con User, no con Business
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, dayOfWeek])
   @@map("working_hours")
