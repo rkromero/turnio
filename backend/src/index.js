@@ -17,11 +17,6 @@ console.log('- NODE_ENV:', process.env.NODE_ENV);
 console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
 console.log('- PORT:', process.env.PORT);
 
-// Importar rutas
-const authRoutes = require('./routes/auth');
-const appointmentRoutes = require('./routes/appointments');
-const serviceRoutes = require('./routes/services');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -66,146 +61,6 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Rutas de salud
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'TurnIO API funcionando correctamente',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Rutas de la API
-app.use('/api/auth', authRoutes);
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/services', serviceRoutes);
-
-// Ruta para reservas públicas (sin autenticación)
-app.post('/api/public/:businessSlug/book', async (req, res) => {
-  try {
-    const { businessSlug } = req.params;
-    const { clientName, clientEmail, clientPhone, serviceId, startTime, notes } = req.body;
-
-    // Buscar el negocio
-    const { prisma } = require('./config/database');
-    const business = await prisma.business.findUnique({
-      where: { slug: businessSlug }
-    });
-
-    if (!business) {
-      return res.status(404).json({
-        success: false,
-        message: 'Negocio no encontrado'
-      });
-    }
-
-    // Verificar el servicio
-    const service = await prisma.service.findFirst({
-      where: {
-        id: serviceId,
-        businessId: business.id,
-        isActive: true
-      }
-    });
-
-    if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: 'Servicio no encontrado'
-      });
-    }
-
-    // Crear o encontrar cliente
-    let client = await prisma.client.findFirst({
-      where: {
-        businessId: business.id,
-        OR: [
-          { email: clientEmail },
-          { phone: clientPhone }
-        ]
-      }
-    });
-
-    if (!client) {
-      client = await prisma.client.create({
-        data: {
-          businessId: business.id,
-          name: clientName,
-          email: clientEmail,
-          phone: clientPhone
-        }
-      });
-    }
-
-    // Crear el turno
-    const startDateTime = new Date(startTime);
-    const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        businessId: business.id,
-        clientId: client.id,
-        serviceId,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        notes,
-        status: 'CONFIRMED'
-      },
-      include: {
-        service: {
-          select: {
-            name: true,
-            duration: true,
-            price: true
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Turno reservado exitosamente',
-      data: {
-        appointmentId: appointment.id,
-        clientName: client.name,
-        serviceName: appointment.service.name,
-        startTime: appointment.startTime,
-        duration: appointment.service.duration,
-        businessName: business.name
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en reserva pública:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-});
-
-// Manejo de rutas no encontradas
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Ruta no encontrada'
-  });
-});
-
-// Manejo global de errores
-app.use((error, req, res, next) => {
-  console.error('Error no manejado:', error);
-  
-  res.status(error.status || 500).json({
-    success: false,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Error interno del servidor' 
-      : error.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-  });
-});
-
 // Función para ejecutar migraciones
 async function runMigrations() {
   try {
@@ -246,21 +101,144 @@ async function startServer() {
     const authRoutes = require('./routes/auth');
     const appointmentRoutes = require('./routes/appointments');
     const serviceRoutes = require('./routes/services');
-    const clientRoutes = require('./routes/clients');
-    const userRoutes = require('./routes/users');
 
+    // Rutas de salud
+    app.get('/health', (req, res) => {
+      res.json({
+        success: true,
+        message: 'TurnIO API funcionando correctamente',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    });
+
+    // Rutas de la API
     app.use('/api/auth', authRoutes);
     app.use('/api/appointments', appointmentRoutes);
     app.use('/api/services', serviceRoutes);
-    app.use('/api/clients', clientRoutes);
-    app.use('/api/users', userRoutes);
 
-    // Health check
-    app.get('/health', (req, res) => {
-      res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV 
+    // Ruta para reservas públicas (sin autenticación)
+    app.post('/api/public/:businessSlug/book', async (req, res) => {
+      try {
+        const { businessSlug } = req.params;
+        const { clientName, clientEmail, clientPhone, serviceId, startTime, notes } = req.body;
+
+        // Buscar el negocio
+        const { prisma } = require('./config/database');
+        const business = await prisma.business.findUnique({
+          where: { slug: businessSlug }
+        });
+
+        if (!business) {
+          return res.status(404).json({
+            success: false,
+            message: 'Negocio no encontrado'
+          });
+        }
+
+        // Verificar el servicio
+        const service = await prisma.service.findFirst({
+          where: {
+            id: serviceId,
+            businessId: business.id,
+            isActive: true
+          }
+        });
+
+        if (!service) {
+          return res.status(404).json({
+            success: false,
+            message: 'Servicio no encontrado'
+          });
+        }
+
+        // Crear o encontrar cliente
+        let client = await prisma.client.findFirst({
+          where: {
+            businessId: business.id,
+            OR: [
+              { email: clientEmail },
+              { phone: clientPhone }
+            ]
+          }
+        });
+
+        if (!client) {
+          client = await prisma.client.create({
+            data: {
+              businessId: business.id,
+              name: clientName,
+              email: clientEmail,
+              phone: clientPhone
+            }
+          });
+        }
+
+        // Crear el turno
+        const startDateTime = new Date(startTime);
+        const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
+
+        const appointment = await prisma.appointment.create({
+          data: {
+            businessId: business.id,
+            clientId: client.id,
+            serviceId,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            notes,
+            status: 'CONFIRMED'
+          },
+          include: {
+            service: {
+              select: {
+                name: true,
+                duration: true,
+                price: true
+              }
+            }
+          }
+        });
+
+        res.status(201).json({
+          success: true,
+          message: 'Turno reservado exitosamente',
+          data: {
+            appointmentId: appointment.id,
+            clientName: client.name,
+            serviceName: appointment.service.name,
+            startTime: appointment.startTime,
+            duration: appointment.service.duration,
+            businessName: business.name
+          }
+        });
+
+      } catch (error) {
+        console.error('Error en reserva pública:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Error interno del servidor'
+        });
+      }
+    });
+
+    // Manejo de rutas no encontradas
+    app.use('*', (req, res) => {
+      res.status(404).json({
+        success: false,
+        message: 'Ruta no encontrada'
+      });
+    });
+
+    // Manejo global de errores
+    app.use((error, req, res, next) => {
+      console.error('Error no manejado:', error);
+      
+      res.status(error.status || 500).json({
+        success: false,
+        message: process.env.NODE_ENV === 'production' 
+          ? 'Error interno del servidor' 
+          : error.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
       });
     });
 
