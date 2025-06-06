@@ -8,7 +8,8 @@ import type {
   AppointmentForm,
   Service,
   ServiceForm,
-  BookingData
+  BookingData,
+  Client
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
@@ -64,6 +65,7 @@ export const appointmentService = {
     status?: string;
     serviceId?: string;
     userId?: string;
+    clientId?: string;
   }): Promise<Appointment[]> => {
     const response = await api.get<ApiResponse<Appointment[]>>('/appointments', { params });
     return response.data.data || [];
@@ -158,6 +160,43 @@ export const dashboardApi = {
     const response = await api.get('/appointments?today=true');
     return response.data;
   }
+};
+
+// Servicios de clientes
+export const clientService = {
+  getClients: async (): Promise<Client[]> => {
+    const response = await api.get<ApiResponse<Client[]>>('/clients');
+    return response.data.data || [];
+  },
+
+  getClient: async (id: string): Promise<Client> => {
+    const response = await api.get<ApiResponse<Client>>(`/clients/${id}`);
+    return response.data.data!;
+  },
+
+  createClient: async (data: {
+    name: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+  }): Promise<Client> => {
+    const response = await api.post<ApiResponse<Client>>('/clients', data);
+    return response.data.data!;
+  },
+
+  updateClient: async (id: string, data: Partial<{
+    name: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+  }>): Promise<Client> => {
+    const response = await api.put<ApiResponse<Client>>(`/clients/${id}`, data);
+    return response.data.data!;
+  },
+
+  deleteClient: async (id: string): Promise<void> => {
+    await api.delete(`/clients/${id}`);
+  },
 };
 
 export default api; 
