@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "postinstall": "npx prisma generate",
-    "build": "npx prisma generate",
+    "postinstall": "prisma generate --schema=./prisma/schema.prisma",
+    "build": "echo 'Build phase - Prisma will generate on start' && exit 0",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
