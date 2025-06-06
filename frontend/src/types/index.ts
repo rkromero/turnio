@@ -306,4 +306,60 @@ export interface ClientsReport {
     totalSpent: number;
     lastVisit: string | null;
   }>;
+}
+
+// Tipos específicos para el módulo de usuarios/empleados
+export interface UserWithStats extends User {
+  workingHours?: WorkingHours[];
+  _count?: {
+    appointments: number;
+  };
+  appointments?: Array<{
+    id: string;
+    startTime: string;
+    client: { name: string };
+    service: { name: string };
+  }>;
+}
+
+export interface UserForm {
+  name: string;
+  email: string;
+  password?: string;
+  role?: 'ADMIN' | 'EMPLOYEE';
+  phone?: string;
+  avatar?: string;
+}
+
+export interface CreateUserForm extends UserForm {
+  password: string;
+}
+
+export interface UpdateUserForm extends Partial<UserForm> {
+  id: string;
+}
+
+export interface UserFilters {
+  includeInactive?: boolean;
+  search?: string;
+  role?: 'ADMIN' | 'EMPLOYEE' | '' | null;
+}
+
+export interface UserStats {
+  overview: {
+    totalUsers: number;
+    activeUsers: number;
+    inactiveUsers: number;
+    adminUsers: number;
+    employeeUsers: number;
+    recentUsers: number;
+  };
+  topPerformers: Array<{
+    id: string;
+    name: string;
+    role: 'ADMIN' | 'EMPLOYEE';
+    _count: {
+      appointments: number;
+    };
+  }>;
 } 
