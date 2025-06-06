@@ -1,7 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 
+// Configuración más robusta para Railway
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  errorFormat: 'minimal',
 });
 
 // Función para conectar a la base de datos
@@ -9,9 +11,13 @@ const connectDatabase = async () => {
   try {
     await prisma.$connect();
     console.log('✅ Conectado a la base de datos PostgreSQL');
+    
+    // Verificar que la conexión funciona
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✅ Base de datos accesible y funcionando');
   } catch (error) {
     console.error('❌ Error conectando a la base de datos:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
