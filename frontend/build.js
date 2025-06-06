@@ -29,7 +29,7 @@ try {
   const buildEnv = {
     ...process.env,
     NODE_ENV: 'production',
-    VITE_API_URL: process.env.VITE_API_URL || process.env.RAILWAY_PRIVATE_DOMAIN ? `https://${process.env.RAILWAY_PRIVATE_DOMAIN}` : 'http://localhost:3000'
+    VITE_API_URL: process.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app'
   };
 
   console.log('🌐 Configurando API URL:', buildEnv.VITE_API_URL);
