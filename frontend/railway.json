@@ -9,6 +9,6 @@
   },
   "variables": {
     "NODE_ENV": "production",
-    "VITE_API_URL": "${RAILWAY_PUBLIC_DOMAIN:+https://$RAILWAY_PUBLIC_DOMAIN}"
+    "VITE_API_URL": "https://turnio-backend-production.up.railway.app"
   }
 } 
