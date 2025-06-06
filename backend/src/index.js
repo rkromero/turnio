@@ -8,6 +8,12 @@ const rateLimit = require('express-rate-limit');
 
 const { connectDatabase, disconnectDatabase } = require('./config/database');
 
+// Debug: Log de variables de entorno importantes
+console.log('🔧 Variables de entorno:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('- PORT:', process.env.PORT);
+
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const appointmentRoutes = require('./routes/appointments');
@@ -31,8 +37,11 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS
+const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
+console.log('🌐 CORS configurado para:', corsOrigin);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: corsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
