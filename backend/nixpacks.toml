@@ -5,10 +5,7 @@ nixPkgs = ["nodejs_18"]
 cmds = ["npm ci --include=dev"]
 
 [phases.build]
-cmds = [
-  "npm run build",
-  "echo 'Build completed - Prisma client generated'"
-]
+cmds = ["echo 'Build phase - ready for deployment'"]
 
 [start]
 cmd = "npm start"
