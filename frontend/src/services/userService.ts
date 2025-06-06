@@ -19,7 +19,7 @@ export const userService = {
     if (filters?.search) {
       params.append('search', filters.search);
     }
-    if (filters?.role && filters.role !== '' && filters.role !== undefined) {
+    if (filters?.role && (filters.role === 'ADMIN' || filters.role === 'EMPLOYEE')) {
       params.append('role', filters.role);
     }
 
