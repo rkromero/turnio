@@ -11,4 +11,5 @@ cmds = ["npx prisma generate"]
 cmd = "npm start"
 
 [variables]
-NODE_ENV = "production" 
+NODE_ENV = "production"
+FRONTEND_URL = "https://turnio-frontend-production.up.railway.app" 
