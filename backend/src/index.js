@@ -5,8 +5,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-
 const { connectDatabase, disconnectDatabase } = require('./config/database');
+const { exec } = require('child_process');
+const util = require('util');
+
+const execAsync = util.promisify(exec);
 
 // Debug: Log de variables de entorno importantes
 console.log('🔧 Variables de entorno:');
@@ -33,26 +36,23 @@ app.use(helmet());
 // Rate limiting (configurado para proxies)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por ventana de tiempo
-  message: {
-    success: false,
-    message: 'Demasiadas solicitudes, intenta de nuevo más tarde'
-  },
+  max: 1000, // máximo 1000 requests por ventana por IP
+  message: 'Demasiadas peticiones desde esta IP, intenta más tarde.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(limiter);
 
 // CORS
-const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
-console.log('🌐 CORS configurado para:', corsOrigin);
-
-app.use(cors({
-  origin: corsOrigin,
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+console.log('🌐 CORS configurado para:', corsOptions.origin);
+
+app.use(cors(corsOptions));
 
 // Middleware de parsing
 app.use(express.json({ limit: '10mb' }));
@@ -206,23 +206,76 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Función para iniciar el servidor
-const startServer = async () => {
+// Función para ejecutar migraciones
+async function runMigrations() {
   try {
-    // Conectar a la base de datos
+    console.log('🔄 Ejecutando migraciones de base de datos...');
+    const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
+    
+    if (stdout) {
+      console.log('✅ Migraciones ejecutadas exitosamente:');
+      console.log(stdout);
+    }
+    
+    if (stderr && !stderr.includes('warn')) {
+      console.warn('⚠️ Advertencias de migraciones:', stderr);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error ejecutando migraciones:', error.message);
+    if (error.stdout) console.log('stdout:', error.stdout);
+    if (error.stderr) console.log('stderr:', error.stderr);
+    return false;
+  }
+}
+
+// Función de inicio del servidor
+async function startServer() {
+  try {
+    // 1. Ejecutar migraciones
+    const migrationsSuccess = await runMigrations();
+    if (!migrationsSuccess) {
+      console.error('❌ Fallo al ejecutar migraciones. Continuando de todas formas...');
+    }
+    
+    // 2. Conectar a la base de datos
     await connectDatabase();
     
-    // Iniciar el servidor
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor TurnIO ejecutándose en puerto ${PORT}`);
-      console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    // 3. Configurar rutas
+    const authRoutes = require('./routes/auth');
+    const appointmentRoutes = require('./routes/appointments');
+    const serviceRoutes = require('./routes/services');
+    const clientRoutes = require('./routes/clients');
+    const userRoutes = require('./routes/users');
+
+    app.use('/api/auth', authRoutes);
+    app.use('/api/appointments', appointmentRoutes);
+    app.use('/api/services', serviceRoutes);
+    app.use('/api/clients', clientRoutes);
+    app.use('/api/users', userRoutes);
+
+    // Health check
+    app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV 
+      });
     });
+
+    // 4. Iniciar servidor
+    app.listen(PORT, () => {
+      console.log('🚀 Servidor TurnIO ejecutándose en puerto', PORT);
+      console.log('📊 Ambiente:', process.env.NODE_ENV);
+      console.log('🔗 Health check: http://localhost:' + PORT + '/health');
+    });
+    
   } catch (error) {
-    console.error('❌ Error iniciando el servidor:', error);
+    console.error('❌ Error iniciando servidor:', error);
     process.exit(1);
   }
-};
+}
 
 // Manejo de cierre graceful
 process.on('SIGTERM', async () => {

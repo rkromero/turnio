@@ -8,7 +8,7 @@ cmds = ["npm install"]
 cmds = ["npx prisma generate"]
 
 [start]
-cmd = "npx prisma migrate deploy && npm start"
+cmd = "npm start"
 
 [variables]
 NODE_ENV = "production"
