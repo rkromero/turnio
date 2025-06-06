@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
+import DashboardRouter from './components/DashboardRouter';
 import BookingPage from './pages/BookingPage';
 
 // Componente para rutas protegidas
@@ -60,12 +60,12 @@ function AppRoutes() {
       {/* Ruta para reservas públicas */}
       <Route path="/book/:businessSlug" element={<BookingPage />} />
       
-      {/* Rutas protegidas */}
+      {/* Rutas protegidas del dashboard */}
       <Route 
         path="/dashboard/*" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardRouter />
           </ProtectedRoute>
         } 
       />
