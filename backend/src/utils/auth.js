@@ -13,17 +13,24 @@ const comparePassword = async (password, hashedPassword) => {
 
 // Utilidades para JWT
 const generateToken = (userId, businessId) => {
-  return jwt.sign(
-    { 
-      userId, 
-      businessId,
-      iat: Math.floor(Date.now() / 1000),
-    },
-    process.env.JWT_SECRET,
-    { 
-      expiresIn: '7d' // El token expira en 7 días
-    }
-  );
+  console.log('🔍 [DEBUG] Generando token para userId:', userId, 'businessId:', businessId);
+  
+  if (!process.env.JWT_SECRET) {
+    console.error('❌ [DEBUG] JWT_SECRET no está configurado!');
+    throw new Error('JWT_SECRET no configurado');
+  }
+  
+  console.log('🔍 [DEBUG] JWT_SECRET configurado, generando token...');
+  
+  const payload = {
+    userId,
+    businessId
+  };
+  
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+  console.log('🔍 [DEBUG] Token generado exitosamente');
+  
+  return token;
 };
 
 const verifyToken = (token) => {

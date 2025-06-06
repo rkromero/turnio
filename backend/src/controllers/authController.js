@@ -5,9 +5,14 @@ const { validationResult } = require('express-validator');
 // Registro de nuevo negocio
 const registerBusiness = async (req, res) => {
   try {
+    console.log('🔍 [DEBUG] Iniciando registro de negocio');
+    console.log('🔍 [DEBUG] Body recibido:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 [DEBUG] JWT_SECRET configurado:', !!process.env.JWT_SECRET);
+    
     // Validar datos de entrada
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ [DEBUG] Errores de validación:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
@@ -16,13 +21,16 @@ const registerBusiness = async (req, res) => {
     }
 
     const { businessName, email, password, phone, address, description } = req.body;
+    console.log('🔍 [DEBUG] Datos extraídos:', { businessName, email, phone, address });
 
     // Verificar si el email ya existe
+    console.log('🔍 [DEBUG] Verificando email existente...');
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
 
     if (existingUser) {
+      console.log('❌ [DEBUG] Email ya existe:', email);
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado'
@@ -30,6 +38,7 @@ const registerBusiness = async (req, res) => {
     }
 
     // Generar slug único para el negocio
+    console.log('🔍 [DEBUG] Generando slug...');
     let slug = generateBusinessSlug(businessName);
     let slugExists = await prisma.business.findUnique({ where: { slug } });
     let counter = 1;
@@ -39,13 +48,18 @@ const registerBusiness = async (req, res) => {
       slugExists = await prisma.business.findUnique({ where: { slug } });
       counter++;
     }
+    console.log('🔍 [DEBUG] Slug generado:', slug);
 
     // Hash de la contraseña
+    console.log('🔍 [DEBUG] Hasheando contraseña...');
     const hashedPassword = await hashPassword(password);
+    console.log('🔍 [DEBUG] Contraseña hasheada exitosamente');
 
     // Crear negocio y usuario admin en una transacción
+    console.log('🔍 [DEBUG] Iniciando transacción de base de datos...');
     const result = await prisma.$transaction(async (tx) => {
       // Crear el negocio
+      console.log('🔍 [DEBUG] Creando negocio...');
       const business = await tx.business.create({
         data: {
           name: businessName,
@@ -58,8 +72,10 @@ const registerBusiness = async (req, res) => {
           maxAppointments: 30
         }
       });
+      console.log('🔍 [DEBUG] Negocio creado con ID:', business.id);
 
       // Crear el usuario administrador
+      console.log('🔍 [DEBUG] Creando usuario admin...');
       const user = await tx.user.create({
         data: {
           businessId: business.id,
@@ -69,14 +85,20 @@ const registerBusiness = async (req, res) => {
           role: 'ADMIN'
         }
       });
+      console.log('🔍 [DEBUG] Usuario creado con ID:', user.id);
 
       return { business, user };
     });
 
+    console.log('🔍 [DEBUG] Transacción completada exitosamente');
+
     // Generar token JWT
+    console.log('🔍 [DEBUG] Generando token JWT...');
     const token = generateToken(result.user.id, result.business.id);
     setTokenCookie(res, token);
+    console.log('🔍 [DEBUG] Token generado y cookie configurada');
 
+    console.log('✅ [DEBUG] Registro completado exitosamente');
     res.status(201).json({
       success: true,
       message: 'Negocio registrado exitosamente',
@@ -97,10 +119,12 @@ const registerBusiness = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en registro:', error);
+    console.error('❌ [DEBUG] Error en registro:', error);
+    console.error('❌ [DEBUG] Stack trace:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
 };
