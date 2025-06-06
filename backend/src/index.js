@@ -115,6 +115,7 @@ async function startServer() {
     const appointmentRoutes = require('./routes/appointments');
     const serviceRoutes = require('./routes/services');
     const dashboardRoutes = require('./routes/dashboard');
+    const clientRoutes = require('./routes/clientRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -131,6 +132,7 @@ async function startServer() {
     app.use('/api/appointments', appointmentRoutes);
     app.use('/api/services', serviceRoutes);
     app.use('/api/dashboard', dashboardRoutes);
+    app.use('/api/clients', clientRoutes);
 
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
