@@ -5,6 +5,7 @@ import Dashboard from '../pages/Dashboard';
 import Services from '../pages/Services';
 import Appointments from '../pages/Appointments';
 import Clients from '../pages/Clients';
+import Reports from '../pages/Reports';
 
 const DashboardRouter: React.FC = () => {
   return (
@@ -14,15 +15,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/services" element={<Services />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/clients" element={<Clients />} />
-        
-        {/* Rutas futuras */}
-        <Route path="/reports" element={
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">📈</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Reportes y Estadísticas</h2>
-            <p className="text-gray-600">Esta sección estará disponible pronto</p>
-          </div>
-        } />
+        <Route path="/reports" element={<Reports />} />
         
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

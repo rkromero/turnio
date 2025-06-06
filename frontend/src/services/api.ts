@@ -199,4 +199,39 @@ export const clientService = {
   },
 };
 
+// Servicios de reportes
+export const reportService = {
+  getDashboardMetrics: async (period?: number) => {
+    const response = await api.get('/reports/dashboard', {
+      params: { period }
+    });
+    return response.data;
+  },
+
+  getRevenueReport: async (params: {
+    startDate: string;
+    endDate: string;
+    groupBy?: 'day' | 'week' | 'month';
+  }) => {
+    const response = await api.get('/reports/revenue', { params });
+    return response.data;
+  },
+
+  getServicesReport: async (params?: {
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const response = await api.get('/reports/services', { params });
+    return response.data;
+  },
+
+  getClientsReport: async (params?: {
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const response = await api.get('/reports/clients', { params });
+    return response.data;
+  },
+};
+
 export default api; 
