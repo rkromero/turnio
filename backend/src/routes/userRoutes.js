@@ -29,12 +29,22 @@ const userValidation = [
     .withMessage('El rol debe ser ADMIN o EMPLOYEE'),
   body('phone')
     .optional()
-    .matches(/^[\d\s\-\+\(\)]+$/)
-    .withMessage('Formato de teléfono inválido'),
+    .custom((value) => {
+      if (value && value.trim() === '') return true; // Allow empty string
+      if (value && !/^[\d\s\-\+\(\)]+$/.test(value)) {
+        throw new Error('Formato de teléfono inválido');
+      }
+      return true;
+    }),
   body('avatar')
     .optional()
-    .isURL()
-    .withMessage('La URL del avatar debe ser válida')
+    .custom((value) => {
+      if (value && value.trim() === '') return true; // Allow empty string
+      if (value && !value.match(/^https?:\/\/.+/)) {
+        throw new Error('La URL del avatar debe ser válida');
+      }
+      return true;
+    })
 ];
 
 const createUserValidation = [
@@ -42,7 +52,7 @@ const createUserValidation = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('La contraseña debe tener al menos 6 caracteres')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/)
     .withMessage('La contraseña debe contener al menos: 1 minúscula, 1 mayúscula y 1 número')
 ];
 
@@ -74,7 +84,7 @@ const updateUserValidation = [
     .optional()
     .isLength({ min: 6 })
     .withMessage('La contraseña debe tener al menos 6 caracteres')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/)
     .withMessage('La contraseña debe contener al menos: 1 minúscula, 1 mayúscula y 1 número')
 ];
 
