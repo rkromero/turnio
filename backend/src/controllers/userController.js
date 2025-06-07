@@ -128,8 +128,14 @@ const getUser = async (req, res) => {
 // Crear nuevo empleado
 const createUser = async (req, res) => {
   try {
+    console.log('📥 Datos recibidos para crear usuario:', {
+      body: req.body,
+      businessId: req.businessId
+    });
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Errores de validación:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
@@ -140,6 +146,14 @@ const createUser = async (req, res) => {
     const businessId = req.businessId;
     const { name, email, password, role, phone, avatar } = req.body;
 
+    console.log('🔍 Validando contraseña:', {
+      password: password ? `${password.substring(0, 3)}***` : 'undefined',
+      length: password ? password.length : 0,
+      hasLower: password ? /[a-z]/.test(password) : false,
+      hasUpper: password ? /[A-Z]/.test(password) : false,
+      hasNumber: password ? /\d/.test(password) : false
+    });
+
     // Verificar que el email no esté en uso en este negocio
     const existingUser = await prisma.user.findFirst({
       where: { 
@@ -149,6 +163,7 @@ const createUser = async (req, res) => {
     });
 
     if (existingUser) {
+      console.log('⚠️ Email ya existe en el negocio');
       return res.status(400).json({
         success: false,
         message: 'Ya existe un usuario con este email en tu negocio'
@@ -174,6 +189,7 @@ const createUser = async (req, res) => {
 
     const userLimit = planLimits[business.planType];
     if (userLimit !== -1 && activeUsersCount >= userLimit) {
+      console.log(`⚠️ Límite de usuarios alcanzado: ${activeUsersCount}/${userLimit}`);
       return res.status(400).json({
         success: false,
         message: `Has alcanzado el límite de usuarios de tu plan ${business.planType} (${userLimit} usuarios)`
@@ -207,6 +223,8 @@ const createUser = async (req, res) => {
       }
     });
 
+    console.log('✅ Usuario creado exitosamente:', user.id);
+
     res.status(201).json({
       success: true,
       message: 'Usuario creado exitosamente',
@@ -214,7 +232,7 @@ const createUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creando usuario:', error);
+    console.error('💥 Error creando usuario:', error);
     
     if (error.code === 'P2002') {
       return res.status(400).json({
