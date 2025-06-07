@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm start"
+    "startCommand": "npm run railway-fix && npm start"
   },
   "variables": {
     "NODE_ENV": "production",

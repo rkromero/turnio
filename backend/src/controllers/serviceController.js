@@ -255,6 +255,7 @@ const getServiceStats = async (req, res) => {
 const getPublicServices = async (req, res) => {
   try {
     const { businessSlug } = req.params;
+    console.log(`🔍 Buscando servicios públicos para el negocio: ${businessSlug}`);
 
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
@@ -262,11 +263,14 @@ const getPublicServices = async (req, res) => {
     });
 
     if (!business) {
+      console.log(`❌ Negocio no encontrado con slug: ${businessSlug}`);
       return res.status(404).json({
         success: false,
         message: 'Negocio no encontrado'
       });
     }
+
+    console.log(`✅ Negocio encontrado: ${business.name} (ID: ${business.id})`);
 
     // Obtener servicios activos del negocio
     const services = await prisma.service.findMany({
@@ -287,6 +291,11 @@ const getPublicServices = async (req, res) => {
       }
     });
 
+    console.log(`✅ Servicios encontrados: ${services.length}`);
+    services.forEach(service => {
+      console.log(`  - ${service.name} (${service.duration}min - $${service.price})`);
+    });
+
     res.json({
       success: true,
       business: {
@@ -298,7 +307,7 @@ const getPublicServices = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo servicios públicos:', error);
+    console.error('❌ Error obteniendo servicios públicos:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
