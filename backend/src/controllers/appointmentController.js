@@ -544,10 +544,218 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
+// Obtener profesionales disponibles y sus horarios para un negocio
+const getAvailableProfessionals = async (req, res) => {
+  try {
+    const { businessSlug } = req.params;
+    const { date, serviceId } = req.query;
+
+    // Buscar el negocio
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    // Obtener el servicio si se especifica
+    let service = null;
+    if (serviceId) {
+      service = await prisma.service.findFirst({
+        where: {
+          id: serviceId,
+          businessId: business.id,
+          isActive: true
+        }
+      });
+
+      if (!service) {
+        return res.status(404).json({
+          success: false,
+          message: 'Servicio no encontrado'
+        });
+      }
+    }
+
+    // Obtener profesionales activos del negocio
+    const professionals = await prisma.user.findMany({
+      where: {
+        businessId: business.id,
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        phone: true,
+        role: true,
+        workingHours: {
+          where: { isActive: true },
+          orderBy: { dayOfWeek: 'asc' }
+        }
+      },
+      orderBy: [
+        { role: 'asc' }, // ADMIN primero
+        { name: 'asc' }
+      ]
+    });
+
+    // Si se especifica una fecha, calcular horarios disponibles
+    let professionalsWithSlots = [];
+    
+    if (date) {
+      const targetDate = new Date(date);
+      const dayOfWeek = targetDate.getDay(); // 0=Domingo, 1=Lunes, etc.
+      
+      for (const professional of professionals) {
+        // Buscar horarios de trabajo para este día
+        const workingHour = professional.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
+        
+        if (!workingHour) {
+          // No trabaja este día
+          professionalsWithSlots.push({
+            ...professional,
+            availableSlots: [],
+            workingToday: false
+          });
+          continue;
+        }
+
+        // Generar slots disponibles
+        const availableSlots = await generateAvailableSlots(
+          professional.id,
+          targetDate,
+          workingHour,
+          service?.duration || 60 // duración por defecto 60 min
+        );
+
+        professionalsWithSlots.push({
+          id: professional.id,
+          name: professional.name,
+          avatar: professional.avatar,
+          phone: professional.phone,
+          role: professional.role,
+          availableSlots,
+          workingToday: true,
+          workingHours: {
+            start: workingHour.startTime,
+            end: workingHour.endTime
+          }
+        });
+      }
+    } else {
+      // Sin fecha específica, solo devolver profesionales
+      professionalsWithSlots = professionals.map(prof => ({
+        id: prof.id,
+        name: prof.name,
+        avatar: prof.avatar,
+        phone: prof.phone,
+        role: prof.role,
+        workingHours: prof.workingHours
+      }));
+    }
+
+    res.json({
+      success: true,
+      data: {
+        business: {
+          id: business.id,
+          name: business.name,
+          slug: business.slug
+        },
+        service,
+        professionals: professionalsWithSlots,
+        totalProfessionals: professionals.length,
+        date: date || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo profesionales disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Función auxiliar para generar slots disponibles
+async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration) {
+  const slots = [];
+  
+  // Parsear horarios de trabajo
+  const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
+  const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
+  
+  // Crear fechas de inicio y fin para el día
+  const startTime = new Date(date);
+  startTime.setHours(startHour, startMin, 0, 0);
+  
+  const endTime = new Date(date);
+  endTime.setHours(endHour, endMin, 0, 0);
+  
+  // Obtener citas existentes para este profesional en este día
+  const existingAppointments = await prisma.appointment.findMany({
+    where: {
+      userId: professionalId,
+      startTime: {
+        gte: startTime,
+        lt: new Date(date.getTime() + 24 * 60 * 60 * 1000) // fin del día
+      },
+      status: {
+        in: ['CONFIRMED', 'COMPLETED']
+      }
+    },
+    select: {
+      startTime: true,
+      endTime: true
+    }
+  });
+
+  // Generar slots de 30 minutos (o según la duración del servicio)
+  const slotDuration = Math.min(serviceDuration, 30); // slots mínimos de 30 min
+  let currentTime = new Date(startTime);
+  
+  while (currentTime < endTime) {
+    const slotEnd = new Date(currentTime.getTime() + serviceDuration * 60000);
+    
+    // Verificar si este slot no se superpone con citas existentes
+    const isAvailable = !existingAppointments.some(appointment => {
+      const appointmentStart = new Date(appointment.startTime);
+      const appointmentEnd = new Date(appointment.endTime);
+      
+      return (
+        (currentTime >= appointmentStart && currentTime < appointmentEnd) ||
+        (slotEnd > appointmentStart && slotEnd <= appointmentEnd) ||
+        (currentTime <= appointmentStart && slotEnd >= appointmentEnd)
+      );
+    });
+
+    // Solo agregar si el slot completo cabe antes del fin del horario laboral
+    if (isAvailable && slotEnd <= endTime) {
+      slots.push({
+        time: currentTime.toTimeString().slice(0, 5), // HH:MM
+        datetime: currentTime.toISOString(),
+        available: true
+      });
+    }
+    
+    // Avanzar al siguiente slot
+    currentTime = new Date(currentTime.getTime() + slotDuration * 60000);
+  }
+  
+  return slots;
+}
+
 module.exports = {
   getAppointments,
   createAppointment,
   updateAppointment,
   cancelAppointment,
   getAvailableSlots,
+  getAvailableProfessionals
 }; 

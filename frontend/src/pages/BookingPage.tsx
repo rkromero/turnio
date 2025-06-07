@@ -1,15 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { appointmentService, publicService } from '../services/api';
-import type { Service } from '../types';
+import { bookingService } from '../services/bookingService';
+import { Professional, Service, BookingFormData } from '../types/booking';
+import ProfessionalSelector from '../components/ProfessionalSelector';
 import Logo from '../components/Logo';
+import { 
+  Clock, 
+  User, 
+  Mail, 
+  Phone, 
+  MessageCircle, 
+  ArrowLeft, 
+  CheckCircle,
+  MapPin
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+
+interface SuccessData {
+  appointmentId: string;
+  clientName: string;
+  serviceName: string;
+  professionalName: string;
+  professionalAvatar?: string;
+  startTime: string;
+  duration: number;
+  businessName: string;
+  wasAutoAssigned: boolean;
+}
 
 interface BookingState {
   business: { id: string; name: string; slug: string } | null;
   services: Service[];
+  professionals: Professional[];
   selectedService: Service | null;
+  selectedProfessional: string | null;
   selectedDate: string;
-  selectedTime: string;
+  selectedTime: string | null;
   clientData: {
     name: string;
     email: string;
@@ -24,14 +50,16 @@ const BookingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [successData, setSuccessData] = useState<SuccessData | null>(null);
 
   const [booking, setBooking] = useState<BookingState>({
     business: null,
     services: [],
+    professionals: [],
     selectedService: null,
+    selectedProfessional: null,
     selectedDate: '',
-    selectedTime: '',
+    selectedTime: null,
     clientData: {
       name: '',
       email: '',
@@ -46,9 +74,10 @@ const BookingPage: React.FC = () => {
     }
   }, [businessSlug]);
 
+  // Cargar profesionales cuando se selecciona servicio y fecha
   useEffect(() => {
     if (booking.selectedService && booking.selectedDate) {
-      loadAvailableSlots();
+      loadProfessionals();
     }
   }, [booking.selectedService, booking.selectedDate]);
 
@@ -57,16 +86,15 @@ const BookingPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const today = new Date().toISOString().split('T')[0];
-      const bookingData = await appointmentService.getAvailableSlots(businessSlug!, {
-        date: today
-      });
+      const servicesResponse = await bookingService.getServices(businessSlug!);
       
-      setBooking(prev => ({
-        ...prev,
-        business: bookingData.business,
-        services: bookingData.services
-      }));
+      if (servicesResponse.success) {
+        setBooking(prev => ({
+          ...prev,
+          business: servicesResponse.business,
+          services: servicesResponse.services
+        }));
+      }
     } catch (error) {
       console.error('Error cargando datos del negocio:', error);
       setError('No se pudo cargar la información del negocio');
@@ -75,25 +103,25 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  const loadAvailableSlots = async () => {
+  const loadProfessionals = async () => {
     if (!booking.selectedService || !booking.selectedDate) return;
     
     try {
-      const bookingData = await appointmentService.getAvailableSlots(businessSlug!, {
-        date: booking.selectedDate,
-        serviceId: booking.selectedService.id
-      });
+      const professionalsResponse = await bookingService.getProfessionals(
+        businessSlug!,
+        booking.selectedDate,
+        booking.selectedService.id
+      );
       
-      // Formatear los horarios a HH:MM
-      const formattedSlots = bookingData.availableSlots.map(slot => {
-        const date = new Date(slot.time);
-        return date.toTimeString().slice(0, 5); // HH:MM format
-      });
-      
-      setAvailableSlots(formattedSlots);
+      if (professionalsResponse.success) {
+        setBooking(prev => ({
+          ...prev,
+          professionals: professionalsResponse.data.professionals
+        }));
+      }
     } catch (error) {
-      console.error('Error cargando horarios:', error);
-      setAvailableSlots([]);
+      console.error('Error cargando profesionales:', error);
+      toast.error('Error cargando profesionales disponibles');
     }
   };
 
@@ -101,25 +129,35 @@ const BookingPage: React.FC = () => {
     setBooking(prev => ({
       ...prev,
       selectedService: service,
-      selectedTime: '' // Reset time when service changes
+      selectedProfessional: null,
+      selectedTime: null,
+      professionals: []
     }));
-    setStep(2);
   };
 
   const handleDateSelect = (date: string) => {
     setBooking(prev => ({
       ...prev,
       selectedDate: date,
-      selectedTime: '' // Reset time when date changes
+      selectedProfessional: null,
+      selectedTime: null,
+      professionals: []
     }));
   };
 
-  const handleTimeSelect = (time: string) => {
+  const handleProfessionalSelect = (professionalId: string | null) => {
     setBooking(prev => ({
       ...prev,
-      selectedTime: time
+      selectedProfessional: professionalId,
+      selectedTime: null
     }));
-    setStep(3);
+  };
+
+  const handleTimeSelect = (datetime: string) => {
+    setBooking(prev => ({
+      ...prev,
+      selectedTime: datetime
+    }));
   };
 
   const handleClientDataChange = (field: keyof BookingState['clientData'], value: string) => {
@@ -134,7 +172,12 @@ const BookingPage: React.FC = () => {
 
   const handleSubmitBooking = async () => {
     if (!booking.selectedService || !booking.selectedDate || !booking.selectedTime) {
-      setError('Faltan datos requeridos');
+      toast.error('Faltan datos requeridos para completar la reserva');
+      return;
+    }
+
+    if (!booking.clientData.name) {
+      toast.error('Por favor ingresa tu nombre');
       return;
     }
 
@@ -142,24 +185,40 @@ const BookingPage: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
-      // Crear datetime combinando fecha y hora
-      const startDateTime = new Date(`${booking.selectedDate}T${booking.selectedTime}`);
-
-      await publicService.bookAppointment(businessSlug!, {
+      const bookingData: BookingFormData = {
         clientName: booking.clientData.name,
-        clientEmail: booking.clientData.email || undefined,
-        clientPhone: booking.clientData.phone || undefined,
+        clientEmail: booking.clientData.email,
+        clientPhone: booking.clientData.phone,
         serviceId: booking.selectedService.id,
-        startTime: startDateTime.toISOString(),
-        notes: booking.clientData.notes || undefined
-      });
+        startTime: booking.selectedTime,
+        notes: booking.clientData.notes,
+        professionalId: booking.selectedProfessional || undefined
+      };
 
-      setStep(4); // Success step
-    } catch (error) {
+      const response = await bookingService.createBooking(businessSlug!, bookingData);
+
+      if (response.success) {
+        setSuccessData(response.data);
+        setStep(5); // Success step
+        toast.success('¡Reserva confirmada exitosamente!');
+      }
+    } catch (error: unknown) {
       console.error('Error creando reserva:', error);
-      setError('Error al crear la reserva. Intenta nuevamente.');
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al crear la reserva. Intenta nuevamente.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const goToNextStep = () => {
+    if (step === 1 && booking.selectedService) {
+      setStep(2);
+    } else if (step === 2 && booking.selectedDate) {
+      setStep(3);
+    } else if (step === 3 && (booking.selectedProfessional !== null || booking.selectedTime)) {
+      setStep(4);
     }
   };
 
@@ -183,11 +242,49 @@ const BookingPage: React.FC = () => {
     return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}min`;
   };
 
+  const formatDateTime = (dateTime: string) => {
+    const date = new Date(dateTime);
+    return {
+      date: date.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      time: date.toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    };
+  };
+
+  // Generate date options (next 30 days)
+  const generateDateOptions = () => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push({
+        value: date.toISOString().split('T')[0],
+        label: date.toLocaleDateString('es-ES', { 
+          weekday: 'short', 
+          day: 'numeric', 
+          month: 'short' 
+        }),
+        isToday: i === 0
+      });
+    }
+    
+    return dates;
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando información...</p>
         </div>
       </div>
@@ -196,317 +293,387 @@ const BookingPage: React.FC = () => {
 
   if (error && !booking.business) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Negocio no encontrado</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <a href="/" className="btn-primary">Volver al inicio</a>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Negocio no encontrado</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50">
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Logo size="lg" className="justify-center mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {booking.business?.name}
-          </h1>
-          <p className="text-gray-600">
-            Reservar Turno Online
-          </p>
-        </div>
-
-        {/* Progress Steps */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            {[
-              { number: 1, title: 'Servicio' },
-              { number: 2, title: 'Fecha y Hora' },
-              { number: 3, title: 'Datos' },
-              { number: 4, title: 'Confirmación' }
-            ].map((stepItem, index) => (
-              <div key={stepItem.number} className="flex items-center">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                  step >= stepItem.number 
-                    ? 'bg-primary-600 text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {step > stepItem.number ? '✓' : stepItem.number}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Logo className="h-8" />
+              {booking.business && (
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900">{booking.business.name}</h1>
+                  <p className="text-sm text-gray-600">Reserva tu cita en línea</p>
                 </div>
-                <span className={`ml-2 text-sm ${
-                  step >= stepItem.number ? 'text-primary-600 font-medium' : 'text-gray-500'
-                }`}>
-                  {stepItem.title}
-                </span>
-                {index < 3 && (
-                  <div className={`w-8 h-0.5 ml-4 ${
-                    step > stepItem.number ? 'bg-primary-600' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
+              )}
+            </div>
+            
+            {/* Progress indicator */}
+            <div className="hidden md:flex items-center space-x-2">
+              {[1, 2, 3, 4].map((num) => (
+                <div key={num} className="flex items-center">
+                  <div className={`
+                    w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
+                    ${step >= num 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                    }
+                  `}>
+                    {num}
+                  </div>
+                  {num < 4 && (
+                    <div className={`
+                      w-8 h-0.5 mx-2
+                      ${step > num ? 'bg-blue-600' : 'bg-gray-200'}
+                    `} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="card max-w-2xl mx-auto">
-          <div className="card-body">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-600 text-sm">{error}</p>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          
+          {/* Step 1: Service Selection */}
+          {step === 1 && (
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">¿Qué servicio necesitas?</h2>
+                <p className="text-gray-600">Elige el servicio que mejor se adapte a tus necesidades</p>
               </div>
-            )}
 
-            {/* Step 1: Service Selection */}
-            {step === 1 && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">
-                  Selecciona un Servicio
-                </h2>
-                <div className="space-y-4">
-                  {booking.services.filter(s => s.isActive).map((service) => (
-                    <button
-                      key={service.id}
-                      onClick={() => handleServiceSelect(service)}
-                      className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">{service.name}</h3>
-                          {service.description && (
-                            <p className="text-sm text-gray-600 mt-1">{service.description}</p>
-                          )}
-                          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                            <span>⏱️ {formatDuration(service.duration)}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {formatCurrency(service.price)}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Date and Time Selection */}
-            {step === 2 && booking.selectedService && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Selecciona Fecha y Hora
-                  </h2>
-                  <button onClick={goBack} className="btn-secondary text-sm">
-                    ← Volver
-                  </button>
-                </div>
-
-                {/* Selected Service Summary */}
-                <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{booking.selectedService.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {formatDuration(booking.selectedService.duration)} • {formatCurrency(booking.selectedService.price)}
-                      </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {booking.services.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => handleServiceSelect(service)}
+                    className={`
+                      p-6 rounded-xl border cursor-pointer transition-all duration-200
+                      ${booking.selectedService?.id === service.id
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
+                      <span className="text-lg font-bold text-blue-600">{formatCurrency(service.price)}</span>
+                    </div>
+                    {service.description && (
+                      <p className="text-gray-600 mb-3">{service.description}</p>
+                    )}
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {formatDuration(service.duration)}
                     </div>
                   </div>
-                </div>
+                ))}
+              </div>
 
-                {/* Date Selection */}
-                <div className="mb-6">
+              {booking.selectedService && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={goToNextStep}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Date Selection */}
+          {step === 2 && (
+            <div className="p-8">
+              <div className="flex items-center mb-6">
+                <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Selecciona la fecha</h2>
+                  <p className="text-gray-600">¿Cuándo te gustaría agendar tu cita?</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
+                {generateDateOptions().map((dateOption) => (
+                  <button
+                    key={dateOption.value}
+                    onClick={() => handleDateSelect(dateOption.value)}
+                    className={`
+                      p-3 rounded-xl text-center transition-colors relative
+                      ${booking.selectedDate === dateOption.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                      }
+                    `}
+                  >
+                    <div className="text-sm font-medium">{dateOption.label}</div>
+                    {dateOption.isToday && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {booking.selectedDate && (
+                <div className="text-center">
+                  <button
+                    onClick={goToNextStep}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Professional Selection */}
+          {step === 3 && (
+            <div className="p-8">
+              <div className="flex items-center mb-6">
+                <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Selecciona profesional y horario</h2>
+                  <p className="text-gray-600">
+                    Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
+                      weekday: 'long', day: 'numeric', month: 'long' 
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <ProfessionalSelector
+                professionals={booking.professionals}
+                selectedProfessional={booking.selectedProfessional}
+                onProfessionalSelect={handleProfessionalSelect}
+                selectedDate={booking.selectedDate}
+                selectedTime={booking.selectedTime}
+                onTimeSelect={handleTimeSelect}
+                showTimeSlots={true}
+              />
+
+              {(booking.selectedProfessional !== null || booking.selectedTime) && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={goToNextStep}
+                    disabled={!booking.selectedTime}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Client Information */}
+          {step === 4 && (
+            <div className="p-8">
+              <div className="flex items-center mb-6">
+                <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Tus datos</h2>
+                  <p className="text-gray-600">Información necesaria para confirmar tu cita</p>
+                </div>
+              </div>
+
+              {/* Resumen de la reserva */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                <h3 className="font-semibold text-gray-900 mb-4">Resumen de tu reserva</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Servicio:</span>
+                    <span className="font-medium">{booking.selectedService?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fecha y hora:</span>
+                    <span className="font-medium">
+                      {booking.selectedTime && formatDateTime(booking.selectedTime).date} - {booking.selectedTime && formatDateTime(booking.selectedTime).time}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Duración:</span>
+                    <span className="font-medium">{booking.selectedService && formatDuration(booking.selectedService.duration)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Precio:</span>
+                    <span className="font-bold text-blue-600">{booking.selectedService && formatCurrency(booking.selectedService.price)}</span>
+                  </div>
+                  {booking.selectedProfessional && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Profesional:</span>
+                      <span className="font-medium">
+                        {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Formulario de datos del cliente */}
+              <div className="space-y-6">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha
+                    <User className="w-4 h-4 inline mr-1" />
+                    Nombre completo *
                   </label>
                   <input
-                    type="date"
-                    value={booking.selectedDate}
-                    onChange={(e) => handleDateSelect(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    type="text"
+                    value={booking.clientData.name}
+                    onChange={(e) => handleClientDataChange('name', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Tu nombre completo"
+                    required
                   />
                 </div>
 
-                {/* Time Selection */}
-                {booking.selectedDate && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Horario Disponible
-                    </label>
-                    {availableSlots.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-3">
-                        {availableSlots.map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => handleTimeSelect(time)}
-                            className="p-3 text-center border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-center py-4">
-                        No hay horarios disponibles para esta fecha
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 3: Client Form */}
-            {step === 3 && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Datos de Contacto
-                  </h2>
-                  <button onClick={goBack} className="btn-secondary text-sm">
-                    ← Volver
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Mail className="w-4 h-4 inline mr-1" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={booking.clientData.email}
+                    onChange={(e) => handleClientDataChange('email', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="tu@email.com"
+                  />
                 </div>
 
-                {/* Booking Summary */}
-                <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                  <h3 className="font-medium text-gray-900 mb-2">Resumen de tu Reserva</h3>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p><strong>Servicio:</strong> {booking.selectedService?.name}</p>
-                    <p><strong>Fecha:</strong> {new Date(booking.selectedDate).toLocaleDateString('es-AR')}</p>
-                    <p><strong>Hora:</strong> {booking.selectedTime}</p>
-                    <p><strong>Duración:</strong> {booking.selectedService && formatDuration(booking.selectedService.duration)}</p>
-                    <p><strong>Precio:</strong> {booking.selectedService && formatCurrency(booking.selectedService.price)}</p>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Phone className="w-4 h-4 inline mr-1" />
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={booking.clientData.phone}
+                    onChange={(e) => handleClientDataChange('phone', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="+54 9 11 1234-5678"
+                  />
                 </div>
 
-                {/* Client Form */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre Completo *
-                    </label>
-                    <input
-                      type="text"
-                      value={booking.clientData.name}
-                      onChange={(e) => handleClientDataChange('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Tu nombre completo"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={booking.clientData.email}
-                      onChange={(e) => handleClientDataChange('email', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="tu@email.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Teléfono
-                    </label>
-                    <input
-                      type="tel"
-                      value={booking.clientData.phone}
-                      onChange={(e) => handleClientDataChange('phone', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="+54 9 11 1234-5678"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Notas adicionales
-                    </label>
-                    <textarea
-                      value={booking.clientData.notes}
-                      onChange={(e) => handleClientDataChange('notes', e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Alguna información adicional..."
-                    />
-                  </div>
-
-                  <button
-                    onClick={handleSubmitBooking}
-                    disabled={!booking.clientData.name || submitting}
-                    className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {submitting ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Confirmando Reserva...
-                      </div>
-                    ) : (
-                      'Confirmar Reserva'
-                    )}
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <MessageCircle className="w-4 h-4 inline mr-1" />
+                    Notas adicionales
+                  </label>
+                  <textarea
+                    value={booking.clientData.notes}
+                    onChange={(e) => handleClientDataChange('notes', e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Información adicional que consideres importante..."
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Step 4: Confirmation */}
-            {step === 4 && (
-              <div className="text-center py-8">
-                <div className="text-6xl mb-4">✅</div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                  ¡Reserva Confirmada!
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Tu turno ha sido reservado exitosamente. Te contactaremos pronto.
-                </p>
-                
-                <div className="bg-gray-50 p-6 rounded-lg mb-6 text-left">
-                  <h3 className="font-medium text-gray-900 mb-3">Detalles de tu Reserva</h3>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <p><strong>Negocio:</strong> {booking.business?.name}</p>
-                    <p><strong>Servicio:</strong> {booking.selectedService?.name}</p>
-                    <p><strong>Fecha:</strong> {new Date(booking.selectedDate).toLocaleDateString('es-AR')}</p>
-                    <p><strong>Hora:</strong> {booking.selectedTime}</p>
-                    <p><strong>Cliente:</strong> {booking.clientData.name}</p>
-                    {booking.clientData.email && (
-                      <p><strong>Email:</strong> {booking.clientData.email}</p>
-                    )}
-                    {booking.clientData.phone && (
-                      <p><strong>Teléfono:</strong> {booking.clientData.phone}</p>
-                    )}
-                  </div>
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-red-600 text-sm">{error}</p>
                 </div>
+              )}
 
+              <div className="mt-8 text-center">
                 <button
-                  onClick={() => window.location.reload()}
-                  className="btn-primary"
+                  onClick={handleSubmitBooking}
+                  disabled={submitting || !booking.clientData.name}
+                  className="px-8 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Hacer Otra Reserva
+                  {submitting ? 'Confirmando...' : 'Confirmar reserva'}
                 </button>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-500">
-            ¿Eres el dueño de este negocio?{' '}
-            <a href="/login" className="text-primary-600 hover:underline">
-              Inicia sesión aquí
-            </a>
-          </p>
+          {/* Step 5: Success */}
+          {step === 5 && successData && (
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Reserva confirmada!</h2>
+              <p className="text-gray-600 mb-8">Tu cita ha sido reservada exitosamente</p>
+
+              <div className="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-8">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Cliente:</span>
+                    <span className="font-medium">{successData.clientName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Servicio:</span>
+                    <span className="font-medium">{successData.serviceName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Profesional:</span>
+                    <span className="font-medium">
+                      {successData.professionalName}
+                      {successData.wasAutoAssigned && (
+                        <span className="text-xs text-blue-600 ml-1">(asignado automáticamente)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fecha y hora:</span>
+                    <span className="font-medium">
+                      {formatDateTime(successData.startTime).date} - {formatDateTime(successData.startTime).time}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Duración:</span>
+                    <span className="font-medium">{formatDuration(successData.duration)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Te recomendamos guardar esta información para referencia futura.
+                  Si necesitas hacer cambios, contacta directamente con {successData.businessName}.
+                </p>
+                
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Hacer otra reserva
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

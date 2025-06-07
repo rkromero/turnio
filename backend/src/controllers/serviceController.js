@@ -251,10 +251,66 @@ const getServiceStats = async (req, res) => {
   }
 };
 
+// Obtener servicios públicos por slug del negocio (sin autenticación)
+const getPublicServices = async (req, res) => {
+  try {
+    const { businessSlug } = req.params;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    // Obtener servicios activos del negocio
+    const services = await prisma.service.findMany({
+      where: {
+        businessId: business.id,
+        isActive: true
+      },
+      orderBy: {
+        name: 'asc'
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        duration: true,
+        price: true,
+        color: true
+      }
+    });
+
+    res.json({
+      success: true,
+      business: {
+        id: business.id,
+        name: business.name,
+        slug: business.slug
+      },
+      services
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo servicios públicos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getServices,
   createService,
   updateService,
   deleteService,
   getServiceStats,
+  getPublicServices
 }; 

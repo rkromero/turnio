@@ -144,7 +144,7 @@ async function startServer() {
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
         const { businessSlug } = req.params;
-        const { clientName, clientEmail, clientPhone, serviceId, startTime, notes } = req.body;
+        const { clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId } = req.body;
 
         // Buscar el negocio
         const { prisma } = require('./config/database');
@@ -173,6 +173,107 @@ async function startServer() {
             success: false,
             message: 'Servicio no encontrado'
           });
+        }
+
+        // Determinar el profesional a asignar
+        let assignedProfessional = null;
+        
+        if (professionalId) {
+          // Verificar que el profesional especificado existe y está activo
+          assignedProfessional = await prisma.user.findFirst({
+            where: {
+              id: professionalId,
+              businessId: business.id,
+              isActive: true
+            }
+          });
+
+          if (!assignedProfessional) {
+            return res.status(400).json({
+              success: false,
+              message: 'Profesional no disponible'
+            });
+          }
+        } else {
+          // Asignación automática: buscar profesional disponible
+          const startDateTime = new Date(startTime);
+          const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
+          const dayOfWeek = startDateTime.getDay();
+
+          // Buscar profesionales que trabajen este día y estén disponibles
+          const availableProfessionals = await prisma.user.findMany({
+            where: {
+              businessId: business.id,
+              isActive: true,
+              workingHours: {
+                some: {
+                  dayOfWeek: dayOfWeek,
+                  isActive: true
+                }
+              }
+            },
+            include: {
+              workingHours: {
+                where: {
+                  dayOfWeek: dayOfWeek,
+                  isActive: true
+                }
+              },
+              appointments: {
+                where: {
+                  startTime: {
+                    gte: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000),
+                    lte: new Date(startDateTime.getTime() + 24 * 60 * 60 * 1000)
+                  },
+                  status: {
+                    in: ['CONFIRMED', 'COMPLETED']
+                  }
+                }
+              }
+            }
+          });
+
+          // Filtrar profesionales que realmente estén disponibles en el horario solicitado
+          for (const professional of availableProfessionals) {
+            const workingHour = professional.workingHours[0];
+            if (!workingHour) continue;
+
+            // Verificar que el horario está dentro del horario laboral
+            const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
+            const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
+            
+            const workStart = new Date(startDateTime);
+            workStart.setHours(startHour, startMin, 0, 0);
+            
+            const workEnd = new Date(startDateTime);
+            workEnd.setHours(endHour, endMin, 0, 0);
+
+            if (startDateTime >= workStart && endDateTime <= workEnd) {
+              // Verificar que no tenga conflictos con otras citas
+              const hasConflict = professional.appointments.some(appointment => {
+                const appointmentStart = new Date(appointment.startTime);
+                const appointmentEnd = new Date(appointment.endTime);
+                
+                return (
+                  (startDateTime >= appointmentStart && startDateTime < appointmentEnd) ||
+                  (endDateTime > appointmentStart && endDateTime <= appointmentEnd) ||
+                  (startDateTime <= appointmentStart && endDateTime >= appointmentEnd)
+                );
+              });
+
+              if (!hasConflict) {
+                assignedProfessional = professional;
+                break; // Tomar el primer profesional disponible
+              }
+            }
+          }
+
+          if (!assignedProfessional) {
+            return res.status(400).json({
+              success: false,
+              message: 'No hay profesionales disponibles en el horario solicitado'
+            });
+          }
         }
 
         // Crear o encontrar cliente
@@ -206,6 +307,7 @@ async function startServer() {
             businessId: business.id,
             clientId: client.id,
             serviceId,
+            userId: assignedProfessional.id,
             startTime: startDateTime,
             endTime: endDateTime,
             notes,
@@ -218,6 +320,12 @@ async function startServer() {
                 duration: true,
                 price: true
               }
+            },
+            user: {
+              select: {
+                name: true,
+                avatar: true
+              }
             }
           }
         });
@@ -229,9 +337,12 @@ async function startServer() {
             appointmentId: appointment.id,
             clientName: client.name,
             serviceName: appointment.service.name,
+            professionalName: appointment.user.name,
+            professionalAvatar: appointment.user.avatar,
             startTime: appointment.startTime,
             duration: appointment.service.duration,
-            businessName: business.name
+            businessName: business.name,
+            wasAutoAssigned: !professionalId
           }
         });
 

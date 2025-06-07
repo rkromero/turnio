@@ -5,7 +5,8 @@ const {
   createService, 
   updateService, 
   deleteService,
-  getServiceStats 
+  getServiceStats,
+  getPublicServices
 } = require('../controllers/serviceController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
@@ -29,7 +30,10 @@ const serviceValidation = [
     .withMessage('El color debe ser un código hexadecimal válido'),
 ];
 
-// Todas las rutas requieren autenticación
+// Ruta pública (sin autenticación)
+router.get('/public/:businessSlug', getPublicServices);
+
+// Todas las rutas siguientes requieren autenticación
 router.use(authenticateToken);
 
 router.get('/', getServices);

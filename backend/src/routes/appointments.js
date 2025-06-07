@@ -5,7 +5,8 @@ const {
   createAppointment, 
   updateAppointment, 
   cancelAppointment,
-  getAvailableSlots 
+  getAvailableSlots,
+  getAvailableProfessionals
 } = require('../controllers/appointmentController');
 const { authenticateToken, requireBusinessAccess } = require('../middleware/auth');
 
@@ -36,6 +37,7 @@ const createAppointmentValidation = [
 
 // Rutas públicas (para reservas online)
 router.get('/public/:businessSlug/available-slots', getAvailableSlots);
+router.get('/public/:businessSlug/professionals', getAvailableProfessionals);
 
 // Rutas protegidas
 router.use(authenticateToken);
