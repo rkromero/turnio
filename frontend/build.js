@@ -29,7 +29,7 @@ try {
   const buildEnv = {
     ...process.env,
     NODE_ENV: 'production',
-    VITE_API_URL: process.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app'
+    VITE_API_URL: process.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app/api'
   };
 
   console.log('🌐 Configurando API URL:', buildEnv.VITE_API_URL);
