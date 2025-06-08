@@ -1,5 +1,6 @@
 const { prisma } = require('../config/database');
 const { validationResult } = require('express-validator');
+const { getActiveBranchIds } = require('../utils/branchUtils');
 
 // Obtener todos los turnos del negocio
 const getAppointments = async (req, res) => {
@@ -7,8 +8,14 @@ const getAppointments = async (req, res) => {
     const { date, status, serviceId, userId } = req.query;
     const businessId = req.businessId;
 
+    // Obtener sucursales activas (auto-crea si no existen)
+    const branchIds = await getActiveBranchIds(businessId);
+
     // Construir filtros
-    const where = { businessId };
+    const where = { 
+      businessId,
+      branchId: { in: branchIds }
+    };
 
     if (date) {
       const startDate = new Date(date);
@@ -23,7 +30,21 @@ const getAppointments = async (req, res) => {
 
     if (status) where.status = status;
     if (serviceId) where.serviceId = serviceId;
-    if (userId) where.userId = userId;
+
+    // Para usuarios específicos, verificar que pertenezcan a una sucursal activa
+    if (userId) {
+      const user = await prisma.user.findFirst({
+        where: {
+          id: userId,
+          businessId,
+          branchId: { in: branchIds }
+        }
+      });
+      
+      if (user) {
+        where.userId = userId;
+      }
+    }
 
     const appointments = await prisma.appointment.findMany({
       where,
@@ -49,6 +70,13 @@ const getAppointments = async (req, res) => {
           select: {
             id: true,
             name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
           }
         }
       },
@@ -83,8 +111,24 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes } = req.body;
+    const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes, branchId } = req.body;
     const businessId = req.businessId;
+
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+    
+    // Determinar la sucursal (usar la especificada o la principal)
+    let targetBranchId = branchId;
+    if (!targetBranchId || !branchIds.includes(targetBranchId)) {
+      const mainBranch = await prisma.branch.findFirst({
+        where: {
+          businessId,
+          isMain: true,
+          isActive: true
+        }
+      });
+      targetBranchId = mainBranch?.id || branchIds[0];
+    }
 
     // Verificar límites del plan
     const business = await prisma.business.findUnique({
@@ -92,7 +136,7 @@ const createAppointment = async (req, res) => {
       select: { planType: true }
     });
 
-    // Contar citas del mes actual
+    // Contar citas del mes actual (incluir todas las sucursales)
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -100,6 +144,7 @@ const createAppointment = async (req, res) => {
     const currentMonthAppointments = await prisma.appointment.count({
       where: {
         businessId,
+        branchId: { in: branchIds },
         createdAt: {
           gte: startOfMonth,
           lte: endOfMonth
@@ -135,12 +180,13 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    // Verificar que el usuario (profesional) pertenezca al negocio si se especifica
+    // Verificar que el usuario (profesional) pertenezca al negocio y sucursal si se especifica
     if (userId) {
       const user = await prisma.user.findFirst({
         where: {
           id: userId,
           businessId,
+          branchId: { in: branchIds },
           isActive: true
         }
       });
@@ -161,6 +207,7 @@ const createAppointment = async (req, res) => {
     const conflictingAppointment = await prisma.appointment.findFirst({
       where: {
         businessId,
+        branchId: targetBranchId,
         userId: userId || undefined,
         status: { not: 'CANCELLED' },
         OR: [
@@ -213,6 +260,7 @@ const createAppointment = async (req, res) => {
     const appointment = await prisma.appointment.create({
       data: {
         businessId,
+        branchId: targetBranchId,
         clientId: client.id,
         serviceId,
         userId,
@@ -244,6 +292,13 @@ const createAppointment = async (req, res) => {
             id: true,
             name: true
           }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
         }
       }
     });
@@ -267,14 +322,18 @@ const createAppointment = async (req, res) => {
 const updateAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes, startTime, serviceId, userId } = req.body;
+    const { status, notes, startTime, serviceId, userId, branchId } = req.body;
     const businessId = req.businessId;
 
-    // Verificar que el turno pertenezca al negocio
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
+    // Verificar que el turno pertenezca al negocio y a una sucursal activa
     const existingAppointment = await prisma.appointment.findFirst({
       where: {
         id,
-        businessId
+        businessId,
+        branchId: { in: branchIds }
       }
     });
 
@@ -289,6 +348,7 @@ const updateAppointment = async (req, res) => {
     if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
     if (userId !== undefined) updateData.userId = userId;
+    if (branchId && branchIds.includes(branchId)) updateData.branchId = branchId;
 
     // Si se cambia la hora o el servicio, recalcular
     if (startTime || serviceId) {
@@ -351,6 +411,13 @@ const updateAppointment = async (req, res) => {
             id: true,
             name: true
           }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
         }
       }
     });
@@ -376,10 +443,14 @@ const cancelAppointment = async (req, res) => {
     const { id } = req.params;
     const businessId = req.businessId;
 
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
     const appointment = await prisma.appointment.updateMany({
       where: {
         id,
-        businessId
+        businessId,
+        branchId: { in: branchIds }
       },
       data: {
         status: 'CANCELLED'
@@ -450,6 +521,9 @@ const getAvailableSlots = async (req, res) => {
       }
     }
 
+    // Obtener sucursales activas para incluir en las consultas
+    const branchIds = await getActiveBranchIds(business.id);
+
     // Obtener turnos ocupados para la fecha
     const targetDate = new Date(date);
     const startOfDay = new Date(targetDate);
@@ -460,6 +534,7 @@ const getAvailableSlots = async (req, res) => {
     const occupiedSlots = await prisma.appointment.findMany({
       where: {
         businessId: business.id,
+        branchId: { in: branchIds },
         startTime: {
           gte: startOfDay,
           lte: endOfDay
