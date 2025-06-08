@@ -11,6 +11,42 @@ const getDashboardStats = async (req, res) => {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
+    // Obtener todas las sucursales activas del negocio para incluir en las consultas
+    const activeBranches = await prisma.branch.findMany({
+      where: {
+        businessId,
+        isActive: true
+      },
+      select: { id: true }
+    });
+
+    const branchIds = activeBranches.map(branch => branch.id);
+
+    // Si no hay sucursales, crear una automáticamente
+    if (branchIds.length === 0) {
+      console.log('🔄 Creando sucursal principal automáticamente para businessId:', businessId);
+      
+      const business = await prisma.business.findUnique({
+        where: { id: businessId }
+      });
+
+      if (business) {
+        const newBranch = await prisma.branch.create({
+          data: {
+            businessId,
+            name: business.name + ' - Principal',
+            slug: 'principal',
+            address: business.address,
+            phone: business.phone,
+            description: 'Sucursal principal (creada automáticamente)',
+            isMain: true,
+            isActive: true
+          }
+        });
+        branchIds.push(newBranch.id);
+      }
+    }
+
     // Estadísticas paralelas
     const [
       todayAppointments,
@@ -23,6 +59,7 @@ const getDashboardStats = async (req, res) => {
       prisma.appointment.count({
         where: {
           businessId,
+          branchId: { in: branchIds },
           startTime: {
             gte: startOfDay,
             lt: endOfDay
@@ -40,6 +77,7 @@ const getDashboardStats = async (req, res) => {
       prisma.appointment.findMany({
         where: {
           businessId,
+          branchId: { in: branchIds },
           startTime: {
             gte: startOfMonth,
             lt: endOfMonth
@@ -53,7 +91,7 @@ const getDashboardStats = async (req, res) => {
         }
       }),
 
-      // Total de servicios activos
+      // Total de servicios activos (globales + específicos de sucursales)
       prisma.service.count({
         where: {
           businessId,
@@ -65,6 +103,7 @@ const getDashboardStats = async (req, res) => {
       prisma.appointment.findMany({
         where: {
           businessId,
+          branchId: { in: branchIds },
           startTime: { gte: new Date() },
           status: { not: 'CANCELLED' }
         },
@@ -78,6 +117,12 @@ const getDashboardStats = async (req, res) => {
           },
           service: {
             select: { name: true }
+          },
+          branch: {
+            select: { 
+              name: true,
+              isMain: true 
+            }
           }
         },
         orderBy: { startTime: 'asc' },
@@ -103,6 +148,7 @@ const getDashboardStats = async (req, res) => {
           clientEmail: appointment.client.email,
           clientPhone: appointment.client.phone,
           serviceName: appointment.service.name,
+          branchName: appointment.branch.name,
           startTime: appointment.startTime,
           status: appointment.status
         }))
