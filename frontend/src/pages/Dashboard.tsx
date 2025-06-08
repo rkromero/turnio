@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardApi } from '../services/api';
-import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink } from 'lucide-react';
+import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink, ChevronRight } from 'lucide-react';
 import ClientStarRating from '../components/ClientStarRating';
+import FloatingActionButton from '../components/FloatingActionButton';
+import { useIsMobileSimple } from '../hooks/useIsMobile';
 import toast from 'react-hot-toast';
 
 interface DashboardStats {
@@ -33,6 +35,7 @@ const Dashboard: React.FC = () => {
   const { business } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobileSimple();
 
   useEffect(() => {
     loadDashboardData();
@@ -111,7 +114,7 @@ const Dashboard: React.FC = () => {
       try {
         await navigator.clipboard.writeText(url);
         toast.success('URL de reservas copiada al portapapeles');
-      } catch (error) {
+      } catch {
         toast.error('Error al copiar la URL');
       }
     }
@@ -144,284 +147,302 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="section-container section-padding">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando dashboard...</p>
+          <div className="loading-spinner-mobile mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header de bienvenida */}
-      <div className="text-center sm:text-left">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          ¡Bienvenido de vuelta! 👋
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Aquí tienes un resumen de tu negocio <span className="font-medium">{business?.name}</span>
-        </p>
-      </div>
+    <>
+      <div className="space-y-6">
+        {/* Header de bienvenida - Optimizado para móvil */}
+        <div className="text-center md:text-left">
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">
+            ¡Bienvenido! 👋
+          </h1>
+          <p className="mt-1 text-sm md:text-base text-gray-600">
+            {isMobile ? business?.name : `Aquí tienes un resumen de tu negocio ${business?.name}`}
+          </p>
+        </div>
 
-      {/* URL de reservas públicas */}
-      {business && (
-        <div className="info-card">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+        {/* URL de reservas públicas - Compacta en móvil */}
+        {business && (
+          <div className="info-card">
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-blue-900 flex items-center">
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Enlace de Reservas Públicas
+                {isMobile ? 'Enlace de Reservas' : 'Enlace de Reservas Públicas'}
               </h3>
-              <p className="text-sm text-blue-800 break-all">
-                {window.location.origin}/book/{business.slug}
-              </p>
-            </div>
-            <button
-              onClick={copyBookingUrl}
-              className="btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center"
-            >
-              <Copy className="w-4 h-4" />
-              <span>Copiar URL</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Estadísticas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="stats-card group">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">Turnos Hoy</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {stats?.todayAppointments || 0}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {new Date().toLocaleDateString('es-AR')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <Calendar className="w-6 h-6 text-purple-600" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                <p className="text-xs sm:text-sm text-blue-800 break-all flex-1 bg-blue-50 p-2 rounded">
+                  {window.location.origin}/book/{business.slug}
+                </p>
+                <button
+                  onClick={copyBookingUrl}
+                  className="btn-secondary text-sm py-2 px-4 flex items-center justify-center space-x-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Copiar</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="stats-card group">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">Total Clientes</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {stats?.totalClients || 0}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Registrados</p>
+        {/* Estadísticas principales - Grid responsive */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+          <div className="stats-card group">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+                  {isMobile ? 'Hoy' : 'Turnos Hoy'}
+                </p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900">
+                  {stats?.todayAppointments || 0}
+                </p>
+                {!isMobile && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date().toLocaleDateString('es-AR')}
+                  </p>
+                )}
+              </div>
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+                <Calendar className="w-4 h-4 md:w-6 md:h-6 text-purple-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <Users className="w-6 h-6 text-blue-600" />
+          </div>
+
+          <div className="stats-card group">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+                  {isMobile ? 'Clientes' : 'Total Clientes'}
+                </p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900">
+                  {stats?.totalClients || 0}
+                </p>
+                {!isMobile && (
+                  <p className="text-xs text-gray-500 mt-1">Registrados</p>
+                )}
+              </div>
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+                <Users className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+                  {isMobile ? 'Ingresos' : 'Ingresos Mes'}
+                </p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">
+                  {isMobile 
+                    ? `$${Math.round((stats?.monthRevenue || 0) / 1000)}k`
+                    : formatCurrency(stats?.monthRevenue || 0)
+                  }
+                </p>
+                {!isMobile && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date().toLocaleDateString('es-AR', { month: 'long' })}
+                  </p>
+                )}
+              </div>
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+                <DollarSign className="w-4 h-4 md:w-6 md:h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Servicios</p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900">
+                  {stats?.totalServices || 0}
+                </p>
+                {!isMobile && (
+                  <p className="text-xs text-gray-500 mt-1">Activos</p>
+                )}
+              </div>
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+                <Settings className="w-4 h-4 md:w-6 md:h-6 text-orange-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="stats-card group">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">Ingresos Mes</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                {formatCurrency(stats?.monthRevenue || 0)}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {new Date().toLocaleDateString('es-AR', { month: 'long' })}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="stats-card group">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">Servicios</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {stats?.totalServices || 0}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Activos</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <Settings className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Acciones Rápidas */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Plus className="w-5 h-5 mr-2 text-purple-600" />
-          Acciones Rápidas
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link 
-            to="/dashboard/appointments" 
-            className="card-modern hover-lift text-center group"
-          >
-            <div className="card-body">
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">📝</div>
-              <h3 className="font-semibold text-gray-900 mb-1">Nuevo Turno</h3>
-              <p className="text-sm text-gray-600">Agendar cita</p>
-            </div>
-          </Link>
-
-          <Link 
-            to="/dashboard/services" 
-            className="card-modern hover-lift text-center group"
-          >
-            <div className="card-body">
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">⚙️</div>
-              <h3 className="font-semibold text-gray-900 mb-1">Servicios</h3>
-              <p className="text-sm text-gray-600">Gestionar servicios</p>
-            </div>
-          </Link>
-
-          <Link 
-            to="/dashboard/clients" 
-            className="card-modern hover-lift text-center group"
-          >
-            <div className="card-body">
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">👥</div>
-              <h3 className="font-semibold text-gray-900 mb-1">Clientes</h3>
-              <p className="text-sm text-gray-600">Ver clientes</p>
-            </div>
-          </Link>
-
-          <Link 
-            to="/dashboard/reports" 
-            className="card-modern hover-lift text-center group"
-          >
-            <div className="card-body">
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">📊</div>
-              <h3 className="font-semibold text-gray-900 mb-1">Reportes</h3>
-              <p className="text-sm text-gray-600">Ver estadísticas</p>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Próximos Turnos */}
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Próximos Turnos</h2>
+        {/* Acciones Rápidas - Optimizadas para móvil */}
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <Plus className="w-5 h-5 mr-2 text-purple-600" />
+            {isMobile ? 'Acciones' : 'Acciones Rápidas'}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Link 
               to="/dashboard/appointments" 
-              className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+              className="card-mobile text-center group p-4"
             >
-              Ver todos
+              <div className="text-2xl md:text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">📝</div>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-1">
+                {isMobile ? 'Turno' : 'Nuevo Turno'}
+              </h3>
+              <p className="text-xs text-gray-600">Agendar cita</p>
+            </Link>
+
+            <Link 
+              to="/dashboard/services" 
+              className="card-mobile text-center group p-4"
+            >
+              <div className="text-2xl md:text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">⚙️</div>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-1">Servicios</h3>
+              <p className="text-xs text-gray-600">Gestionar</p>
+            </Link>
+
+            <Link 
+              to="/dashboard/clients" 
+              className="card-mobile text-center group p-4"
+            >
+              <div className="text-2xl md:text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">👥</div>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-1">Clientes</h3>
+              <p className="text-xs text-gray-600">Ver lista</p>
+            </Link>
+
+            <Link 
+              to="/dashboard/reports" 
+              className="card-mobile text-center group p-4"
+            >
+              <div className="text-2xl md:text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">📊</div>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-1">Reportes</h3>
+              <p className="text-xs text-gray-600">Estadísticas</p>
             </Link>
           </div>
         </div>
-        <div className="card-body">
-          {stats?.upcomingAppointments && stats.upcomingAppointments.length > 0 ? (
-            <div className="space-y-4">
-              {stats.upcomingAppointments.slice(0, 5).map((appointment) => (
-                <div 
-                  key={appointment.id} 
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200"
-                >
-                  <div className="flex items-center space-x-4 flex-1 min-w-0">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-semibold text-purple-600">
-                          {appointment.clientName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {appointment.clientName}
-                      </p>
-                      <p className="text-sm text-gray-600 truncate">
-                        {appointment.serviceName}
-                      </p>
-                      {appointment.clientScore?.hasScore && (
-                        <div className="mt-1">
-                          <ClientStarRating
-                            starRating={appointment.clientScore.starRating}
-                            totalBookings={appointment.clientScore.totalBookings}
-                            attendedCount={appointment.clientScore.attendedCount}
-                            noShowCount={appointment.clientScore.noShowCount}
-                            size="sm"
-                            showLabel={true}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3 flex-shrink-0">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatTime(appointment.startTime)}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {formatDate(appointment.startTime)}
-                      </p>
-                    </div>
-                    <span className={`badge ${getStatusColor(appointment.status)} text-xs`}>
-                      {getStatusLabel(appointment.status)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-gray-400 text-4xl mb-4">📅</div>
-              <p className="text-gray-600 mb-4">No hay turnos próximos programados</p>
-              <Link to="/dashboard/appointments" className="btn-primary">
-                Programar Turno
+
+        {/* Próximos Turnos - Lista optimizada para móvil */}
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {isMobile ? 'Próximos' : 'Próximos Turnos'}
+              </h2>
+              <Link 
+                to="/dashboard/appointments" 
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center"
+              >
+                Ver todos
+                <ChevronRight className="w-4 h-4 ml-1" />
               </Link>
             </div>
-          )}
+          </div>
+          <div className="card-body p-0">
+            {stats?.upcomingAppointments && stats.upcomingAppointments.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {stats.upcomingAppointments.slice(0, isMobile ? 3 : 5).map((appointment) => (
+                  <div 
+                    key={appointment.id} 
+                    className="p-4 hover:bg-gray-50 transition-colors duration-200 touch-manipulation"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-semibold text-purple-600">
+                            {appointment.clientName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {appointment.clientName}
+                          </p>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <span className="text-xs font-medium text-gray-900">
+                              {formatTime(appointment.startTime)}
+                            </span>
+                            <span className={`badge ${getStatusColor(appointment.status)} text-xs`}>
+                              {isMobile ? appointment.status.slice(0, 3) : getStatusLabel(appointment.status)}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {appointment.serviceName}
+                        </p>
+                        {!isMobile && (
+                          <p className="text-xs text-gray-500">
+                            {formatDate(appointment.startTime)}
+                          </p>
+                        )}
+                        {appointment.clientScore?.hasScore && (
+                          <div className="mt-2">
+                            <ClientStarRating
+                              starRating={appointment.clientScore.starRating}
+                              totalBookings={appointment.clientScore.totalBookings}
+                              attendedCount={appointment.clientScore.attendedCount}
+                              noShowCount={appointment.clientScore.noShowCount}
+                              size="sm"
+                              showLabel={!isMobile}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 text-4xl mb-4">📅</div>
+                <p className="text-gray-600 mb-4">
+                  {isMobile ? 'No hay turnos próximos' : 'No hay turnos próximos programados'}
+                </p>
+                <Link to="/dashboard/appointments" className="btn-primary">
+                  {isMobile ? 'Programar' : 'Programar Turno'}
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Consejo del día - Solo en desktop */}
+        {!isMobile && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="info-card">
+              <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+                <span className="text-lg mr-2">💡</span>
+                Consejo del día
+              </h3>
+              <p className="text-sm text-blue-800 leading-relaxed">
+                Mantén actualizados los horarios de trabajo de tu equipo para optimizar la gestión de turnos.
+              </p>
+            </div>
+            <div className="success-card">
+              <h3 className="text-sm font-medium text-green-900 mb-2 flex items-center">
+                <span className="text-lg mr-2">🎯</span>
+                Meta del mes
+              </h3>
+              <p className="text-sm text-green-800 leading-relaxed">
+                ¡Vas por buen camino! Sigue así para alcanzar tus objetivos mensuales.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Links útiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        <div className="info-card">
-          <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
-            <span className="text-lg mr-2">💡</span>
-            Consejo del día
-          </h3>
-          <p className="text-sm text-blue-800 leading-relaxed">
-            Mantén actualizados los horarios de trabajo de tu equipo para optimizar la gestión de turnos.
-          </p>
-          <Link 
-            to="/dashboard/settings" 
-            className="text-sm text-blue-700 hover:text-blue-800 font-medium mt-2 inline-block"
-          >
-            Configurar horarios →
-          </Link>
-        </div>
-
-        <div className="success-card">
-          <h3 className="text-sm font-medium text-green-900 mb-2 flex items-center">
-            <span className="text-lg mr-2">🚀</span>
-            Mejora tu negocio
-          </h3>
-          <p className="text-sm text-green-800 leading-relaxed">
-            Revisa los reportes para identificar oportunidades de crecimiento y optimización.
-          </p>
-          <Link 
-            to="/dashboard/reports" 
-            className="text-sm text-green-700 hover:text-green-800 font-medium mt-2 inline-block"
-          >
-            Ver reportes →
-          </Link>
-        </div>
-      </div>
-    </div>
+      {/* FAB para móvil - Nuevo turno */}
+      {isMobile && (
+        <FloatingActionButton
+          icon={Plus}
+          onClick={() => window.location.href = '/dashboard/appointments'}
+          ariaLabel="Nuevo turno"
+        />
+      )}
+    </>
   );
 };
 

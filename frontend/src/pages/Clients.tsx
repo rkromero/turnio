@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { clientService, appointmentService } from '../services/api';
 import type { Client, Appointment } from '../types';
 import ClientModal from '../components/ClientModal';
+import FloatingActionButton from '../components/FloatingActionButton';
+import { useIsMobileSimple } from '../hooks/useIsMobile';
+import { 
+  Plus, 
+  Search, 
+  User, 
+  Mail, 
+  Phone, 
+  Calendar,
+  ArrowLeft,
+  MoreVertical,
+  Edit,
+  Trash2
+} from 'lucide-react';
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -13,6 +27,7 @@ const Clients: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMobile = useIsMobileSimple();
 
   useEffect(() => {
     loadClients();
@@ -108,6 +123,12 @@ const Clients: React.FC = () => {
     }
   };
 
+  const handleBackToList = () => {
+    setShowClientDetails(false);
+    setSelectedClient(null);
+    setClientAppointments([]);
+  };
+
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -168,307 +189,547 @@ const Clients: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando clientes...</p>
+          <div className="loading-spinner-mobile mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando clientes...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex h-full">
-      {/* Lista de Clientes */}
-      <div className={`${showClientDetails ? 'w-1/2' : 'w-full'} transition-all duration-300`}>
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestión de Clientes</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Administra tu base de clientes y su historial
-            </p>
+  // Vista móvil - Pantalla completa para detalles
+  if (isMobile && showClientDetails && selectedClient) {
+    return (
+      <>
+        <div className="space-y-6">
+          {/* Header con botón de regreso */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleBackToList}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-gray-900">
+                {selectedClient.name}
+              </h1>
+              <p className="text-sm text-gray-600">Detalles del cliente</p>
+            </div>
+            <button
+              onClick={() => handleEditClient(selectedClient)}
+              className="p-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
           </div>
-          <button onClick={handleCreateClient} className="btn-primary">
-            <span className="mr-2">+</span>
-            Nuevo Cliente
-          </button>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Información del cliente */}
           <div className="card">
             <div className="card-body">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    👥
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {selectedClient.name}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Cliente desde {formatDate(selectedClient.createdAt)}
+                    </p>
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Clientes</p>
-                  <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="card">
-            <div className="card-body">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    📧
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Con Email</p>
-                  <p className="text-2xl font-semibold text-gray-900">{stats.withEmail}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-body">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    📱
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Con Teléfono</p>
-                  <p className="text-2xl font-semibold text-gray-900">{stats.withPhone}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="card mb-6">
-          <div className="card-body">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-400">🔍</span>
-              </div>
-              <input
-                type="text"
-                placeholder="Buscar clientes por nombre, email o teléfono..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Clients List */}
-        {filteredClients.length === 0 ? (
-          <div className="card">
-            <div className="card-body text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">👥</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? 'No se encontraron clientes' : 'No hay clientes'}
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm 
-                  ? `No hay clientes que coincidan con "${searchTerm}"`
-                  : 'Aún no tienes clientes registrados'
-                }
-              </p>
-              {!searchTerm && (
-                <button onClick={handleCreateClient} className="btn-primary">
-                  <span className="mr-2">+</span>
-                  Agregar Primer Cliente
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="card">
-            <div className="card-body p-0">
-              <div className="overflow-y-auto max-h-96">
-                {filteredClients.map((client) => (
-                  <div
-                    key={client.id}
-                    className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-                      selectedClient?.id === client.id ? 'bg-primary-50 border-primary-200' : ''
-                    }`}
-                    onClick={() => handleClientClick(client)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-gray-900">{client.name}</h3>
-                        <div className="mt-1 space-y-1">
-                          {client.email && (
-                            <p className="text-sm text-gray-600 flex items-center">
-                              <span className="mr-1">📧</span>
-                              {client.email}
-                            </p>
-                          )}
-                          {client.phone && (
-                            <p className="text-sm text-gray-600 flex items-center">
-                              <span className="mr-1">📞</span>
-                              {client.phone}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Cliente desde {formatDate(client.createdAt)}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClient(client);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Editar cliente"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClient(client.id);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                          title="Eliminar cliente"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Panel de Detalles del Cliente */}
-      {showClientDetails && selectedClient && (
-        <div className="w-1/2 ml-6 card">
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {selectedClient.name}
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Cliente desde {formatDate(selectedClient.createdAt)}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowClientDetails(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Información de Contacto */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Información de Contacto</h3>
-              <div className="space-y-2">
                 {selectedClient.email && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <span className="mr-2">📧</span>
-                    <a href={`mailto:${selectedClient.email}`} className="hover:text-primary-600">
-                      {selectedClient.email}
-                    </a>
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">{selectedClient.email}</span>
                   </div>
                 )}
+
                 {selectedClient.phone && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <span className="mr-2">📞</span>
-                    <a href={`tel:${selectedClient.phone}`} className="hover:text-primary-600">
-                      {selectedClient.phone}
-                    </a>
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">{selectedClient.phone}</span>
                   </div>
                 )}
+
                 {selectedClient.notes && (
-                  <div className="mt-3">
-                    <p className="text-sm font-medium text-gray-900 mb-1">Notas:</p>
+                  <div className="pt-3 border-t border-gray-100">
                     <p className="text-sm text-gray-600">{selectedClient.notes}</p>
                   </div>
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Historial de Citas */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">
+          {/* Historial de citas */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
                 Historial de Citas ({clientAppointments.length})
               </h3>
-              
-              {clientAppointments.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Este cliente no tiene citas registradas
-                </p>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+            </div>
+            <div className="card-body p-0">
+              {clientAppointments.length > 0 ? (
+                <div className="divide-y divide-gray-100">
                   {clientAppointments.map((appointment) => (
-                    <div key={appointment.id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
+                    <div key={appointment.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
                             {appointment.service?.name}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-sm text-gray-600">
                             {formatDateTime(appointment.startTime)}
                           </p>
-                          {appointment.notes && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {appointment.notes}
-                            </p>
-                          )}
                         </div>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(appointment.status)}`}>
+                        <span className={`badge ${getStatusColor(appointment.status)} text-xs`}>
                           {getStatusText(appointment.status)}
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No hay citas registradas</p>
+                </div>
               )}
-            </div>
-
-            {/* Acciones */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex space-x-3">
-                <button className="btn-primary flex-1">
-                  <span className="mr-2">📅</span>
-                  Nueva Cita
-                </button>
-                <button 
-                  onClick={() => handleEditClient(selectedClient)}
-                  className="btn-secondary"
-                >
-                  ✏️ Editar
-                </button>
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Modal de cliente */}
+        {isModalOpen && (
+          <ClientModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSubmit={handleSubmitClient}
+            client={editingClient}
+            isLoading={isSubmitting}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className={`${isMobile ? 'space-y-6' : `flex h-full ${showClientDetails ? 'space-x-6' : ''}`}`}>
+        {/* Lista de Clientes */}
+        <div className={`${!isMobile && showClientDetails ? 'w-1/2' : 'w-full'} ${!isMobile ? 'transition-all duration-300' : ''}`}>
+          {/* Header - Optimizado para móvil */}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0 mb-6">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                {isMobile ? 'Clientes' : 'Gestión de Clientes'}
+              </h1>
+              <p className="mt-1 text-sm text-gray-600">
+                {isMobile ? 'Tu base de clientes' : 'Administra tu base de clientes y su historial'}
+              </p>
+            </div>
+            {!isMobile && (
+              <button onClick={handleCreateClient} className="btn-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Cliente
+              </button>
+            )}
+          </div>
+
+          {/* Stats Cards - Grid responsive */}
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-4 mb-6">
+            <div className="stats-card">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-purple-600" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Total</p>
+                  <p className="text-lg md:text-2xl font-semibold text-gray-900">
+                    {stats.total}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="stats-card">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-blue-600" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">
+                    {isMobile ? 'Email' : 'Con Email'}
+                  </p>
+                  <p className="text-lg md:text-2xl font-semibold text-gray-900">
+                    {stats.withEmail}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="stats-card">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Phone className="w-4 h-4 text-green-600" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">
+                    {isMobile ? 'Teléfono' : 'Con Teléfono'}
+                  </p>
+                  <p className="text-lg md:text-2xl font-semibold text-gray-900">
+                    {stats.withPhone}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Buscador */}
+          <div className="card mb-6">
+            <div className="card-body">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Buscar clientes por nombre, email o teléfono..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field pl-10"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de Clientes */}
+          {filteredClients.length === 0 ? (
+            <div className="card">
+              <div className="card-body text-center py-12">
+                <div className="text-gray-400 text-6xl mb-4">👥</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {searchTerm ? 'No se encontraron clientes' : 'No hay clientes'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {searchTerm 
+                    ? 'Intenta con otros términos de búsqueda'
+                    : 'Comienza agregando tu primer cliente'
+                  }
+                </p>
+                {!searchTerm && (
+                  <button onClick={handleCreateClient} className="btn-primary">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear Primer Cliente
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Vista móvil - Cards */}
+              {isMobile ? (
+                <div className="space-y-3">
+                  {filteredClients.map((client) => (
+                    <div 
+                      key={client.id} 
+                      className="card-mobile cursor-pointer"
+                      onClick={() => handleClientClick(client)}
+                    >
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-purple-600">
+                                {client.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {client.name}
+                              </h3>
+                              <div className="space-y-1">
+                                {client.email && (
+                                  <p className="text-xs text-gray-600 truncate flex items-center">
+                                    <Mail className="w-3 h-3 mr-1" />
+                                    {client.email}
+                                  </p>
+                                )}
+                                {client.phone && (
+                                  <p className="text-xs text-gray-600 flex items-center">
+                                    <Phone className="w-3 h-3 mr-1" />
+                                    {client.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClient(client);
+                            }}
+                            className="p-2 text-gray-400 hover:text-gray-600"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Vista desktop - Tabla */
+                <div className="card">
+                  <div className="card-body p-0">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Cliente
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Contacto
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Registro
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Acciones
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredClients.map((client) => (
+                            <tr 
+                              key={client.id} 
+                              className="hover:bg-gray-50 cursor-pointer"
+                              onClick={() => handleClientClick(client)}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10">
+                                    <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                      <span className="text-sm font-medium text-purple-600">
+                                        {client.name.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {client.name}
+                                    </div>
+                                    {client.notes && (
+                                      <div className="text-sm text-gray-500 truncate max-w-xs">
+                                        {client.notes}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {client.email && (
+                                    <div className="flex items-center mb-1">
+                                      <Mail className="w-4 h-4 text-gray-400 mr-2" />
+                                      {client.email}
+                                    </div>
+                                  )}
+                                  {client.phone && (
+                                    <div className="flex items-center">
+                                      <Phone className="w-4 h-4 text-gray-400 mr-2" />
+                                      {client.phone}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDate(client.createdAt)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex justify-end space-x-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditClient(client);
+                                    }}
+                                    className="text-purple-600 hover:text-purple-900"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteClient(client.id);
+                                    }}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Panel de Detalles - Solo desktop */}
+        {!isMobile && showClientDetails && selectedClient && (
+          <div className="w-1/2 border-l border-gray-200 pl-6">
+            <div className="sticky top-0 space-y-6">
+              {/* Header del panel */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Detalles del Cliente
+                </h2>
+                <button
+                  onClick={handleBackToList}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Información del cliente */}
+              <div className="card">
+                <div className="card-body">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                        <User className="w-8 h-8 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {selectedClient.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Cliente desde {formatDate(selectedClient.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedClient.email && (
+                      <div className="flex items-center space-x-3">
+                        <Mail className="w-5 h-5 text-gray-400" />
+                        <span className="text-gray-600">{selectedClient.email}</span>
+                      </div>
+                    )}
+
+                    {selectedClient.phone && (
+                      <div className="flex items-center space-x-3">
+                        <Phone className="w-5 h-5 text-gray-400" />
+                        <span className="text-gray-600">{selectedClient.phone}</span>
+                      </div>
+                    )}
+
+                    {selectedClient.notes && (
+                      <div className="pt-4 border-t border-gray-100">
+                        <p className="text-gray-600">{selectedClient.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => handleEditClient(selectedClient)}
+                          className="btn-secondary flex items-center space-x-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClient(selectedClient.id)}
+                          className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center space-x-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Eliminar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Historial de citas */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Historial de Citas ({clientAppointments.length})
+                  </h3>
+                </div>
+                <div className="card-body p-0 max-h-96 overflow-y-auto">
+                  {clientAppointments.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {clientAppointments.map((appointment) => (
+                        <div key={appointment.id} className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {appointment.service?.name}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {formatDateTime(appointment.startTime)}
+                              </p>
+                            </div>
+                            <span className={`badge ${getStatusColor(appointment.status)}`}>
+                              {getStatusText(appointment.status)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">No hay citas registradas</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* FAB para móvil */}
+      {isMobile && !showClientDetails && (
+        <FloatingActionButton
+          icon={Plus}
+          onClick={handleCreateClient}
+          ariaLabel="Nuevo cliente"
+        />
       )}
 
-      {/* Modal */}
-      <ClientModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingClient(null);
-        }}
-        onSubmit={handleSubmitClient}
-        client={editingClient}
-        isLoading={isSubmitting}
-      />
-    </div>
+      {/* Modal de cliente */}
+      {isModalOpen && (
+        <ClientModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmitClient}
+          client={editingClient}
+          isLoading={isSubmitting}
+        />
+      )}
+    </>
   );
 };
 
