@@ -8,6 +8,7 @@ interface ClientStarRatingProps {
   noShowCount?: number;
   size?: 'sm' | 'md' | 'lg';
   showDetails?: boolean;
+  showLabel?: boolean;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ const ClientStarRating: React.FC<ClientStarRatingProps> = ({
   noShowCount = 0,
   size = 'md',
   showDetails = false,
+  showLabel = false,
   className = ''
 }) => {
   const sizeClasses = {
@@ -38,6 +40,30 @@ const ClientStarRating: React.FC<ClientStarRatingProps> = ({
     if (rating <= 3) return 'bg-yellow-100 text-yellow-700';
     if (rating <= 4) return 'bg-blue-100 text-blue-700';
     return 'bg-green-100 text-green-700';
+  };
+
+  const getClientLabel = (rating: number | null, totalBookings: number, noShowCount: number) => {
+    if (rating === null) return 'Cliente nuevo';
+    
+    if (rating === 5) {
+      if (totalBookings >= 5) return 'Cliente excelente';
+      return 'Cliente prometedor';
+    }
+    
+    if (rating === 4) {
+      if (noShowCount === 0) return 'Cliente confiable';
+      return 'Cliente bueno';
+    }
+    
+    if (rating === 3) {
+      return 'Cliente promedio';
+    }
+    
+    if (rating === 2) {
+      return 'Cliente problemático';
+    }
+    
+    return 'Cliente de riesgo';
   };
 
   const renderStars = () => {
@@ -98,6 +124,13 @@ const ClientStarRating: React.FC<ClientStarRatingProps> = ({
               ({noShowCount} no-show)
             </span>
           )}
+        </div>
+      )}
+
+      {/* Leyenda descriptiva - Solo para dashboard */}
+      {showLabel && (
+        <div className={`ml-2 ${textSizeClasses[size]} font-medium text-gray-700`}>
+          {getClientLabel(starRating, totalBookings, noShowCount)}
         </div>
       )}
     </div>

@@ -352,8 +352,8 @@ const Dashboard: React.FC = () => {
                             totalBookings={appointment.clientScore.totalBookings}
                             attendedCount={appointment.clientScore.attendedCount}
                             noShowCount={appointment.clientScore.noShowCount}
-                            showDetails={false}
                             size="sm"
+                            showLabel={true}
                           />
                         </div>
                       )}
