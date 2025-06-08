@@ -618,8 +618,9 @@ async function startServer() {
         const sampleScores = await prisma.clientScore.findMany({
           take: 5,
           include: {
-            client: {
-              select: { name: true, email: true }
+            history: {
+              take: 3,
+              orderBy: { createdAt: 'desc' }
             }
           }
         });
@@ -628,13 +629,10 @@ async function startServer() {
           take: 5,
           include: {
             clientScore: {
-              include: {
-                client: {
-                  select: { name: true, email: true }
-                }
-              }
+              select: { name: true, email: true, starRating: true }
             }
-          }
+          },
+          orderBy: { createdAt: 'desc' }
         });
         
         res.json({
@@ -731,38 +729,56 @@ async function startServer() {
         const { prisma } = require('./config/database');
         const { email, name } = req.body;
         
-        // Buscar o crear cliente
-        let client = await prisma.client.findFirst({
-          where: { email }
+        // Obtener un businessId válido de la base de datos
+        const business = await prisma.business.findFirst();
+        if (!business) {
+          return res.status(500).json({
+            success: false,
+            message: 'No hay negocios en la base de datos'
+          });
+        }
+        
+        // Crear scoring directamente (el sistema de scoring es independiente)
+        const clientScore = await prisma.clientScore.create({
+          data: {
+            email,
+            name,
+            totalPoints: 9, // 3 eventos positivos * 3 puntos
+            totalWeight: 3, // 3 eventos
+            starRating: 5,
+            totalBookings: 3,
+            attendedCount: 3,
+            noShowCount: 0
+          }
         });
         
-        if (!client) {
-          client = await prisma.client.create({
+        // Crear algunos eventos de historial
+        const events = [
+          { eventType: 'ATTENDED', points: 1, weight: 1, notes: 'Primera cita - puntual' },
+          { eventType: 'ATTENDED', points: 1, weight: 1, notes: 'Segunda cita - excelente' },
+          { eventType: 'ATTENDED', points: 1, weight: 1, notes: 'Tercera cita - muy satisfecho' }
+        ];
+        
+        for (const event of events) {
+          await prisma.clientHistory.create({
             data: {
-              name,
-              email,
-              businessId: 'cmbnph40y0002qh0ivwfpnf5v' // ID del negocio por defecto
+              clientScoreId: clientScore.id,
+              businessId: business.id,
+              appointmentId: `test-apt-${Date.now()}-${Math.random()}`,
+              eventType: event.eventType,
+              points: event.points,
+              weight: event.weight,
+              notes: event.notes,
+              eventDate: new Date()
             }
           });
         }
         
-        // Crear scoring
-        const clientScore = await prisma.clientScore.create({
-          data: {
-            clientId: client.id,
-            score: 3,
-            totalBookings: 1,
-            attendedCount: 1,
-            noShowCount: 0,
-            cancelledCount: 0
-          }
-        });
-        
         res.json({
           success: true,
           data: {
-            client,
-            clientScore
+            clientScore,
+            message: 'Scoring de prueba creado exitosamente'
           }
         });
       } catch (error) {
