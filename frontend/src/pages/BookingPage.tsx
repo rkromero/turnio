@@ -90,6 +90,12 @@ const BookingPage: React.FC = () => {
     }
   }, [booking.selectedProfessional, booking.selectedService, bookingMode]);
 
+  useEffect(() => {
+    if (step === 4 && bookingMode === 'professional' && booking.selectedProfessional && booking.selectedService && booking.selectedDate) {
+      loadSpecificTimeSlots();
+    }
+  }, [step, bookingMode, booking.selectedProfessional, booking.selectedService, booking.selectedDate]);
+
   const loadBusinessData = async () => {
     try {
       setLoading(true);
@@ -205,6 +211,60 @@ const BookingPage: React.FC = () => {
     }
   };
 
+  const loadProfessionalAvailabilityDirect = async (professionalId: string, serviceId: string) => {
+    console.log('🔍 DIRECT - Cargando disponibilidad para:', { professionalId, serviceId, businessSlug });
+    
+    try {
+      const availabilityResponse = await bookingService.getProfessionalAvailability(
+        businessSlug!,
+        professionalId,
+        serviceId
+      );
+      
+      console.log('📅 DIRECT - Respuesta de disponibilidad:', availabilityResponse);
+      
+      if (availabilityResponse.success) {
+        setDateAvailability(availabilityResponse.data.availability);
+        console.log('✅ DIRECT - Disponibilidad cargada:', availabilityResponse.data.availability);
+      }
+    } catch (error) {
+      console.error('❌ DIRECT - Error cargando disponibilidad:', error);
+      toast.error('Error cargando disponibilidad');
+    }
+  };
+
+  const loadSpecificTimeSlots = async () => {
+    if (!booking.selectedProfessional || !booking.selectedService || !booking.selectedDate) return;
+    
+    console.log('🕐 Cargando horarios específicos para fecha:', booking.selectedDate);
+    
+    try {
+      const professionalsResponse = await bookingService.getProfessionals(
+        businessSlug!,
+        booking.selectedDate,
+        booking.selectedService.id
+      );
+      
+      if (professionalsResponse.success) {
+        const specificProfessional = professionalsResponse.data.professionals.find(
+          p => p.id === booking.selectedProfessional
+        );
+        
+        if (specificProfessional) {
+          setBooking(prev => ({
+            ...prev,
+            professionals: [specificProfessional],
+            urgency: professionalsResponse.data.urgency
+          }));
+          console.log('✅ Horarios específicos cargados:', specificProfessional.availableSlots);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error cargando horarios específicos:', error);
+      toast.error('Error cargando horarios disponibles');
+    }
+  };
+
   const handleModeChange = (mode: 'service' | 'professional') => {
     setBookingMode(mode);
     setBooking(prev => ({
@@ -279,28 +339,6 @@ const BookingPage: React.FC = () => {
       }, 100);
     } else {
       console.log('❌ NO se carga disponibilidad - Modo:', bookingMode, 'Servicio:', booking.selectedService?.id, 'Profesional:', professionalId);
-    }
-  };
-
-  const loadProfessionalAvailabilityDirect = async (professionalId: string, serviceId: string) => {
-    console.log('🔍 DIRECT - Cargando disponibilidad para:', { professionalId, serviceId, businessSlug });
-    
-    try {
-      const availabilityResponse = await bookingService.getProfessionalAvailability(
-        businessSlug!,
-        professionalId,
-        serviceId
-      );
-      
-      console.log('📅 DIRECT - Respuesta de disponibilidad:', availabilityResponse);
-      
-      if (availabilityResponse.success) {
-        setDateAvailability(availabilityResponse.data.availability);
-        console.log('✅ DIRECT - Disponibilidad cargada:', availabilityResponse.data.availability);
-      }
-    } catch (error) {
-      console.error('❌ DIRECT - Error cargando disponibilidad:', error);
-      toast.error('Error cargando disponibilidad');
     }
   };
 
