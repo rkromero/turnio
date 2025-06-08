@@ -754,8 +754,8 @@ const BookingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 2.5: Date Selection for Professional Mode */}
-          {step === 2.5 && (
+          {/* Step 2.5: Date Selection for Professional Mode - Now Step 3 */}
+          {step === 3 && bookingMode === 'professional' && (
             <div className="p-4 md:p-8">
               <div className="flex items-center mb-6">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
@@ -772,7 +772,7 @@ const BookingPage: React.FC = () => {
               {/* Leyenda de disponibilidad */}
               <div className="flex justify-center items-center space-x-6 mb-6 text-sm">
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-blue-600 rounded"></div>
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
                   <span>Disponible</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -788,12 +788,14 @@ const BookingPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
                 {generateDateOptions().map((dateOption) => {
                   let bgColor = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
-                  let borderColor = '';
+                  let borderColor = 'border-gray-200';
                   
                   if (booking.selectedDate === dateOption.value) {
                     bgColor = 'bg-blue-600 text-white shadow-md';
+                    borderColor = 'border-blue-600';
                   } else if (!dateOption.available) {
                     bgColor = 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-75';
+                    borderColor = 'border-gray-300';
                   } else if (dateOption.slotsCount <= 3 && dateOption.slotsCount > 0) {
                     bgColor = 'bg-yellow-50 hover:bg-yellow-100 text-gray-900';
                     borderColor = 'border-yellow-300';
@@ -806,11 +808,7 @@ const BookingPage: React.FC = () => {
                     <button
                       key={dateOption.value}
                       onClick={() => handleDateSelect(dateOption.value)}
-                      disabled={!dateOption.available}
-                      className={`
-                        p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] border-2
-                        ${bgColor} ${borderColor}
-                      `}
+                      className={`p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] border-2 ${bgColor} ${borderColor}`}
                       title={dateOption.reason || `${dateOption.slotsCount} horarios disponibles`}
                     >
                       <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
@@ -883,44 +881,33 @@ const BookingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 3: Professional/Time Selection */}
-          {step === 3 && (
+          {/* Step 3: Professional/Time Selection - Adjusted for service mode */}
+          {step === 3 && bookingMode === 'service' && (
             <div className="p-4 md:p-8">
               <div className="flex items-center mb-6 px-0">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
                   <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  {bookingMode === 'service' ? (
-                    <>
-                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
-                      <p className="text-gray-600 text-sm md:text-base">
-                        Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
-                          weekday: 'long', day: 'numeric', month: 'long' 
-                        })}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona horario</h2>
-                      <p className="text-gray-600 text-sm md:text-base">
-                        {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name} - {booking.selectedService?.name}
-                      </p>
-                    </>
-                  )}
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
+                      weekday: 'long', day: 'numeric', month: 'long' 
+                    })}
+                  </p>
                 </div>
               </div>
 
               <ProfessionalSelector
-                professionals={bookingMode === 'service' ? booking.professionals : booking.professionals.filter(p => p.id === booking.selectedProfessional)}
+                professionals={booking.professionals}
                 selectedProfessional={booking.selectedProfessional}
-                onProfessionalSelect={bookingMode === 'service' ? handleProfessionalSelect : () => {}}
+                onProfessionalSelect={handleProfessionalSelect}
                 selectedDate={booking.selectedDate}
                 selectedTime={booking.selectedTime}
                 onTimeSelect={handleTimeSelect}
                 showTimeSlots={true}
                 urgency={booking.urgency}
-                hideSelection={bookingMode === 'professional'}
+                hideSelection={true}
               />
 
               {booking.selectedTime && (
@@ -937,8 +924,49 @@ const BookingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 4: Client Information */}
-          {step === 4 && (
+          {/* Step 4: Time Selection for Professional Mode */}
+          {step === 4 && bookingMode === 'professional' && (
+            <div className="p-4 md:p-8">
+              <div className="flex items-center mb-6 px-0">
+                <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                  <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona horario</h2>
+                  <p className="text-gray-600 text-sm md:text-base">
+                    {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name} - {booking.selectedService?.name}
+                  </p>
+                </div>
+              </div>
+
+              <ProfessionalSelector
+                professionals={booking.professionals.filter(p => p.id === booking.selectedProfessional)}
+                selectedProfessional={booking.selectedProfessional}
+                onProfessionalSelect={() => {}}
+                selectedDate={booking.selectedDate}
+                selectedTime={booking.selectedTime}
+                onTimeSelect={handleTimeSelect}
+                showTimeSlots={true}
+                urgency={booking.urgency}
+                hideSelection={true}
+              />
+
+              {booking.selectedTime && (
+                <div className="mt-8 text-center px-4">
+                  <button
+                    onClick={goToNextStep}
+                    disabled={!booking.selectedTime}
+                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg min-h-[56px] w-full sm:w-auto"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4/5: Client Information - Adjusted step number based on mode */}
+          {((step === 4 && bookingMode === 'service') || (step === 5 && bookingMode === 'professional')) && (
             <div className="p-4 md:p-8">
               <div className="flex items-center mb-6">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
