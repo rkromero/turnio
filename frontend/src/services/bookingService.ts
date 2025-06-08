@@ -20,7 +20,7 @@ export const bookingService = {
   // Obtener servicios del negocio
   async getServices(businessSlug: string) {
     const response = await axios.get(
-      `${BASE_URL}/api/public/${businessSlug}/services`
+      `${BASE_URL}/api/services/public/${businessSlug}`
     );
     return response.data;
   },
