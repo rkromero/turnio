@@ -570,7 +570,7 @@ const BookingPage: React.FC = () => {
                     {booking.professionals.map((professional) => (
                       <div
                         key={professional.id}
-                        onClick={() => setBooking(prev => ({ ...prev, selectedProfessional: professional.id }))}
+                        onClick={() => handleProfessionalSelect(professional.id)}
                         className={`
                           p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
                           ${booking.selectedProfessional === professional.id
