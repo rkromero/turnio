@@ -1,14 +1,26 @@
 const { prisma } = require('../config/database');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
+const { getActiveBranchIds, getMainBranch } = require('../utils/branchUtils');
 
 // Obtener todos los usuarios/empleados del negocio
 const getUsers = async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { includeInactive, search, role } = req.query;
+    const { includeInactive, search, role, branchId } = req.query;
 
-    let whereClause = { businessId };
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
+    let whereClause = { 
+      businessId,
+      branchId: { in: branchIds }
+    };
+
+    // Filtrar por sucursal específica
+    if (branchId && branchIds.includes(branchId)) {
+      whereClause.branchId = branchId;
+    }
 
     // Filtrar por estado activo/inactivo
     if (includeInactive !== 'true') {
@@ -38,8 +50,16 @@ const getUsers = async (req, res) => {
         isActive: true,
         avatar: true,
         phone: true,
+        branchId: true,
         createdAt: true,
         updatedAt: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
+        },
         workingHours: {
           orderBy: { dayOfWeek: 'asc' }
         },
@@ -75,10 +95,14 @@ const getUser = async (req, res) => {
     const { id } = req.params;
     const businessId = req.businessId;
 
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
     const user = await prisma.user.findFirst({
       where: { 
         id, 
-        businessId 
+        businessId,
+        branchId: { in: branchIds }
       },
       select: {
         id: true,
@@ -88,8 +112,16 @@ const getUser = async (req, res) => {
         isActive: true,
         avatar: true,
         phone: true,
+        branchId: true,
         createdAt: true,
         updatedAt: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
+        },
         workingHours: {
           orderBy: { dayOfWeek: 'asc' }
         },
@@ -98,7 +130,8 @@ const getUser = async (req, res) => {
           orderBy: { startTime: 'desc' },
           include: {
             client: { select: { name: true } },
-            service: { select: { name: true } }
+            service: { select: { name: true } },
+            branch: { select: { name: true } }
           }
         }
       }
@@ -136,7 +169,7 @@ const createUser = async (req, res) => {
     });
 
     const businessId = req.businessId;
-    const { name, email, password, role, phone, avatar } = req.body;
+    const { name, email, password, role, phone, avatar, branchId } = req.body;
 
     // Validaciones básicas
     if (!name || !email || !password) {
@@ -145,6 +178,16 @@ const createUser = async (req, res) => {
         success: false,
         message: 'Los campos nombre, email y contraseña son requeridos'
       });
+    }
+
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+    
+    // Determinar la sucursal (usar la especificada o la principal)
+    let targetBranchId = branchId;
+    if (!targetBranchId || !branchIds.includes(targetBranchId)) {
+      const mainBranch = await getMainBranch(businessId);
+      targetBranchId = mainBranch?.id || branchIds[0];
     }
 
     // Verificar si el email ya existe
@@ -170,7 +213,11 @@ const createUser = async (req, res) => {
     });
 
     const activeUsersCount = await prisma.user.count({
-      where: { businessId, isActive: true }
+      where: { 
+        businessId, 
+        isActive: true,
+        branchId: { in: branchIds }
+      }
     });
 
     // Usar los límites del planController
@@ -191,6 +238,7 @@ const createUser = async (req, res) => {
     const user = await prisma.user.create({
       data: {
         businessId,
+        branchId: targetBranchId,
         name,
         email,
         password: hashedPassword,
@@ -207,12 +255,23 @@ const createUser = async (req, res) => {
         isActive: true,
         avatar: true,
         phone: true,
+        branchId: true,
         createdAt: true,
-        updatedAt: true
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
+        }
       }
     });
 
-    console.log('✅ Usuario creado exitosamente:', user.id);
+    console.log('✅ Usuario creado exitosamente:', { 
+      id: user.id, 
+      email: user.email,
+      branchId: user.branchId 
+    });
 
     res.status(201).json({
       success: true,
@@ -221,7 +280,7 @@ const createUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creando usuario:', error);
+    console.error('❌ Error creando usuario:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -243,11 +302,18 @@ const updateUser = async (req, res) => {
 
     const { id } = req.params;
     const businessId = req.businessId;
-    const { name, email, role, phone, avatar, password } = req.body;
+    const { name, email, role, phone, avatar, password, branchId } = req.body;
 
-    // Verificar que el usuario existe y pertenece al negocio
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
+    // Verificar que el usuario existe y pertenece al negocio y sucursal activa
     const existingUser = await prisma.user.findFirst({
-      where: { id, businessId }
+      where: { 
+        id, 
+        businessId,
+        branchId: { in: branchIds }
+      }
     });
 
     if (!existingUser) {
@@ -282,6 +348,11 @@ const updateUser = async (req, res) => {
     if (role) updateData.role = role;
     if (phone !== undefined) updateData.phone = phone;
     if (avatar !== undefined) updateData.avatar = avatar;
+    
+    // Actualizar sucursal si se especifica y es válida
+    if (branchId && branchIds.includes(branchId)) {
+      updateData.branchId = branchId;
+    }
 
     // Hashear nueva contraseña si se proporciona
     if (password) {
@@ -299,8 +370,16 @@ const updateUser = async (req, res) => {
         isActive: true,
         avatar: true,
         phone: true,
+        branchId: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
+        }
       }
     });
 
@@ -334,8 +413,15 @@ const toggleUserStatus = async (req, res) => {
     const businessId = req.businessId;
     const { isActive } = req.body;
 
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
     const user = await prisma.user.findFirst({
-      where: { id, businessId }
+      where: { 
+        id, 
+        businessId,
+        branchId: { in: branchIds }
+      }
     });
 
     if (!user) {
@@ -352,6 +438,7 @@ const toggleUserStatus = async (req, res) => {
           businessId, 
           role: 'ADMIN', 
           isActive: true,
+          branchId: { in: branchIds },
           id: { not: id }
         }
       });
@@ -375,8 +462,14 @@ const toggleUserStatus = async (req, res) => {
         isActive: true,
         avatar: true,
         phone: true,
-        createdAt: true,
-        updatedAt: true
+        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true
+          }
+        }
       }
     });
 
@@ -395,14 +488,21 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
-// Eliminar usuario (solo desactiva)
+// Eliminar usuario (soft delete)
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
     const businessId = req.businessId;
 
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+
     const user = await prisma.user.findFirst({
-      where: { id, businessId }
+      where: { 
+        id, 
+        businessId,
+        branchId: { in: branchIds }
+      }
     });
 
     if (!user) {
@@ -419,6 +519,7 @@ const deleteUser = async (req, res) => {
           businessId, 
           role: 'ADMIN', 
           isActive: true,
+          branchId: { in: branchIds },
           id: { not: id }
         }
       });
@@ -431,7 +532,26 @@ const deleteUser = async (req, res) => {
       }
     }
 
-    // Solo desactivar, no eliminar físicamente
+    // Verificar si tiene citas futuras
+    const futureAppointments = await prisma.appointment.count({
+      where: {
+        userId: id,
+        branchId: { in: branchIds },
+        startTime: {
+          gt: new Date()
+        },
+        status: { not: 'CANCELLED' }
+      }
+    });
+
+    if (futureAppointments > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede eliminar el usuario. Tiene ${futureAppointments} citas futuras programadas.`
+      });
+    }
+
+    // Soft delete - marcar como inactivo
     await prisma.user.update({
       where: { id },
       data: { isActive: false }

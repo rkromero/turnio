@@ -48,7 +48,11 @@ const userValidation = [
         throw new Error('La URL del avatar debe ser válida');
       }
       return true;
-    })
+    }),
+  body('branchId')
+    .optional()
+    .isString()
+    .withMessage('branchId debe ser un string válido')
 ];
 
 const createUserValidation = [
@@ -98,6 +102,10 @@ const updateUserValidation = [
       }
       return true;
     }),
+  body('branchId')
+    .optional()
+    .isString()
+    .withMessage('branchId debe ser un string válido'),
   body('password')
     .optional()
     .isLength({ min: 6 })
@@ -114,7 +122,7 @@ const toggleStatusValidation = [
 
 // Rutas
 
-// GET /api/users - Obtener todos los usuarios/empleados
+// GET /api/users - Obtener todos los usuarios/empleados (con filtro opcional por sucursal)
 router.get('/', authenticateToken, getUsers);
 
 // GET /api/users/stats - Obtener estadísticas de usuarios
@@ -123,10 +131,10 @@ router.get('/stats', authenticateToken, getUserStats);
 // GET /api/users/:id - Obtener un usuario específico
 router.get('/:id', authenticateToken, getUser);
 
-// POST /api/users - Crear nuevo usuario/empleado
+// POST /api/users - Crear nuevo usuario/empleado (con asignación automática de sucursal)
 router.post('/', authenticateToken, createUserValidation, createUser);
 
-// PUT /api/users/:id - Actualizar usuario
+// PUT /api/users/:id - Actualizar usuario (incluye cambio de sucursal)
 router.put('/:id', authenticateToken, updateUserValidation, updateUser);
 
 // PATCH /api/users/:id/status - Activar/desactivar usuario
