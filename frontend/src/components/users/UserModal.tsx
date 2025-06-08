@@ -128,16 +128,16 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="modal-overlay">
+      <div className="modal-content">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">
             {isEditing ? 'Editar Usuario' : 'Nuevo Usuario'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
           >
             <X className="w-6 h-6" />
           </button>
@@ -147,7 +147,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Nombre */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <User className="w-4 h-4 inline mr-1" />
               Nombre completo *
             </label>
@@ -155,8 +155,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              className={`input-field ${
+                errors.name ? 'input-error' : ''
               }`}
               placeholder="Ej: Juan Pérez"
             />
@@ -165,7 +165,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <Mail className="w-4 h-4 inline mr-1" />
               Email *
             </label>
@@ -176,8 +176,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 setFormData(prev => ({ ...prev, email: e.target.value }));
                 checkEmailAvailability(e.target.value);
               }}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              className={`input-field ${
+                errors.email ? 'input-error' : ''
               }`}
               placeholder="juan@ejemplo.com"
             />
@@ -189,7 +189,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
 
           {/* Contraseña */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <Key className="w-4 h-4 inline mr-1" />
               Contraseña {isEditing ? '(dejar vacío para mantener actual)' : '*'}
             </label>
@@ -198,8 +198,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                className={`w-full px-3 py-2 pr-20 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                className={`input-field pr-20 ${
+                  errors.password ? 'input-error' : ''
                 }`}
                 placeholder={isEditing ? 'Nueva contraseña...' : 'Contraseña temporal'}
               />
@@ -207,7 +207,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors duration-200"
                   title={showPassword ? 'Ocultar' : 'Mostrar'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -215,7 +215,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 <button
                   type="button"
                   onClick={generateNewPassword}
-                  className="text-blue-500 hover:text-blue-700 text-xs font-medium"
+                  className="text-purple-600 hover:text-purple-700 text-xs font-medium px-2 py-1 rounded hover:bg-purple-50 transition-colors duration-200"
                   title="Generar nueva contraseña"
                 >
                   Gen
@@ -232,14 +232,14 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
 
           {/* Rol */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <Shield className="w-4 h-4 inline mr-1" />
               Rol
             </label>
             <select
               value={formData.role}
               onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ADMIN' | 'EMPLOYEE' }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="input-field"
             >
               <option value="EMPLOYEE">Empleado</option>
               <option value="ADMIN">Administrador</option>
@@ -248,7 +248,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
 
           {/* Teléfono */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <Phone className="w-4 h-4 inline mr-1" />
               Teléfono
             </label>
@@ -256,8 +256,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              className={`input-field ${
+                errors.phone ? 'input-error' : ''
               }`}
               placeholder="+54 11 1234-5678"
             />
@@ -266,7 +266,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
 
           {/* Avatar */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="label">
               <Image className="w-4 h-4 inline mr-1" />
               URL del Avatar
             </label>
@@ -274,8 +274,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
               type="url"
               value={formData.avatar}
               onChange={(e) => setFormData(prev => ({ ...prev, avatar: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                errors.avatar ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              className={`input-field ${
+                errors.avatar ? 'input-error' : ''
               }`}
               placeholder="https://ejemplo.com/avatar.jpg"
             />
@@ -285,7 +285,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 <img 
                   src={formData.avatar} 
                   alt="Preview" 
-                  className="w-12 h-12 rounded-full object-cover"
+                  className="w-12 h-12 rounded-full object-cover shadow-sm"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
@@ -299,16 +299,16 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              className="btn-ghost"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !emailAvailable}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center"
+              className="btn-primary disabled:opacity-50"
             >
-              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
+              {loading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>}
               {isEditing ? 'Actualizar' : 'Crear Usuario'}
             </button>
           </div>
