@@ -130,6 +130,57 @@ async function startServer() {
       });
     });
 
+    // Ruta de debug para verificar el negocio CDFA
+    app.get('/debug/cdfa', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        const business = await prisma.business.findUnique({
+          where: { slug: 'cdfa' },
+          include: {
+            services: {
+              where: { isActive: true }
+            },
+            _count: {
+              select: {
+                services: true,
+                clients: true,
+                appointments: true
+              }
+            }
+          }
+        });
+
+        res.json({
+          success: true,
+          debug: {
+            businessFound: !!business,
+            business: business ? {
+              id: business.id,
+              name: business.name,
+              slug: business.slug,
+              activeServices: business._count.services,
+              totalClients: business._count.clients,
+              totalAppointments: business._count.appointments,
+              services: business.services.map(s => ({
+                id: s.id,
+                name: s.name,
+                duration: s.duration,
+                price: s.price
+              }))
+            } : null,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Rutas de la API
     app.use('/api/auth', authRoutes);
     app.use('/api/appointments', appointmentRoutes);
