@@ -250,17 +250,28 @@ const BookingPage: React.FC = () => {
   };
 
   const handleProfessionalSelect = (professionalId: string | null) => {
-    console.log('🔥 Seleccionando profesional:', professionalId);
-    setBooking(prev => ({
-      ...prev,
-      selectedProfessional: professionalId,
-      selectedTime: null
-    }));
+    console.log('🔥 INICIO - Seleccionando profesional:', professionalId);
+    console.log('🔥 Estado actual booking:', booking);
+    console.log('🔥 Modo actual:', bookingMode);
+    
+    setBooking(prev => {
+      const newState = {
+        ...prev,
+        selectedProfessional: professionalId,
+        selectedTime: null
+      };
+      console.log('🔥 Nuevo estado que se va a guardar:', newState);
+      return newState;
+    });
     
     // Si estamos en modo profesional y tenemos servicio, cargar disponibilidad inmediatamente
     if (bookingMode === 'professional' && booking.selectedService && professionalId) {
-      console.log('🚀 Cargando disponibilidad inmediatamente');
-      loadProfessionalAvailabilityDirect(professionalId, booking.selectedService.id);
+      console.log('🚀 Cargando disponibilidad inmediatamente - Profesional:', professionalId, 'Servicio:', booking.selectedService.id);
+      setTimeout(() => {
+        loadProfessionalAvailabilityDirect(professionalId, booking.selectedService!.id);
+      }, 100);
+    } else {
+      console.log('❌ NO se carga disponibilidad - Modo:', bookingMode, 'Servicio:', booking.selectedService?.id, 'Profesional:', professionalId);
     }
   };
 
@@ -819,8 +830,20 @@ const BookingPage: React.FC = () => {
               {/* Debug info - remover después */}
               <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
                 Debug: dateAvailability.length = {dateAvailability.length} | 
-                Profesional: {booking.selectedProfessional} | 
-                Servicio: {booking.selectedService?.id}
+                Profesional: {booking.selectedProfessional || 'NO SELECCIONADO'} | 
+                Servicio: {booking.selectedService?.id} |
+                Modo: {bookingMode} |
+                Step: {step}
+                <br />
+                <button 
+                  onClick={() => {
+                    console.log('🔧 FORZAR selección profesional');
+                    handleProfessionalSelect('cmbkuw1gx0002ro0fjtao3m91');
+                  }}
+                  className="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded"
+                >
+                  🔧 FORZAR selección Juan
+                </button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
