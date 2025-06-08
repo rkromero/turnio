@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const clientScoringController = require('../controllers/clientScoringController');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth');
 
 // Obtener scoring de un cliente (público - para mostrar en reservas)
 router.get('/score', clientScoringController.getClientScore);
