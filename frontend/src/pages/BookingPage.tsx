@@ -223,13 +223,20 @@ const BookingPage: React.FC = () => {
   };
 
   const handleServiceSelect = (service: Service) => {
+    console.log('🎯 Seleccionando servicio:', service.id);
     setBooking(prev => ({
       ...prev,
       selectedService: service,
-      selectedProfessional: null,
+      selectedProfessional: bookingMode === 'service' ? null : prev.selectedProfessional,
       selectedTime: null,
-      professionals: []
+      professionals: bookingMode === 'service' ? [] : prev.professionals
     }));
+    
+    // Si estamos en modo profesional y tenemos profesional, cargar disponibilidad inmediatamente
+    if (bookingMode === 'professional' && booking.selectedProfessional) {
+      console.log('🚀 Cargando disponibilidad para servicio seleccionado');
+      loadProfessionalAvailabilityDirect(booking.selectedProfessional, service.id);
+    }
   };
 
   const handleDateSelect = (date: string) => {
@@ -243,11 +250,40 @@ const BookingPage: React.FC = () => {
   };
 
   const handleProfessionalSelect = (professionalId: string | null) => {
+    console.log('🔥 Seleccionando profesional:', professionalId);
     setBooking(prev => ({
       ...prev,
       selectedProfessional: professionalId,
       selectedTime: null
     }));
+    
+    // Si estamos en modo profesional y tenemos servicio, cargar disponibilidad inmediatamente
+    if (bookingMode === 'professional' && booking.selectedService && professionalId) {
+      console.log('🚀 Cargando disponibilidad inmediatamente');
+      loadProfessionalAvailabilityDirect(professionalId, booking.selectedService.id);
+    }
+  };
+
+  const loadProfessionalAvailabilityDirect = async (professionalId: string, serviceId: string) => {
+    console.log('🔍 DIRECT - Cargando disponibilidad para:', { professionalId, serviceId, businessSlug });
+    
+    try {
+      const availabilityResponse = await bookingService.getProfessionalAvailability(
+        businessSlug!,
+        professionalId,
+        serviceId
+      );
+      
+      console.log('📅 DIRECT - Respuesta de disponibilidad:', availabilityResponse);
+      
+      if (availabilityResponse.success) {
+        setDateAvailability(availabilityResponse.data.availability);
+        console.log('✅ DIRECT - Disponibilidad cargada:', availabilityResponse.data.availability);
+      }
+    } catch (error) {
+      console.error('❌ DIRECT - Error cargando disponibilidad:', error);
+      toast.error('Error cargando disponibilidad');
+    }
   };
 
   const handleTimeSelect = (datetime: string) => {
@@ -377,31 +413,31 @@ const BookingPage: React.FC = () => {
       
       const availabilityInfo = dateAvailability.find(d => d.date === dateString);
       
-      dates.push({
-        value: dateString,
-        label: date.toLocaleDateString('es-ES', { 
-          weekday: 'short', 
-          day: 'numeric', 
-          month: 'short' 
-        }),
-        isToday: i === 0,
-        available: availabilityInfo?.available ?? true,
-        slotsCount: availabilityInfo?.slotsCount ?? 0,
-        reason: availabilityInfo?.reason
-      });
+      // En modo profesional, solo incluir fechas disponibles
+      // En modo servicio, incluir todas las fechas
+      const shouldInclude = bookingMode === 'service' || 
+                           (bookingMode === 'professional' && (availabilityInfo?.available === true));
+      
+      if (shouldInclude) {
+        dates.push({
+          value: dateString,
+          label: date.toLocaleDateString('es-ES', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short' 
+          }),
+          isToday: i === 0,
+          available: availabilityInfo?.available ?? true,
+          slotsCount: availabilityInfo?.slotsCount ?? 0,
+          reason: availabilityInfo?.reason
+        });
+      }
     }
     
-    const filteredDates = dates.filter(dateOption => {
-      if (bookingMode === 'professional') {
-        return dateOption.available;
-      }
-      return true;
-    });
+    console.log('📋 Fechas generadas:', dates.length, 'para modo:', bookingMode);
+    console.log('🔍 Primeras 3 fechas:', dates.slice(0, 3));
     
-    console.log('📋 Fechas totales:', dates.length, 'Fechas filtradas:', filteredDates.length);
-    console.log('🔍 Primeras 3 fechas filtradas:', filteredDates.slice(0, 3));
-    
-    return filteredDates;
+    return dates;
   };
 
   if (loading) {
