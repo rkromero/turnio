@@ -130,16 +130,28 @@ const createUser = async (req, res) => {
   try {
     console.log('📥 Datos recibidos para crear usuario:', {
       body: req.body,
-      businessId: req.businessId
+      businessId: req.businessId,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent']
+      }
     });
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ Errores de validación:', errors.array());
+      console.log('❌ Errores de validación detallados:', {
+        errorsArray: errors.array(),
+        errorsByField: errors.mapped(),
+        receivedData: req.body
+      });
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: errors.array()
+        errors: errors.array(),
+        debug: {
+          receivedFields: Object.keys(req.body),
+          receivedData: req.body
+        }
       });
     }
 
@@ -152,6 +164,14 @@ const createUser = async (req, res) => {
       hasLower: password ? /[a-z]/.test(password) : false,
       hasUpper: password ? /[A-Z]/.test(password) : false,
       hasNumber: password ? /\d/.test(password) : false
+    });
+
+    console.log('🔍 Validando otros campos:', {
+      name: name ? `${name.substring(0, 10)}...` : 'undefined',
+      email: email || 'undefined',
+      role: role || 'undefined',
+      phone: phone || 'undefined',
+      avatar: avatar || 'undefined'
     });
 
     // Verificar que el email no esté en uso en este negocio

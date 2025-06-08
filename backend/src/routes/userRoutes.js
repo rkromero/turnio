@@ -30,8 +30,10 @@ const userValidation = [
   body('phone')
     .optional()
     .custom((value) => {
-      if (value && value.trim() === '') return true; // Allow empty string
-      if (value && !/^[\d\s\-\+\(\)]+$/.test(value)) {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true; 
+      // Validar formato solo si tiene contenido
+      if (!/^[\d\s\-\+\(\)]+$/.test(value.trim())) {
         throw new Error('Formato de teléfono inválido');
       }
       return true;
@@ -39,8 +41,10 @@ const userValidation = [
   body('avatar')
     .optional()
     .custom((value) => {
-      if (value && value.trim() === '') return true; // Allow empty string
-      if (value && !value.match(/^https?:\/\/.+/)) {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true;
+      // Validar URL solo si tiene contenido
+      if (!value.match(/^https?:\/\/.+/)) {
         throw new Error('La URL del avatar debe ser válida');
       }
       return true;
@@ -74,12 +78,26 @@ const updateUserValidation = [
     .withMessage('El rol debe ser ADMIN o EMPLOYEE'),
   body('phone')
     .optional()
-    .matches(/^[\d\s\-\+\(\)]*$/)
-    .withMessage('Formato de teléfono inválido'),
+    .custom((value) => {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true; 
+      // Validar formato solo si tiene contenido
+      if (!/^[\d\s\-\+\(\)]+$/.test(value.trim())) {
+        throw new Error('Formato de teléfono inválido');
+      }
+      return true;
+    }),
   body('avatar')
     .optional()
-    .isURL()
-    .withMessage('La URL del avatar debe ser válida'),
+    .custom((value) => {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true;
+      // Validar URL solo si tiene contenido
+      if (!value.match(/^https?:\/\/.+/)) {
+        throw new Error('La URL del avatar debe ser válida');
+      }
+      return true;
+    }),
   body('password')
     .optional()
     .isLength({ min: 6 })
