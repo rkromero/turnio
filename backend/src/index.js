@@ -130,6 +130,7 @@ async function startServer() {
     const reviewRoutes = require('./routes/reviewRoutes');
     const clientScoringRoutes = require('./routes/clientScoring');
     const branchRoutes = require('./routes/branchRoutes');
+    const migrationRoutes = require('./routes/migrationRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -573,8 +574,9 @@ async function startServer() {
     app.use('/api/plans', planRoutes);
     app.use('/api/reviews', reviewRoutes);
     app.use('/api/branches', branchRoutes);
+    app.use('/api/migration', migrationRoutes);
     
-    // Sistema de scoring de clientes
+    // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
 
     // Ruta para reservas públicas (sin autenticación)

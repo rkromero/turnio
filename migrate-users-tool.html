@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Herramienta de Migración de Usuarios - Turnio</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .status.success {
+            background-color: #f0fdf4;
+            border-color: #10b981;
+            color: #065f46;
+        }
+        .status.error {
+            background-color: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+        .status.pending {
+            background-color: #fffbeb;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .status.info {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+        button {
+            background-color: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #7c3aed;
+        }
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border: 1px solid #e2e8f0;
+            max-height: 400px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #8b5cf6;
+        }
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning h4 {
+            margin: 0 0 10px 0;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Herramienta de Migración de Usuarios</h1>
+        <p>Esta herramienta te permite migrar usuarios existentes sin sucursal asignada a la sucursal principal de cada negocio.</p>
+
+        <div class="warning">
+            <h4>⚠️ Importante</h4>
+            <ul>
+                <li>Esta migración es <strong>irreversible</strong></li>
+                <li>Se aplicará a <strong>todos los negocios</strong> de la base de datos</li>
+                <li>Los usuarios sin sucursal se asignarán automáticamente a la sucursal principal</li>
+                <li>Si no existe sucursal principal, se creará una automáticamente</li>
+            </ul>
+        </div>
+
+        <div class="stats-grid" id="statsGrid" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">Total Usuarios</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="usersWithoutBranch">-</div>
+                <div class="stat-label">Sin Sucursal</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="needsMigration">-</div>
+                <div class="stat-label">Necesita Migración</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="checkStats()" id="checkBtn">📊 Verificar Estado</button>
+            <button onclick="executeMigration()" id="migrateBtn" disabled>🚀 Ejecutar Migración</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://turnio-backend-production.up.railway.app/api';
+        
+        // Token JWT temporal - reemplazar con el tuyo
+        const JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbHNkM2ZxZXMwMDAwbTAwaDlma3g1Z3FrIiwiYnVzaW5lc3NJZCI6ImNsc2QzZnFlcjAwMDBsczBoZjdkeWpqa3MiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3MzM1Mjc1NzUsImV4cCI6MTczMzYxMzk3NX0.XlVGNh1uEYC5Qp02qjUH-6-zn31yXhQH9eFxOKo_RM4';
+
+        function addResult(title, status, content) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${status}`;
+            resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                ${content}
+            `;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalUsers').textContent = data.totalUsers || '-';
+            document.getElementById('usersWithoutBranch').textContent = data.usersWithoutBranch || '-';
+            document.getElementById('needsMigration').textContent = data.needsMigration ? 'SÍ' : 'NO';
+            
+            document.getElementById('statsGrid').style.display = 'grid';
+            
+            // Habilitar botón de migración si es necesario
+            const migrateBtn = document.getElementById('migrateBtn');
+            if (data.needsMigration && data.usersWithoutBranch > 0) {
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = `🚀 Migrar ${data.usersWithoutBranch} Usuarios`;
+            } else {
+                migrateBtn.disabled = true;
+                migrateBtn.textContent = '✅ No Necesita Migración';
+            }
+        }
+
+        async function checkStats() {
+            const checkBtn = document.getElementById('checkBtn');
+            checkBtn.disabled = true;
+            checkBtn.textContent = '🔄 Verificando...';
+
+            addResult('🔍 Verificando Estado de Usuarios', 'pending', 'Consultando estadísticas de usuarios por sucursal...');
+
+            try {
+                const response = await fetch(`${API_BASE}/migration/user-branch-stats`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${JWT_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStats(data.data);
+                    
+                    addResult('📊 Estadísticas Obtenidas', 'success', `
+                        <p><strong>Estado actual:</strong></p>
+                        <ul>
+                            <li>Total de usuarios: ${data.data.totalUsers}</li>
+                            <li>Usuarios sin sucursal: ${data.data.usersWithoutBranch}</li>
+                            <li>Necesita migración: ${data.data.needsMigration ? 'SÍ' : 'NO'}</li>
+                        </ul>
+                        
+                        <p><strong>Usuarios por sucursal:</strong></p>
+                        <pre>${JSON.stringify(data.data.usersByBranch, null, 2)}</pre>
+                    `);
+                } else {
+                    addResult('❌ Error al Obtener Estadísticas', 'error', `
+                        <p><strong>Error:</strong> ${data.message}</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+
+            } catch (error) {
+                addResult('❌ Error de Conexión', 'error', `
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Verifica que el token JWT sea válido y que el servidor esté funcionando.</p>
+                `);
+            } finally {
+                checkBtn.disabled = false;
+                checkBtn.textContent = '📊 Verificar Estado';
+            }
+        }
+
+        async function executeMigration() {
+            if (!confirm('¿Estás seguro de que deseas ejecutar la migración? Esta acción es irreversible.')) {
+                return;
+            }
+
+            const migrateBtn = document.getElementById('migrateBtn');
+            migrateBtn.disabled = true;
+            migrateBtn.textContent = '🔄 Migrando...';
+
+            addResult('🚀 Ejecutando Migración', 'pending', 'Iniciando migración de usuarios a sucursales principales...');
+
+            try {
+                const response = await fetch(`${API_BASE}/migration/migrate-users-to-branches`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${JWT_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addResult('🎉 Migración Completada Exitosamente', 'success', `
+                        <p><strong>Resultado:</strong></p>
+                        <ul>
+                            <li>Negocios procesados: ${data.data.totalBusinesses}</li>
+                            <li>Usuarios migrados: ${data.data.totalUsersMigrated}</li>
+                            <li>Usuarios restantes sin sucursal: ${data.data.remainingUsersWithoutBranch}</li>
+                        </ul>
+                        
+                        <p><strong>Detalles por negocio:</strong></p>
+                        <pre>${JSON.stringify(data.data.businessResults, null, 2)}</pre>
+                    `);
+
+                    // Actualizar estadísticas
+                    setTimeout(() => {
+                        checkStats();
+                    }, 2000);
+
+                } else {
+                    addResult('❌ Error en la Migración', 'error', `
+                        <p><strong>Error:</strong> ${data.message}</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+
+            } catch (error) {
+                addResult('❌ Error de Conexión Durante Migración', 'error', `
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>La migración falló. Verifica la conexión y el estado del servidor.</p>
+                `);
+            } finally {
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = '🚀 Ejecutar Migración';
+            }
+        }
+
+        // Verificar estado al cargar la página
+        window.addEventListener('load', () => {
+            addResult('🔧 Herramienta de Migración Lista', 'info', `
+                <p>Esta herramienta te permite:</p>
+                <ul>
+                    <li>Verificar cuántos usuarios necesitan migración</li>
+                    <li>Ejecutar la migración de usuarios a sucursales principales</li>
+                    <li>Ver estadísticas detalladas del proceso</li>
+                </ul>
+                <p><strong>Paso 1:</strong> Haz clic en "Verificar Estado" para comenzar.</p>
+            `);
+        });
+    </script>
+</body>
+</html> 
