@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import DashboardRouter from './components/DashboardRouter';
 import BookingPage from './pages/BookingPage';
 
@@ -40,6 +41,9 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Landing Page - Página principal */}
+      <Route path="/" element={<LandingPage />} />
+      
       {/* Rutas públicas */}
       <Route 
         path="/login" 
@@ -70,9 +74,6 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
-      
-      {/* Redirección por defecto */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       
       {/* Página 404 */}
       <Route 

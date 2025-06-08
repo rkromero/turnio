@@ -4,9 +4,15 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
   className?: string;
+  textColor?: 'dark' | 'light';
 }
 
-const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '' }) => {
+const Logo: React.FC<LogoProps> = ({ 
+  size = 'md', 
+  showText = true, 
+  className = '', 
+  textColor = 'dark' 
+}) => {
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12',
@@ -19,6 +25,11 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
     md: 'text-2xl',
     lg: 'text-3xl',
     xl: 'text-4xl'
+  };
+
+  const textColorClasses = {
+    dark: 'text-gray-900',
+    light: 'text-white'
   };
 
   return (
@@ -43,7 +54,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
       
       {/* Texto del logo */}
       {showText && (
-        <span className={`font-bold text-gray-900 tracking-wide ${textSizeClasses[size]}`}>
+        <span className={`font-bold tracking-wide ${textSizeClasses[size]} ${textColorClasses[textColor]}`}>
           TURNIO
         </span>
       )}
