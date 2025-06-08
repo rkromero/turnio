@@ -241,7 +241,12 @@ const recordClientEvent = async (email, phone, name, businessId, appointmentId, 
 // Obtener scoring de un cliente
 const getClientScore = async (email, phone) => {
   try {
-    await ensureTablesExist();
+    // Verificar si las tablas existen
+    const tablesExist = await checkScoringTablesExist();
+    if (!tablesExist) {
+      console.log('⚠️ Sistema de scoring no disponible - tablas no existen');
+      return null;
+    }
     
     // Primero buscar en el sistema de scoring
     let clientScore = null;
