@@ -401,7 +401,7 @@ const BookingPage: React.FC = () => {
     console.log('📋 Fechas totales:', dates.length, 'Fechas filtradas:', filteredDates.length);
     console.log('🔍 Primeras 3 fechas filtradas:', filteredDates.slice(0, 3));
     
-    return dates;
+    return filteredDates;
   };
 
   if (loading) {
@@ -663,7 +663,7 @@ const BookingPage: React.FC = () => {
               {bookingMode === 'service' && (
                 <div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                    {generateDateOptions().filter(dateOption => bookingMode === 'service' || (bookingMode === 'professional' && dateOption.available)).map((dateOption) => (
+                    {generateDateOptions().map((dateOption) => (
                       <button
                         key={dateOption.value}
                         onClick={() => handleDateSelect(dateOption.value)}
@@ -781,12 +781,7 @@ const BookingPage: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                {generateDateOptions().filter(dateOption => {
-                  if (bookingMode === 'professional') {
-                    return dateOption.available;
-                  }
-                  return true;
-                }).map((dateOption) => {
+                {generateDateOptions().map((dateOption) => {
                   let colorClass = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
                   
                   if (booking.selectedDate === dateOption.value) {
