@@ -2,9 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { appointmentService, serviceService } from '../services/api';
 import type { Appointment, Service, AppointmentForm } from '../types';
 import AppointmentModal from '../components/AppointmentModal';
+import ClientStarRating from '../components/ClientStarRating';
+
+interface AppointmentWithScoring extends Appointment {
+  clientScore?: {
+    hasScore: boolean;
+    starRating: number | null;
+    totalBookings: number;
+    attendedCount: number;
+    noShowCount: number;
+  };
+}
 
 const Appointments: React.FC = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentWithScoring[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,6 +31,34 @@ const Appointments: React.FC = () => {
     loadData();
   }, [filters]);
 
+  const loadClientScoring = async (appointments: Appointment[]): Promise<AppointmentWithScoring[]> => {
+    return Promise.all(
+      appointments.map(async (appointment) => {
+        try {
+          if (appointment.client?.email || appointment.client?.phone) {
+            const params = new URLSearchParams();
+            if (appointment.client.email) params.append('email', appointment.client.email);
+            if (appointment.client.phone) params.append('phone', appointment.client.phone);
+            
+            const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+            const scoreData = await response.json();
+            
+            if (scoreData.success) {
+              return {
+                ...appointment,
+                clientScore: scoreData.data
+              };
+            }
+          }
+          return appointment;
+        } catch (error) {
+          console.error('Error cargando scoring para cita:', error);
+          return appointment;
+        }
+      })
+    );
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -28,7 +67,10 @@ const Appointments: React.FC = () => {
         serviceService.getServices()
       ]);
       
-      setAppointments(appointmentsData);
+      // Cargar scoring para cada cita
+      const appointmentsWithScoring = await loadClientScoring(appointmentsData);
+      
+      setAppointments(appointmentsWithScoring);
       setServices(servicesData);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -363,6 +405,18 @@ const Appointments: React.FC = () => {
                           {appointment.client?.phone && (
                             <div className="text-xs text-gray-400">
                               📞 {appointment.client.phone}
+                            </div>
+                          )}
+                          {appointment.clientScore?.hasScore && (
+                            <div className="mt-1">
+                              <ClientStarRating
+                                starRating={appointment.clientScore.starRating}
+                                totalBookings={appointment.clientScore.totalBookings}
+                                attendedCount={appointment.clientScore.attendedCount}
+                                noShowCount={appointment.clientScore.noShowCount}
+                                size="sm"
+                                showLabel={true}
+                              />
                             </div>
                           )}
                         </div>
