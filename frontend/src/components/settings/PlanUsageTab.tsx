@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Users, Calendar, Wrench, TrendingUp, Check, X, ArrowRight, Zap, Crown } from 'lucide-react';
+import { CreditCard, Users, Calendar, Wrench, TrendingUp, Check, X, ArrowRight, Zap, Crown, Sparkles } from 'lucide-react';
 import { planService } from '../../services/api';
 import toast from 'react-hot-toast';
 import type { PlanUsage, AvailablePlansResponse, AvailablePlan } from '../../types';
@@ -12,6 +12,7 @@ interface PlanUsageTabProps {
 const PLAN_FEATURES = {
   FREE: {
     name: 'Plan Gratuito',
+    icon: '🆓',
     color: 'gray',
     features: [
       { name: 'Hasta 30 citas por mes', included: true },
@@ -27,6 +28,7 @@ const PLAN_FEATURES = {
   },
   BASIC: {
     name: 'Plan Básico',
+    icon: '💼',
     color: 'blue',
     features: [
       { name: 'Hasta 100 citas por mes', included: true },
@@ -42,6 +44,7 @@ const PLAN_FEATURES = {
   },
   PREMIUM: {
     name: 'Plan Premium',
+    icon: '⭐',
     color: 'purple',
     features: [
       { name: 'Hasta 500 citas por mes', included: true },
@@ -57,6 +60,7 @@ const PLAN_FEATURES = {
   },
   ENTERPRISE: {
     name: 'Plan Empresa',
+    icon: '👑',
     color: 'gold',
     features: [
       { name: 'Citas ilimitadas', included: true },
@@ -72,20 +76,21 @@ const PLAN_FEATURES = {
   }
 };
 
-const ProgressBar: React.FC<{ current: number; limit: number; color?: string }> = ({ 
+const ProgressBar: React.FC<{ current: number; limit: number; color?: string; className?: string }> = ({ 
   current, 
   limit, 
-  color = 'primary' 
+  color = 'primary',
+  className = ''
 }) => {
   const percentage = limit === -1 ? 0 : Math.min((current / limit) * 100, 100);
   const isOverLimit = limit !== -1 && current > limit;
   
   return (
-    <div className="w-full bg-gray-200 rounded-full h-2">
+    <div className={`progress-bar ${className}`}>
       <div
-        className={`h-2 rounded-full transition-all ${
+        className={`progress-fill ${
           isOverLimit ? 'bg-red-500' : 
-          color === 'primary' ? 'bg-primary-600' : `bg-${color}-600`
+          color === 'primary' ? 'bg-purple-600' : `bg-${color}-500`
         }`}
         style={{ width: `${Math.min(percentage, 100)}%` }}
       />
@@ -99,10 +104,10 @@ const PlanCard: React.FC<{
   isChanging: boolean;
 }> = ({ plan, onSelect, isChanging }) => {
   const colorClasses = {
-    blue: 'border-blue-200 bg-blue-50',
-    purple: 'border-purple-200 bg-purple-50',
-    gray: 'border-gray-200 bg-gray-50',
-    gold: 'border-yellow-200 bg-yellow-50'
+    blue: 'from-blue-50 to-blue-100 border-blue-200',
+    purple: 'from-purple-50 to-purple-100 border-purple-200',
+    gray: 'from-gray-50 to-gray-100 border-gray-200',
+    gold: 'from-yellow-50 to-yellow-100 border-yellow-200'
   };
   
   const buttonClasses = {
@@ -116,35 +121,36 @@ const PlanCard: React.FC<{
   const colorKey = features.color as keyof typeof colorClasses;
 
   return (
-    <div className={`relative border-2 rounded-xl p-6 transition-all ${
+    <div className={`relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg ${
       plan.isCurrent 
-        ? 'border-purple-500 bg-purple-50 scale-105 shadow-lg' 
-        : `${colorClasses[colorKey]} hover:shadow-md`
+        ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 scale-105 shadow-lg ring-4 ring-purple-200' 
+        : `bg-gradient-to-br ${colorClasses[colorKey]} hover:shadow-md`
     }`}>
       {plan.isCurrent && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <div className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
-            <Crown className="w-4 h-4 mr-1" />
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+          <div className="bg-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold flex items-center shadow-lg">
+            <Crown className="w-4 h-4 mr-1.5" />
             Plan Actual
           </div>
         </div>
       )}
 
-      <div className="text-center mb-4">
-        <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
-        <p className="text-gray-600 text-sm mb-3">{plan.description}</p>
+      <div className="text-center mb-6">
+        <div className="text-3xl mb-2">{features.icon}</div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+        <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
         <div className="flex items-baseline justify-center mb-4">
           <span className="text-3xl font-bold text-gray-900">
-            ${plan.price === 0 ? 'Gratis' : plan.price.toLocaleString()}
+            {plan.price === 0 ? 'Gratis' : `$${plan.price.toLocaleString()}`}
           </span>
           {plan.price > 0 && <span className="text-gray-500 ml-1">/mes</span>}
         </div>
       </div>
 
-      <ul className="space-y-2 mb-6">
+      <ul className="space-y-3 mb-6">
         {plan.features.slice(0, 5).map((feature, index) => (
-          <li key={index} className="flex items-center text-sm">
-            <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+          <li key={index} className="flex items-start text-sm">
+            <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
             <span className="text-gray-700">{feature}</span>
           </li>
         ))}
@@ -154,11 +160,21 @@ const PlanCard: React.FC<{
         <button
           onClick={() => onSelect(plan.key)}
           disabled={isChanging}
-          className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
             buttonClasses[colorKey]
           }`}
         >
-          {isChanging ? 'Cambiando...' : 'Seleccionar Plan'}
+          {isChanging ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+              Cambiando...
+            </div>
+          ) : (
+            <div className="flex items-center justify-center">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Seleccionar Plan
+            </div>
+          )}
         </button>
       )}
     </div>
@@ -218,7 +234,11 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
   if (!planUsage) {
     return (
       <div className="p-6 text-center">
-        <div className="text-gray-500">Cargando información del plan...</div>
+        <div className="skeleton-card">
+          <div className="animate-shimmer h-6 bg-gray-200 rounded mb-4"></div>
+          <div className="animate-shimmer h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="animate-shimmer h-4 bg-gray-200 rounded w-3/4"></div>
+        </div>
       </div>
     );
   }
@@ -228,10 +248,13 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
                                 planUsage.usage.appointments.limit !== -1;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <CreditCard className="h-6 w-6 text-primary-600" />
+    <div className="p-4 sm:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <CreditCard className="h-6 w-6 text-purple-600" />
+          </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Información del Plan</h3>
             <p className="text-sm text-gray-600">
@@ -241,7 +264,7 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
         </div>
         <button
           onClick={openPlanModal}
-          className="btn-primary flex items-center space-x-2"
+          className="btn-primary w-full sm:w-auto flex items-center justify-center space-x-2"
         >
           <Zap className="w-4 h-4" />
           <span>Cambiar Plan</span>
@@ -249,35 +272,33 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
       </div>
 
       {/* Plan actual */}
-      <div className="mb-8">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-xl font-semibold text-gray-900">
-                {currentPlan.name}
-              </h4>
-              <p className="text-sm text-gray-600">Tu plan actual</p>
+      <div className="card-modern">
+        <div className="card-body">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl">{currentPlan.icon}</div>
+              <div>
+                <h4 className="text-xl font-semibold text-gray-900">
+                  {currentPlan.name}
+                </h4>
+                <p className="text-sm text-gray-600">Tu plan actual</p>
+              </div>
             </div>
-            <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
-              currentPlan.color === 'gray' ? 'bg-gray-100 text-gray-800' :
-              currentPlan.color === 'blue' ? 'bg-blue-100 text-blue-800' :
-              currentPlan.color === 'purple' ? 'bg-purple-100 text-purple-800' :
-              'bg-yellow-100 text-yellow-800'
-            }`}>
+            <div className={`badge badge-${currentPlan.color === 'gray' ? 'gray' : 'primary'} text-sm px-4 py-2`}>
               {planUsage.planType}
             </div>
           </div>
 
           {/* Estadísticas de uso */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
             {/* Citas */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="stats-card">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-gray-600" />
+                  <Calendar className="h-5 w-5 text-purple-600" />
                   <span className="text-sm font-medium text-gray-700">Citas este mes</span>
                 </div>
-                <span className={`text-sm font-semibold ${
+                <span className={`text-sm font-bold ${
                   isOverAppointmentLimit ? 'text-red-600' : 'text-gray-900'
                 }`}>
                   {planUsage.usage.appointments.current}/{planUsage.usage.appointments.limit === -1 ? '∞' : planUsage.usage.appointments.limit}
@@ -287,53 +308,64 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
                 current={planUsage.usage.appointments.current} 
                 limit={planUsage.usage.appointments.limit}
                 color={isOverAppointmentLimit ? 'red' : 'primary'}
+                className="mb-2"
               />
               {isOverAppointmentLimit && (
-                <p className="text-xs text-red-600 mt-1">Has excedido el límite de tu plan</p>
+                <p className="text-xs text-red-600 font-medium">⚠️ Has excedido el límite de tu plan</p>
               )}
             </div>
 
             {/* Servicios */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="stats-card">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Wrench className="h-5 w-5 text-gray-600" />
+                  <Wrench className="h-5 w-5 text-blue-600" />
                   <span className="text-sm font-medium text-gray-700">Servicios activos</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-bold text-gray-900">
                   {planUsage.usage.services.current}/{planUsage.usage.services.limit === -1 ? '∞' : planUsage.usage.services.limit}
                 </span>
               </div>
               <ProgressBar 
                 current={planUsage.usage.services.current} 
                 limit={planUsage.usage.services.limit}
+                color="blue"
+                className="mb-2"
               />
+              <div className="text-xs text-gray-500">
+                {planUsage.usage.services.percentage.toFixed(0)}% utilizado
+              </div>
             </div>
 
             {/* Usuarios */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="stats-card">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-gray-600" />
+                  <Users className="h-5 w-5 text-green-600" />
                   <span className="text-sm font-medium text-gray-700">Usuarios activos</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-bold text-gray-900">
                   {planUsage.usage.users.current}/{planUsage.usage.users.limit === -1 ? '∞' : planUsage.usage.users.limit}
                 </span>
               </div>
               <ProgressBar 
                 current={planUsage.usage.users.current} 
                 limit={planUsage.usage.users.limit}
+                color="green"
+                className="mb-2"
               />
+              <div className="text-xs text-gray-500">
+                {planUsage.usage.users.percentage.toFixed(0)}% utilizado
+              </div>
             </div>
           </div>
 
           {/* Estadística adicional */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="info-card">
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-primary-600" />
-              <span className="text-sm font-medium text-primary-900">
-                Total de clientes registrados: {planUsage.usage.clients.total}
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">
+                Total de clientes registrados: <span className="font-bold">{planUsage.usage.clients.total}</span>
               </span>
             </div>
           </div>
@@ -341,49 +373,65 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
       </div>
 
       {/* Características del plan */}
-      <div>
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">
-          Características de tu plan
-        </h4>
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {currentPlan.features.map((feature, index) => (
-              <div key={index} className="flex items-center justify-between px-6 py-4">
-                <span className="text-sm text-gray-700">{feature.name}</span>
-                <div className="flex items-center">
-                  {feature.included ? (
-                    <Check className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <X className="h-5 w-5 text-gray-400" />
-                  )}
-                </div>
+      <div className="card">
+        <div className="card-header">
+          <h4 className="text-lg font-semibold text-gray-900">
+            Características de tu plan
+          </h4>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {currentPlan.features.map((feature, index) => (
+            <div key={index} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
+              <span className="text-sm text-gray-700 flex-1">{feature.name}</span>
+              <div className="flex items-center ml-4">
+                {feature.included ? (
+                  <div className="flex items-center text-green-600">
+                    <Check className="h-5 w-5" />
+                    <span className="ml-1 text-xs font-medium hidden sm:inline">Incluido</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center text-gray-400">
+                    <X className="h-5 w-5" />
+                    <span className="ml-1 text-xs font-medium hidden sm:inline">No incluido</span>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Recomendaciones */}
       {(isOverAppointmentLimit || planUsage.usage.services.percentage > 80 || planUsage.usage.users.percentage > 80) && (
-        <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-yellow-900 mb-2">
-            💡 Recomendaciones
+        <div className="warning-card">
+          <h4 className="text-sm font-medium text-yellow-900 mb-3 flex items-center">
+            <span className="text-lg mr-2">💡</span>
+            Recomendaciones
           </h4>
-          <ul className="text-sm text-yellow-800 space-y-1">
+          <ul className="text-sm text-yellow-800 space-y-2">
             {isOverAppointmentLimit && (
-              <li>• Has excedido el límite de citas de tu plan. Considera actualizar a un plan superior.</li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Has excedido el límite de citas de tu plan. Considera actualizar a un plan superior.</span>
+              </li>
             )}
             {planUsage.usage.services.percentage > 80 && (
-              <li>• Estás cerca del límite de servicios. Considera actualizar tu plan si necesitas más servicios.</li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Estás cerca del límite de servicios. Considera actualizar tu plan si necesitas más servicios.</span>
+              </li>
             )}
             {planUsage.usage.users.percentage > 80 && (
-              <li>• Estás cerca del límite de usuarios. Actualiza tu plan para agregar más miembros del equipo.</li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Estás cerca del límite de usuarios. Actualiza tu plan para agregar más miembros del equipo.</span>
+              </li>
             )}
           </ul>
-          <div className="mt-3">
+          <div className="mt-4">
             <button
               onClick={openPlanModal}
-              className="text-yellow-800 hover:text-yellow-900 font-medium flex items-center space-x-1"
+              className="text-yellow-800 hover:text-yellow-900 font-medium flex items-center space-x-1 transition-colors duration-200"
             >
               <span>Ver planes disponibles</span>
               <ArrowRight className="w-4 h-4" />
@@ -394,8 +442,8 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
 
       {/* Modal de cambio de plan */}
       {showPlanModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-6xl w-full max-h-screen overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-content">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -404,21 +452,21 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
                 </div>
                 <button
                   onClick={() => setShowPlanModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
               {isLoadingPlans ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mx-auto"></div>
                   <p className="mt-4 text-gray-600">Cargando planes...</p>
                 </div>
               ) : availablePlans ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {availablePlans.plans.map((plan) => (
                     <PlanCard
                       key={plan.key}
@@ -430,7 +478,14 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
                 </div>
               ) : (
                 <div className="text-center py-12">
+                  <div className="text-gray-400 text-4xl mb-4">😕</div>
                   <p className="text-gray-600">Error al cargar los planes</p>
+                  <button
+                    onClick={loadAvailablePlans}
+                    className="btn-secondary mt-4"
+                  >
+                    Reintentar
+                  </button>
                 </div>
               )}
             </div>
@@ -439,11 +494,12 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
       )}
 
       {/* Información de contacto */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">
+      <div className="info-card">
+        <h4 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+          <span className="text-lg mr-2">🤝</span>
           ¿Necesitas ayuda con tu plan?
         </h4>
-        <p className="text-sm text-blue-800">
+        <p className="text-sm text-blue-800 leading-relaxed">
           Si tienes preguntas sobre las características disponibles o necesitas ayuda para elegir el plan correcto, 
           no dudes en contactarnos. Estamos aquí para ayudarte a encontrar el plan perfecto para tu negocio.
         </p>

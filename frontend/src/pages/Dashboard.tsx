@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardApi } from '../services/api';
+import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface DashboardStats {
   todayAppointments: number;
@@ -52,19 +54,56 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  const copyBookingUrl = () => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-AR', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const copyBookingUrl = async () => {
     if (business) {
       const url = `${window.location.origin}/book/${business.slug}`;
-      navigator.clipboard.writeText(url);
-      // TODO: Mostrar toast de confirmación
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('URL de reservas copiada al portapapeles');
+      } catch (error) {
+        toast.error('Error al copiar la URL');
+      }
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED':
+        return 'bg-blue-100 text-blue-800';
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800';
+      case 'NO_SHOW':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      CONFIRMED: 'Confirmada',
+      COMPLETED: 'Completada',
+      CANCELLED: 'Cancelada',
+      NO_SHOW: 'No asistió'
+    };
+    return labels[status as keyof typeof labels] || status;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="section-container section-padding">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando dashboard...</p>
         </div>
       </div>
@@ -72,157 +111,211 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div>
-      {/* Bienvenida */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header de bienvenida */}
+      <div className="text-center sm:text-left">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           ¡Bienvenido de vuelta! 👋
         </h1>
-        <p className="mt-1 text-gray-600">
-          Aquí tienes un resumen de tu negocio
+        <p className="mt-2 text-gray-600">
+          Aquí tienes un resumen de tu negocio <span className="font-medium">{business?.name}</span>
         </p>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="card">
-          <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
-                  📅
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Turnos Hoy</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats?.todayAppointments || 0}
-                </p>
-              </div>
+      {/* URL de reservas públicas */}
+      {business && (
+        <div className="info-card">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Enlace de Reservas Públicas
+              </h3>
+              <p className="text-sm text-blue-800 break-all">
+                {window.location.origin}/book/{business.slug}
+              </p>
+            </div>
+            <button
+              onClick={copyBookingUrl}
+              className="btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copiar URL</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Estadísticas principales */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Turnos Hoy</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {stats?.todayAppointments || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {new Date().toLocaleDateString('es-AR')}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+              <Calendar className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-secondary-100 rounded-lg flex items-center justify-center">
-                  👥
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Clientes</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats?.totalClients || 0}
-                </p>
-              </div>
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Clientes</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {stats?.totalClients || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Registrados</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+              <Users className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  💰
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Ingresos Mes</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {formatCurrency(stats?.monthRevenue || 0)}
-                </p>
-              </div>
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Ingresos Mes</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                {formatCurrency(stats?.monthRevenue || 0)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {new Date().toLocaleDateString('es-AR', { month: 'long' })}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+              <DollarSign className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  ⚙️
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Servicios</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats?.totalServices || 0}
-                </p>
-              </div>
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Servicios</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {stats?.totalServices || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Activos</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+              <Settings className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Acciones Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Link to="/dashboard/appointments" className="card hover:shadow-md transition-shadow">
-          <div className="card-body text-center">
-            <div className="text-3xl mb-2">📝</div>
-            <h3 className="font-medium text-gray-900">Nuevo Turno</h3>
-            <p className="text-sm text-gray-600">Agendar cita</p>
-          </div>
-        </Link>
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <Plus className="w-5 h-5 mr-2 text-purple-600" />
+          Acciones Rápidas
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link 
+            to="/dashboard/appointments" 
+            className="card-modern hover-lift text-center group"
+          >
+            <div className="card-body">
+              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">📝</div>
+              <h3 className="font-semibold text-gray-900 mb-1">Nuevo Turno</h3>
+              <p className="text-sm text-gray-600">Agendar cita</p>
+            </div>
+          </Link>
 
-        <Link to="/dashboard/services" className="card hover:shadow-md transition-shadow">
-          <div className="card-body text-center">
-            <div className="text-3xl mb-2">⚙️</div>
-            <h3 className="font-medium text-gray-900">Servicios</h3>
-            <p className="text-sm text-gray-600">Gestionar servicios</p>
-          </div>
-        </Link>
+          <Link 
+            to="/dashboard/services" 
+            className="card-modern hover-lift text-center group"
+          >
+            <div className="card-body">
+              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">⚙️</div>
+              <h3 className="font-semibold text-gray-900 mb-1">Servicios</h3>
+              <p className="text-sm text-gray-600">Gestionar servicios</p>
+            </div>
+          </Link>
 
-        <Link to="/dashboard/clients" className="card hover:shadow-md transition-shadow">
-          <div className="card-body text-center">
-            <div className="text-3xl mb-2">👥</div>
-            <h3 className="font-medium text-gray-900">Clientes</h3>
-            <p className="text-sm text-gray-600">Ver clientes</p>
-          </div>
-        </Link>
+          <Link 
+            to="/dashboard/clients" 
+            className="card-modern hover-lift text-center group"
+          >
+            <div className="card-body">
+              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">👥</div>
+              <h3 className="font-semibold text-gray-900 mb-1">Clientes</h3>
+              <p className="text-sm text-gray-600">Ver clientes</p>
+            </div>
+          </Link>
 
-        <Link to="/dashboard/reports" className="card hover:shadow-md transition-shadow">
-          <div className="card-body text-center">
-            <div className="text-3xl mb-2">📊</div>
-            <h3 className="font-medium text-gray-900">Reportes</h3>
-            <p className="text-sm text-gray-600">Ver estadísticas</p>
-          </div>
-        </Link>
+          <Link 
+            to="/dashboard/reports" 
+            className="card-modern hover-lift text-center group"
+          >
+            <div className="card-body">
+              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">📊</div>
+              <h3 className="font-semibold text-gray-900 mb-1">Reportes</h3>
+              <p className="text-sm text-gray-600">Ver estadísticas</p>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Próximos Turnos */}
       <div className="card">
         <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Próximos Turnos</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Próximos Turnos</h2>
+            <Link 
+              to="/dashboard/appointments" 
+              className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+            >
+              Ver todos
+            </Link>
+          </div>
         </div>
         <div className="card-body">
           {stats?.upcomingAppointments && stats.upcomingAppointments.length > 0 ? (
             <div className="space-y-4">
-              {stats.upcomingAppointments.map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
+              {stats.upcomingAppointments.slice(0, 5).map((appointment) => (
+                <div 
+                  key={appointment.id} 
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <div className="flex items-center space-x-4 flex-1 min-w-0">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary-600">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-semibold text-purple-600">
                           {appointment.clientName.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{appointment.clientName}</p>
-                      <p className="text-sm text-gray-600">{appointment.serviceName}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {appointment.clientName}
+                      </p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {appointment.serviceName}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">
-                      {formatTime(appointment.startTime)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(appointment.startTime).toLocaleDateString('es-AR')}
-                    </p>
+                  <div className="flex items-center space-x-3 flex-shrink-0">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-sm font-medium text-gray-900">
+                        {formatTime(appointment.startTime)}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {formatDate(appointment.startTime)}
+                      </p>
+                    </div>
+                    <span className={`badge ${getStatusColor(appointment.status)} text-xs`}>
+                      {getStatusLabel(appointment.status)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -230,39 +323,49 @@ const Dashboard: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <div className="text-gray-400 text-4xl mb-4">📅</div>
-              <p className="text-gray-600">No hay turnos próximos</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Los nuevos turnos aparecerán aquí
-              </p>
+              <p className="text-gray-600 mb-4">No hay turnos próximos programados</p>
+              <Link to="/dashboard/appointments" className="btn-primary">
+                Programar Turno
+              </Link>
             </div>
           )}
         </div>
       </div>
 
-      {/* URL Pública */}
-      {business && (
-        <div className="mt-8 card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">Tu URL de Reservas</h2>
-          </div>
-          <div className="card-body">
-            <p className="text-sm text-gray-600 mb-2">
-              Comparte esta URL para que tus clientes puedan reservar turnos online:
-            </p>
-            <div className="flex items-center space-x-2">
-              <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm">
-                {window.location.origin}/book/{business.slug}
-              </code>
-              <button 
-                onClick={copyBookingUrl}
-                className="btn-primary text-sm"
-              >
-                Copiar
-              </button>
-            </div>
-          </div>
+      {/* Links útiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div className="info-card">
+          <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+            <span className="text-lg mr-2">💡</span>
+            Consejo del día
+          </h3>
+          <p className="text-sm text-blue-800 leading-relaxed">
+            Mantén actualizados los horarios de trabajo de tu equipo para optimizar la gestión de turnos.
+          </p>
+          <Link 
+            to="/dashboard/settings" 
+            className="text-sm text-blue-700 hover:text-blue-800 font-medium mt-2 inline-block"
+          >
+            Configurar horarios →
+          </Link>
         </div>
-      )}
+
+        <div className="success-card">
+          <h3 className="text-sm font-medium text-green-900 mb-2 flex items-center">
+            <span className="text-lg mr-2">🚀</span>
+            Mejora tu negocio
+          </h3>
+          <p className="text-sm text-green-800 leading-relaxed">
+            Revisa los reportes para identificar oportunidades de crecimiento y optimización.
+          </p>
+          <Link 
+            to="/dashboard/reports" 
+            className="text-sm text-green-700 hover:text-green-800 font-medium mt-2 inline-block"
+          >
+            Ver reportes →
+          </Link>
+        </div>
+      </div>
     </div>
   );
 };
