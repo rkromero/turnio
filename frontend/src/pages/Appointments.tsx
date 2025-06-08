@@ -151,11 +151,10 @@ const Appointments: React.FC = () => {
               notes
             };
 
-            await fetch('https://turnio-backend-production.up.railway.app/api/client-scoring/event', {
+            await fetch('https://turnio-backend-production.up.railway.app/api/client-scoring/event/auto', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify(scoringData)
             });

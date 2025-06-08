@@ -88,6 +88,66 @@ const recordClientEvent = async (req, res) => {
   }
 };
 
+// Registrar evento de cliente - PÚBLICO (para registro automático)
+const recordClientEventPublic = async (req, res) => {
+  try {
+    const { email, phone, clientName, appointmentId, eventType, notes } = req.body;
+    
+    if (!appointmentId || !eventType) {
+      return res.status(400).json({
+        success: false,
+        message: 'appointmentId y eventType son requeridos'
+      });
+    }
+    
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere email o teléfono del cliente'
+      });
+    }
+    
+    const validEventTypes = ['ATTENDED', 'NO_SHOW', 'CANCELLED_LATE', 'CANCELLED_GOOD'];
+    if (!validEventTypes.includes(eventType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de evento inválido'
+      });
+    }
+    
+    // Para el endpoint público, usamos businessId genérico ya que el scoring es global
+    const updatedClient = await clientScoringService.recordClientEvent(
+      email,
+      phone,
+      clientName,
+      'public-auto', // businessId genérico para eventos automáticos
+      appointmentId,
+      eventType,
+      notes
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        clientScore: {
+          starRating: updatedClient.starRating,
+          totalBookings: updatedClient.totalBookings,
+          attendedCount: updatedClient.attendedCount,
+          noShowCount: updatedClient.noShowCount
+        },
+        message: 'Evento registrado exitosamente'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error registrando evento del cliente (público):', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 // Obtener estadísticas generales del scoring (para dashboard admin)
 const getScoringStats = async (req, res) => {
   try {
@@ -139,6 +199,7 @@ const recalculateClientScore = async (req, res) => {
 module.exports = {
   getClientScore,
   recordClientEvent,
+  recordClientEventPublic,
   getScoringStats,
   recalculateClientScore
 }; 
