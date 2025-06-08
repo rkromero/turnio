@@ -70,7 +70,11 @@ const getDashboardStats = async (req, res) => {
         },
         include: {
           client: {
-            select: { name: true }
+            select: { 
+              name: true,
+              email: true,
+              phone: true
+            }
           },
           service: {
             select: { name: true }
@@ -96,6 +100,8 @@ const getDashboardStats = async (req, res) => {
         upcomingAppointments: upcomingAppointments.map(appointment => ({
           id: appointment.id,
           clientName: appointment.client.name,
+          clientEmail: appointment.client.email,
+          clientPhone: appointment.client.phone,
           serviceName: appointment.service.name,
           startTime: appointment.startTime,
           status: appointment.status
