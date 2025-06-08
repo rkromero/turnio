@@ -122,11 +122,11 @@ async function startServer() {
     const appointmentRoutes = require('./routes/appointments');
     const serviceRoutes = require('./routes/services');
     const dashboardRoutes = require('./routes/dashboard');
-    const clientRoutes = require('./routes/clients');
-    const reportRoutes = require('./routes/reports');
-    const configRoutes = require('./routes/config');
-    const userRoutes = require('./routes/users');
-    const planRoutes = require('./routes/plans');
+    const clientRoutes = require('./routes/clientRoutes');
+    const reportRoutes = require('./routes/reportRoutes');
+    const configRoutes = require('./routes/configRoutes');
+    const userRoutes = require('./routes/userRoutes');
+    const planRoutes = require('./routes/planRoutes');
     const reviewRoutes = require('./routes/reviewRoutes');
 
     // Rutas de salud
