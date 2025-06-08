@@ -15,7 +15,8 @@ import {
   DollarSign,
   MoreVertical,
   Filter,
-  X
+  X,
+  Edit3
 } from 'lucide-react';
 
 interface AppointmentWithScoring extends Appointment {
@@ -463,7 +464,11 @@ const Appointments: React.FC = () => {
             {isMobile ? (
               <div className="space-y-3">
                 {appointments.map((appointment) => (
-                  <div key={appointment.id} className="card-mobile">
+                  <div 
+                    key={appointment.id} 
+                    className="card-mobile cursor-pointer" 
+                    onClick={() => handleEditAppointment(appointment)}
+                  >
                     <div className="p-4">
                       {/* Header de la card */}
                       <div className="flex items-start justify-between mb-3">
@@ -488,7 +493,14 @@ const Appointments: React.FC = () => {
                              appointment.status === 'COMPLETED' ? 'Comp.' :
                              appointment.status === 'CANCELLED' ? 'Canc.' : 'No'}
                           </span>
-                          <button className="p-1 text-gray-400 hover:text-gray-600">
+                          <Edit3 className="w-4 h-4 text-gray-400" />
+                          <button 
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Aquí podrías abrir un menú contextual si lo necesitas
+                            }}
+                          >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
@@ -548,13 +560,19 @@ const Appointments: React.FC = () => {
                       {appointment.status === 'CONFIRMED' && (
                         <div className="mt-4 flex space-x-2">
                           <button
-                            onClick={() => handleStatusChange(appointment.id, 'COMPLETED')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(appointment.id, 'COMPLETED');
+                            }}
                             className="flex-1 bg-green-50 text-green-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors"
                           >
                             Completar
                           </button>
                           <button
-                            onClick={() => handleStatusChange(appointment.id, 'NO_SHOW')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(appointment.id, 'NO_SHOW');
+                            }}
                             className="flex-1 bg-yellow-50 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-yellow-100 transition-colors"
                           >
                             No asistió
@@ -647,13 +665,19 @@ const Appointments: React.FC = () => {
                                 {appointment.status === 'CONFIRMED' && (
                                   <>
                                     <button
-                                      onClick={() => handleStatusChange(appointment.id, 'COMPLETED')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(appointment.id, 'COMPLETED');
+                                      }}
                                       className="text-green-600 hover:text-green-900"
                                     >
                                       Completar
                                     </button>
                                     <button
-                                      onClick={() => handleStatusChange(appointment.id, 'NO_SHOW')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(appointment.id, 'NO_SHOW');
+                                      }}
                                       className="text-yellow-600 hover:text-yellow-900"
                                     >
                                       No asistió
@@ -661,7 +685,10 @@ const Appointments: React.FC = () => {
                                   </>
                                 )}
                                 <button
-                                  onClick={() => handleEditAppointment(appointment)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditAppointment(appointment);
+                                  }}
                                   className="text-purple-600 hover:text-purple-900"
                                 >
                                   Editar
