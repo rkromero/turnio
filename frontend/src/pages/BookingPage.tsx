@@ -48,6 +48,7 @@ const BookingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [bookingMode, setBookingMode] = useState<'service' | 'professional'>('service');
+  const [dateAvailability, setDateAvailability] = useState<Array<{ date: string; available: boolean; slotsCount: number; reason?: string }>>([]);
 
   const [booking, setBooking] = useState<BookingState>({
     business: null,
@@ -82,6 +83,12 @@ const BookingPage: React.FC = () => {
       loadProfessionalServices();
     }
   }, [booking.selectedProfessional, bookingMode]);
+
+  useEffect(() => {
+    if (bookingMode === 'professional' && booking.selectedProfessional && booking.selectedService) {
+      loadProfessionalAvailability();
+    }
+  }, [booking.selectedProfessional, booking.selectedService, bookingMode]);
 
   const loadBusinessData = async () => {
     try {
@@ -167,6 +174,25 @@ const BookingPage: React.FC = () => {
     } catch (error) {
       console.error('Error cargando profesionales:', error);
       toast.error('Error cargando profesionales disponibles');
+    }
+  };
+
+  const loadProfessionalAvailability = async () => {
+    if (!booking.selectedProfessional || !booking.selectedService) return;
+    
+    try {
+      const availabilityResponse = await bookingService.getProfessionalAvailability(
+        businessSlug!,
+        booking.selectedProfessional,
+        booking.selectedService.id
+      );
+      
+      if (availabilityResponse.success) {
+        setDateAvailability(availabilityResponse.data.availability);
+      }
+    } catch (error) {
+      console.error('Error cargando disponibilidad del profesional:', error);
+      toast.error('Error cargando disponibilidad');
     }
   };
 
@@ -337,6 +363,8 @@ const BookingPage: React.FC = () => {
       date.setDate(today.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       
+      const availabilityInfo = dateAvailability.find(d => d.date === dateString);
+      
       dates.push({
         value: dateString,
         label: date.toLocaleDateString('es-ES', { 
@@ -344,7 +372,10 @@ const BookingPage: React.FC = () => {
           day: 'numeric', 
           month: 'short' 
         }),
-        isToday: i === 0
+        isToday: i === 0,
+        available: availabilityInfo?.available ?? true,
+        slotsCount: availabilityInfo?.slotsCount ?? 0,
+        reason: availabilityInfo?.reason
       });
     }
     
@@ -610,7 +641,7 @@ const BookingPage: React.FC = () => {
               {bookingMode === 'service' && (
                 <div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                    {generateDateOptions().map((dateOption) => (
+                    {generateDateOptions().filter(dateOption => bookingMode === 'service' || (bookingMode === 'professional' && dateOption.available)).map((dateOption) => (
                       <button
                         key={dateOption.value}
                         onClick={() => handleDateSelect(dateOption.value)}
@@ -712,25 +743,57 @@ const BookingPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className="flex justify-center items-center space-x-6 mb-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span>Disponible</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                  <span>Pocos horarios</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                  <span>Sin disponibilidad</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                {generateDateOptions().map((dateOption) => (
-                  <button
-                    key={dateOption.value}
-                    onClick={() => handleDateSelect(dateOption.value)}
-                    className={`
-                      p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px]
-                      ${booking.selectedDate === dateOption.value
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
-                      }
-                    `}
-                  >
-                    <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
-                    {dateOption.isToday && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                    )}
-                  </button>
-                ))}
+                {generateDateOptions().filter(dateOption => {
+                  if (bookingMode === 'professional') {
+                    return dateOption.available;
+                  }
+                  return true;
+                }).map((dateOption) => {
+                  let colorClass = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
+                  
+                  if (booking.selectedDate === dateOption.value) {
+                    colorClass = 'bg-blue-600 text-white shadow-md';
+                  } else if (dateOption.available && dateOption.slotsCount > 3) {
+                    colorClass = 'bg-green-50 hover:bg-green-100 text-green-800 border-2 border-green-300';
+                  } else if (dateOption.available && dateOption.slotsCount > 0) {
+                    colorClass = 'bg-yellow-50 hover:bg-yellow-100 text-yellow-800 border-2 border-yellow-300';
+                  }
+
+                  return (
+                    <button
+                      key={dateOption.value}
+                      onClick={() => handleDateSelect(dateOption.value)}
+                      className={`p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] ${colorClass}`}
+                      title={`${dateOption.slotsCount} horarios disponibles`}
+                    >
+                      <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
+                      {dateOption.available && dateOption.slotsCount > 0 && (
+                        <div className="text-xs mt-1 opacity-75">
+                          {dateOption.slotsCount} horarios
+                        </div>
+                      )}
+                      {dateOption.isToday && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {booking.selectedDate && (
