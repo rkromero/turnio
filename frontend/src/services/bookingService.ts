@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ProfessionalsResponse, BookingFormData, BookingResponse, BookingData } from '../types/booking';
+import { ProfessionalsResponse, BookingFormData, BookingResponse, BookingData, Service, Business } from '../types/booking';
 
 // Usar la misma configuración que api.ts
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
@@ -17,10 +17,26 @@ export const bookingService = {
     return response.data;
   },
 
-  // Obtener servicios del negocio
-  async getServices(businessSlug: string) {
+  // Obtener todos los profesionales del negocio (para modo "por profesional")
+  async getAllProfessionals(businessSlug: string): Promise<ProfessionalsResponse> {
     const response = await axios.get(
-      `${BASE_URL}/api/services/public/${businessSlug}`
+      `${BASE_URL}/api/appointments/public/${businessSlug}/all-professionals`
+    );
+    return response.data;
+  },
+
+  // Obtener servicios que puede realizar un profesional específico
+  async getProfessionalServices(businessSlug: string, professionalId: string): Promise<{ success: boolean; data: { serviceIds: string[] } }> {
+    const response = await axios.get(
+      `${BASE_URL}/api/appointments/public/${businessSlug}/professional/${professionalId}/services`
+    );
+    return response.data;
+  },
+
+  // Obtener servicios del negocio
+  async getServices(businessSlug: string): Promise<{ success: boolean; business: Business; services: Service[] }> {
+    const response = await axios.get(
+      `${BASE_URL}/api/appointments/public/${businessSlug}/services`
     );
     return response.data;
   },

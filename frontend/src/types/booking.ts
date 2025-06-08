@@ -26,6 +26,8 @@ export interface Professional {
   avatar?: string;
   phone?: string;
   role: string;
+  specialties?: string[];
+  rating?: number;
   availableSlots?: TimeSlot[];
   workingToday?: boolean;
   slotsCount?: number;

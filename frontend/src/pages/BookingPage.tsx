@@ -47,6 +47,7 @@ const BookingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [bookingMode, setBookingMode] = useState<'service' | 'professional'>('service');
 
   const [booking, setBooking] = useState<BookingState>({
     business: null,
@@ -70,12 +71,19 @@ const BookingPage: React.FC = () => {
     }
   }, [businessSlug]);
 
-  // Cargar profesionales cuando se selecciona servicio y fecha
+  // Cargar profesionales cuando se selecciona servicio y fecha (modo servicio)
   useEffect(() => {
-    if (booking.selectedService && booking.selectedDate) {
+    if (bookingMode === 'service' && booking.selectedService && booking.selectedDate) {
       loadProfessionals();
     }
-  }, [booking.selectedService, booking.selectedDate]);
+  }, [booking.selectedService, booking.selectedDate, bookingMode]);
+
+  // Cargar servicios cuando se selecciona profesional (modo profesional)
+  useEffect(() => {
+    if (bookingMode === 'professional' && booking.selectedProfessional) {
+      loadProfessionalServices();
+    }
+  }, [booking.selectedProfessional, bookingMode]);
 
   const loadBusinessData = async () => {
     try {
@@ -91,11 +99,57 @@ const BookingPage: React.FC = () => {
           services: servicesResponse.services
         }));
       }
+
+      // También cargar todos los profesionales para el modo "por profesional"
+      await loadAllProfessionals();
     } catch (error) {
       console.error('Error cargando datos del negocio:', error);
       setError('No se pudo cargar la información del negocio');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Cargar todos los profesionales (para el modo "por profesional")
+  const loadAllProfessionals = async () => {
+    try {
+      const professionalsResponse = await bookingService.getAllProfessionals(businessSlug!);
+      
+      if (professionalsResponse.success) {
+        setBooking(prev => ({
+          ...prev,
+          professionals: professionalsResponse.data.professionals
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando profesionales:', error);
+    }
+  };
+
+  // Cargar servicios que ofrece un profesional específico
+  const loadProfessionalServices = async () => {
+    if (!booking.selectedProfessional) return;
+    
+    try {
+      const servicesResponse = await bookingService.getProfessionalServices(
+        businessSlug!,
+        booking.selectedProfessional
+      );
+      
+      if (servicesResponse.success) {
+        // Filtrar servicios que el profesional puede realizar
+        const professionalServices = booking.services.filter(service =>
+          servicesResponse.data.serviceIds.includes(service.id)
+        );
+        
+        setBooking(prev => ({
+          ...prev,
+          services: professionalServices
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando servicios del profesional:', error);
+      toast.error('Error cargando servicios disponibles');
     }
   };
 
@@ -119,6 +173,25 @@ const BookingPage: React.FC = () => {
     } catch (error) {
       console.error('Error cargando profesionales:', error);
       toast.error('Error cargando profesionales disponibles');
+    }
+  };
+
+  const handleModeChange = (mode: 'service' | 'professional') => {
+    setBookingMode(mode);
+    // Limpiar selecciones cuando se cambia de modo
+    setBooking(prev => ({
+      ...prev,
+      selectedService: null,
+      selectedProfessional: null,
+      selectedDate: '',
+      selectedTime: null,
+      professionals: []
+    }));
+    // Recargar datos según el nuevo modo
+    if (mode === 'service') {
+      loadBusinessData();
+    } else {
+      loadAllProfessionals();
     }
   };
 
@@ -210,9 +283,18 @@ const BookingPage: React.FC = () => {
   };
 
   const goToNextStep = () => {
-    if (step === 1 && booking.selectedService) {
+    if (step === 1 && ((bookingMode === 'service' && booking.selectedService) || (bookingMode === 'professional' && booking.selectedProfessional))) {
       setStep(2);
-    } else if (step === 2 && booking.selectedDate) {
+    } else if (step === 2) {
+      // En modo servicio: fecha seleccionada → ir a step 3
+      // En modo profesional: servicio seleccionado → ir a step 2.5 (fecha)
+      if (bookingMode === 'service' && booking.selectedDate) {
+        setStep(3);
+      } else if (bookingMode === 'professional' && booking.selectedService) {
+        setStep(2.5);
+      }
+    } else if (step === 2.5 && booking.selectedDate) {
+      // Paso intermedio para modo profesional: fecha seleccionada → ir a step 3
       setStep(3);
     } else if (step === 3 && (booking.selectedProfessional !== null || booking.selectedTime)) {
       setStep(4);
@@ -220,7 +302,9 @@ const BookingPage: React.FC = () => {
   };
 
   const goBack = () => {
-    if (step > 1) {
+    if (step === 2.5) {
+      setStep(2);
+    } else if (step > 1) {
       setStep(step - 1);
     }
   };
@@ -353,53 +437,156 @@ const BookingPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           
-          {/* Step 1: Service Selection */}
+          {/* Step 1: Service/Professional Selection */}
           {step === 1 && (
             <div className="p-4 md:p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">¿Qué servicio necesitas?</h2>
-                <p className="text-gray-600 text-sm md:text-base">Selecciona el servicio que más te convenga</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">¿Cómo prefieres reservar?</h2>
+                <p className="text-gray-600 text-sm md:text-base">Elige la forma que más te convenga</p>
               </div>
 
-              <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
-                {booking.services.map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => handleServiceSelect(service)}
-                    className={`
-                      p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
-                      ${booking.selectedService?.id === service.id
-                        ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                      }
-                    `}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-base md:text-lg">{service.name}</h3>
-                        {service.description && (
-                          <p className="text-gray-600 text-sm md:text-base mt-1">{service.description}</p>
-                        )}
-                        <div className="flex items-center space-x-4 mt-3">
-                          <span className="text-blue-600 font-medium text-sm md:text-base">
-                            {formatCurrency(service.price)}
-                          </span>
-                          <span className="text-gray-500 text-sm md:text-base">
-                            {formatDuration(service.duration)}
-                          </span>
+              {/* Pestañas de modo de reserva */}
+              <div className="flex bg-gray-100 rounded-xl p-1 mb-8 max-w-md mx-auto">
+                <button
+                  onClick={() => handleModeChange('service')}
+                  className={`
+                    flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200
+                    ${bookingMode === 'service'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                    }
+                  `}
+                >
+                  Por Servicio
+                </button>
+                <button
+                  onClick={() => handleModeChange('professional')}
+                  className={`
+                    flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200
+                    ${bookingMode === 'professional'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                    }
+                  `}
+                >
+                  Por Profesional
+                </button>
+              </div>
+
+              {/* Modo: Por Servicio */}
+              {bookingMode === 'service' && (
+                <div>
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">¿Qué servicio necesitas?</h3>
+                    <p className="text-gray-600 text-sm">Selecciona el servicio que más te convenga</p>
+                  </div>
+
+                  <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
+                    {booking.services.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => handleServiceSelect(service)}
+                        className={`
+                          p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
+                          ${booking.selectedService?.id === service.id
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-base md:text-lg">{service.name}</h3>
+                            {service.description && (
+                              <p className="text-gray-600 text-sm md:text-base mt-1">{service.description}</p>
+                            )}
+                            <div className="flex items-center space-x-4 mt-3">
+                              <span className="text-blue-600 font-medium text-sm md:text-base">
+                                {formatCurrency(service.price)}
+                              </span>
+                              <span className="text-gray-500 text-sm md:text-base">
+                                {formatDuration(service.duration)}
+                              </span>
+                            </div>
+                          </div>
+                          {booking.selectedService?.id === service.id && (
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {booking.selectedService?.id === service.id && (
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                          <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
 
-              {booking.selectedService && (
+              {/* Modo: Por Profesional */}
+              {bookingMode === 'professional' && (
+                <div>
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">¿Con qué profesional prefieres?</h3>
+                    <p className="text-gray-600 text-sm">Selecciona tu profesional de confianza</p>
+                  </div>
+
+                  <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
+                    {booking.professionals.map((professional) => (
+                      <div
+                        key={professional.id}
+                        onClick={() => setBooking(prev => ({ ...prev, selectedProfessional: professional.id }))}
+                        className={`
+                          p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
+                          ${booking.selectedProfessional === professional.id
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {professional.avatar ? (
+                              <img
+                                src={professional.avatar}
+                                alt={professional.name}
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-600 font-medium text-lg md:text-xl">
+                                  {professional.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 text-base md:text-lg">{professional.name}</h3>
+                              {professional.specialties && professional.specialties.length > 0 && (
+                                <p className="text-gray-600 text-sm md:text-base mt-1">
+                                  {professional.specialties.join(', ')}
+                                </p>
+                              )}
+                              {professional.rating && (
+                                <div className="flex items-center mt-2">
+                                  <span className="text-yellow-500 text-sm">⭐</span>
+                                  <span className="text-gray-600 text-sm ml-1">{professional.rating}/5</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {booking.selectedProfessional === professional.id && (
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Botón continuar */}
+              {((bookingMode === 'service' && booking.selectedService) || 
+                (bookingMode === 'professional' && booking.selectedProfessional)) && (
                 <div className="text-center mt-8">
                   <button
                     onClick={goToNextStep}
@@ -412,7 +599,7 @@ const BookingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 2: Date Selection */}
+          {/* Step 2: Date/Service Selection */}
           {step === 2 && (
             <div className="p-4 md:p-8">
               <div className="flex items-center mb-6">
@@ -420,7 +607,126 @@ const BookingPage: React.FC = () => {
                   <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Cuándo te conviene?</h2>
+                  {bookingMode === 'service' ? (
+                    <>
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Cuándo te conviene?</h2>
+                      <p className="text-gray-600 text-sm md:text-base">
+                        Servicio: {booking.selectedService?.name}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Qué servicio necesitas?</h2>
+                      <p className="text-gray-600 text-sm md:text-base">
+                        Profesional: {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Modo servicio: Selección de fecha */}
+              {bookingMode === 'service' && (
+                <div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+                    {generateDateOptions().map((dateOption) => (
+                      <button
+                        key={dateOption.value}
+                        onClick={() => handleDateSelect(dateOption.value)}
+                        className={`
+                          p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px]
+                          ${booking.selectedDate === dateOption.value
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                          }
+                        `}
+                      >
+                        <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
+                        {dateOption.isToday && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {booking.selectedDate && (
+                    <div className="text-center">
+                      <button
+                        onClick={goToNextStep}
+                        className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modo profesional: Selección de servicio */}
+              {bookingMode === 'professional' && (
+                <div>
+                  <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
+                    {booking.services.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => handleServiceSelect(service)}
+                        className={`
+                          p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
+                          ${booking.selectedService?.id === service.id
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-base md:text-lg">{service.name}</h3>
+                            {service.description && (
+                              <p className="text-gray-600 text-sm md:text-base mt-1">{service.description}</p>
+                            )}
+                            <div className="flex items-center space-x-4 mt-3">
+                              <span className="text-blue-600 font-medium text-sm md:text-base">
+                                {formatCurrency(service.price)}
+                              </span>
+                              <span className="text-gray-500 text-sm md:text-base">
+                                {formatDuration(service.duration)}
+                              </span>
+                            </div>
+                          </div>
+                          {booking.selectedService?.id === service.id && (
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {booking.selectedService && (
+                    <div className="text-center mt-8">
+                      <button
+                        onClick={goToNextStep}
+                        className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2.5: Date Selection for Professional Mode */}
+          {step === 2.5 && (
+            <div className="p-4 md:p-8">
+              <div className="flex items-center mb-6">
+                <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                  <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Qué fecha te conviene?</h2>
                   <p className="text-gray-600 text-sm md:text-base">
                     Servicio: {booking.selectedService?.name}
                   </p>
@@ -461,7 +767,7 @@ const BookingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 3: Professional Selection */}
+          {/* Step 3: Professional/Time Selection */}
           {step === 3 && (
             <div className="p-4 md:p-8">
               <div className="flex items-center mb-6 px-0">
@@ -469,27 +775,39 @@ const BookingPage: React.FC = () => {
                   <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
-                  <p className="text-gray-600 text-sm md:text-base">
-                    Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
-                      weekday: 'long', day: 'numeric', month: 'long' 
-                    })}
-                  </p>
+                  {bookingMode === 'service' ? (
+                    <>
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
+                      <p className="text-gray-600 text-sm md:text-base">
+                        Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
+                          weekday: 'long', day: 'numeric', month: 'long' 
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona horario</h2>
+                      <p className="text-gray-600 text-sm md:text-base">
+                        {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name} - {booking.selectedService?.name}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
               <ProfessionalSelector
-                professionals={booking.professionals}
+                professionals={bookingMode === 'service' ? booking.professionals : booking.professionals.filter(p => p.id === booking.selectedProfessional)}
                 selectedProfessional={booking.selectedProfessional}
-                onProfessionalSelect={handleProfessionalSelect}
+                onProfessionalSelect={bookingMode === 'service' ? handleProfessionalSelect : () => {}}
                 selectedDate={booking.selectedDate}
                 selectedTime={booking.selectedTime}
                 onTimeSelect={handleTimeSelect}
                 showTimeSlots={true}
                 urgency={booking.urgency}
+                hideSelection={bookingMode === 'professional'}
               />
 
-              {(booking.selectedProfessional !== null || booking.selectedTime) && (
+              {booking.selectedTime && (
                 <div className="mt-8 text-center px-4">
                   <button
                     onClick={goToNextStep}

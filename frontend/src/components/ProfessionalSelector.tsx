@@ -12,6 +12,7 @@ interface ProfessionalSelectorProps {
   onTimeSelect: (time: string) => void;
   showTimeSlots: boolean;
   urgency?: UrgencyStats;
+  hideSelection?: boolean;
 }
 
 const ProfessionalSelector: React.FC<ProfessionalSelectorProps> = ({
@@ -22,7 +23,8 @@ const ProfessionalSelector: React.FC<ProfessionalSelectorProps> = ({
   selectedTime,
   onTimeSelect,
   showTimeSlots,
-  urgency
+  urgency,
+  hideSelection = false
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -47,10 +49,13 @@ const ProfessionalSelector: React.FC<ProfessionalSelectorProps> = ({
       {/* Header */}
       <div className="text-center px-4">
         <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2">
-          Elige tu profesional
+          {hideSelection ? 'Horarios disponibles' : 'Elige tu profesional'}
         </h3>
         <p className="text-gray-600 text-sm md:text-base">
-          Selecciona un profesional de tu preferencia o déjanos asignarte uno automáticamente
+          {hideSelection 
+            ? 'Selecciona el horario que más te convenga'
+            : 'Selecciona un profesional de tu preferencia o déjanos asignarte uno automáticamente'
+          }
         </p>
       </div>
 
@@ -61,40 +66,42 @@ const ProfessionalSelector: React.FC<ProfessionalSelectorProps> = ({
         </div>
       )}
 
-      {/* Opción "Cualquier profesional" */}
-      <div className="px-4">
-        <div 
-          onClick={() => onProfessionalSelect(null)}
-          className={`
-            relative p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
-            ${selectedProfessional === null 
-              ? 'border-blue-500 bg-blue-50 shadow-md' 
-              : 'border-gray-200 bg-white hover:border-gray-300'
-            }
-          `}
-        >
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <Star className="w-8 h-8 md:w-10 md:h-10 text-white" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-medium text-gray-900 text-base md:text-lg">Cualquier profesional</h4>
-              <p className="text-sm md:text-base text-gray-600 mt-1">
-                Te asignaremos automáticamente el mejor profesional disponible
-              </p>
-              <div className="flex items-center mt-2 text-xs md:text-sm text-green-600">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                {professionals.filter(p => p.workingToday !== false).length} profesionales disponibles
+      {/* Opción "Cualquier profesional" - Solo visible si no está oculta la selección */}
+      {!hideSelection && (
+        <div className="px-4">
+          <div 
+            onClick={() => onProfessionalSelect(null)}
+            className={`
+              relative p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+              ${selectedProfessional === null 
+                ? 'border-blue-500 bg-blue-50 shadow-md' 
+                : 'border-gray-200 bg-white hover:border-gray-300'
+              }
+            `}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <Star className="w-8 h-8 md:w-10 md:h-10 text-white" />
               </div>
-            </div>
-            {selectedProfessional === null && (
-              <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500 flex items-center justify-center">
-                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900 text-base md:text-lg">Cualquier profesional</h4>
+                <p className="text-sm md:text-base text-gray-600 mt-1">
+                  Te asignaremos automáticamente el mejor profesional disponible
+                </p>
+                <div className="flex items-center mt-2 text-xs md:text-sm text-green-600">
+                  <Calendar className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                  {professionals.filter(p => p.workingToday !== false).length} profesionales disponibles
+                </div>
               </div>
-            )}
+              {selectedProfessional === null && (
+                <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Lista de profesionales */}
       <div className="px-4 space-y-4">
@@ -107,12 +114,14 @@ const ProfessionalSelector: React.FC<ProfessionalSelectorProps> = ({
             <div key={professional.id} className="space-y-3">
               {/* Tarjeta del profesional */}
               <div 
-                onClick={() => isWorkingToday ? onProfessionalSelect(professional.id) : null}
+                onClick={() => !hideSelection && isWorkingToday ? onProfessionalSelect(professional.id) : null}
                 className={`
                   relative p-4 md:p-6 rounded-xl border-2 transition-all duration-200
                   ${!isWorkingToday 
                     ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed' 
                     : isSelected 
+                      ? 'border-blue-500 bg-blue-50 shadow-md' + (hideSelection ? '' : ' cursor-pointer')
+                      : hideSelection 
                       ? 'border-blue-500 bg-blue-50 shadow-md cursor-pointer' 
                       : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md cursor-pointer'
                   }

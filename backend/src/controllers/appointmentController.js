@@ -787,11 +787,176 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
   return slots;
 }
 
+// Obtener todos los profesionales de un negocio (para modo "por profesional")
+const getAllProfessionals = async (req, res) => {
+  try {
+    const { businessSlug } = req.params;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      include: {
+        users: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            phone: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        business: {
+          id: business.id,
+          name: business.name,
+          slug: business.slug
+        },
+        professionals: business.users,
+        totalProfessionals: business.users.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo profesionales:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Obtener servicios que puede realizar un profesional específico
+const getProfessionalServices = async (req, res) => {
+  try {
+    const { businessSlug, professionalId } = req.params;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: {
+            id: true
+          }
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    // Verificar que el profesional pertenezca al negocio
+    const professional = await prisma.user.findFirst({
+      where: {
+        id: professionalId,
+        businessId: business.id,
+        isActive: true
+      }
+    });
+
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profesional no encontrado'
+      });
+    }
+
+    // Por ahora, devolvemos todos los servicios del negocio
+    // En el futuro se puede implementar una relación many-to-many User-Service
+    const serviceIds = business.services.map(service => service.id);
+
+    return res.json({
+      success: true,
+      data: {
+        serviceIds
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo servicios del profesional:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Obtener servicios del negocio
+const getBusinessServices = async (req, res) => {
+  try {
+    const { businessSlug } = req.params;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            duration: true,
+            price: true,
+            color: true,
+            isActive: true
+          }
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    return res.json({
+      success: true,
+      business: {
+        id: business.id,
+        name: business.name,
+        slug: business.slug
+      },
+      services: business.services
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo servicios:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getAppointments,
   createAppointment,
   updateAppointment,
   cancelAppointment,
   getAvailableSlots,
-  getAvailableProfessionals
+  getAvailableProfessionals,
+  getAllProfessionals,
+  getProfessionalServices,
+  getBusinessServices
 }; 
