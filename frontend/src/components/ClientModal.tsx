@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import type { Client } from '../types';
+import { useIsMobileSimple } from '../hooks/useIsMobile';
+import { 
+  X, 
+  ArrowLeft, 
+  User, 
+  Mail, 
+  Phone, 
+  FileText,
+  Check
+} from 'lucide-react';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -29,6 +39,8 @@ const ClientModal: React.FC<ClientModalProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const isMobile = useIsMobileSimple();
 
   useEffect(() => {
     if (client) {
@@ -47,17 +59,31 @@ const ClientModal: React.FC<ClientModalProps> = ({
       });
     }
     setErrors({});
+    setTouched({});
   }, [client, isOpen]);
+
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'name':
+        return !value.trim() ? 'El nombre es requerido' : '';
+      case 'email':
+        return value && !value.includes('@') ? 'Email inválido' : '';
+      default:
+        return '';
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es requerido';
-    }
+    // Validar campos requeridos
+    const nameError = validateField('name', formData.name);
+    if (nameError) newErrors.name = nameError;
 
-    if (formData.email && !formData.email.includes('@')) {
-      newErrors.email = 'Email inválido';
+    // Validar email si se proporciona
+    if (formData.email) {
+      const emailError = validateField('email', formData.email);
+      if (emailError) newErrors.email = emailError;
     }
 
     setErrors(newErrors);
@@ -93,125 +119,210 @@ const ClientModal: React.FC<ClientModalProps> = ({
       [name]: value
     }));
     
-    // Limpiar error del campo al escribir
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    // Validación en tiempo real
+    if (touched[name]) {
+      const error = validateField(name, value);
+      setErrors(prev => ({ 
+        ...prev, 
+        [name]: error 
+      }));
     }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const value = formData[field as keyof typeof formData];
+    const error = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: error }));
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {client ? 'Editar Cliente' : 'Nuevo Cliente'}
-          </h2>
-        </div>
+    <>
+      {/* Overlay */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-50"
+        onClick={onClose}
+      />
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-          {/* Nombre */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre Completo *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                errors.name ? 'border-red-500' : ''
-              }`}
-              placeholder="Nombre completo del cliente"
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                errors.email ? 'border-red-500' : ''
-              }`}
-              placeholder="cliente@email.com"
-            />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Teléfono */}
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              Teléfono
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="+54 9 11 1234-5678"
-            />
-          </div>
-
-          {/* Notas */}
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-              Notas adicionales
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Información adicional sobre el cliente..."
-            />
-          </div>
-        </form>
-
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secondary"
-            disabled={isLoading}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="btn-primary"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Guardando...
+      {/* Modal */}
+      <div className={`
+        fixed z-50 
+        ${isMobile 
+          ? 'inset-0 bg-white' 
+          : 'inset-0 flex items-center justify-center p-4'
+        }
+      `}>
+        <div className={`
+          ${isMobile 
+            ? 'h-full w-full flex flex-col' 
+            : 'bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden'
+          }
+        `}>
+          {/* Header */}
+          <div className={`
+            ${isMobile 
+              ? 'safe-area-top bg-white border-b border-gray-200 px-4 py-4 flex items-center sticky top-0 z-10' 
+              : 'px-6 py-4 border-b border-gray-200'
+            }
+          `}>
+            {isMobile ? (
+              <div className="flex items-center justify-between w-full">
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg touch-manipulation"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {client ? 'Editar Cliente' : 'Nuevo Cliente'}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg touch-manipulation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             ) : (
-              client ? 'Actualizar Cliente' : 'Crear Cliente'
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {client ? 'Editar Cliente' : 'Nuevo Cliente'}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             )}
-          </button>
+          </div>
+
+          {/* Content */}
+          <div className={`
+            ${isMobile 
+              ? 'flex-1 overflow-y-auto p-4' 
+              : 'p-6'
+            }
+          `}>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Nombre */}
+              <div>
+                <label className="label flex items-center">
+                  <User className="w-4 h-4 mr-2 text-purple-600" />
+                  Nombre Completo *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('name')}
+                  className={`input-field ${errors.name ? 'input-error' : ''}`}
+                  placeholder="Nombre completo del cliente"
+                  autoComplete="name"
+                />
+                {errors.name && (
+                  <p className="error-message">{errors.name}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="label flex items-center">
+                  <Mail className="w-4 h-4 mr-2 text-purple-600" />
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('email')}
+                  className={`input-field ${errors.email ? 'input-error' : ''}`}
+                  placeholder="cliente@email.com"
+                  autoComplete="email"
+                />
+                {errors.email && (
+                  <p className="error-message">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Teléfono */}
+              <div>
+                <label className="label flex items-center">
+                  <Phone className="w-4 h-4 mr-2 text-purple-600" />
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="input-field"
+                  placeholder="+54 9 11 1234-5678"
+                  autoComplete="tel"
+                />
+              </div>
+
+              {/* Notas */}
+              <div>
+                <label className="label flex items-center">
+                  <FileText className="w-4 h-4 mr-2 text-purple-600" />
+                  Notas adicionales
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={isMobile ? 3 : 3}
+                  className="input-field resize-none"
+                  placeholder="Información adicional sobre el cliente..."
+                />
+              </div>
+            </form>
+          </div>
+
+          {/* Footer */}
+          <div className={`
+            ${isMobile 
+              ? 'safe-area-bottom bg-white border-t border-gray-200 p-4 sticky bottom-0' 
+              : 'px-6 py-4 border-t border-gray-200'
+            }
+          `}>
+            <div className={`flex ${isMobile ? 'space-x-3' : 'justify-end space-x-3'}`}>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`btn-secondary ${isMobile ? 'flex-1' : ''}`}
+                disabled={isLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className={`btn-primary flex items-center justify-center space-x-2 ${isMobile ? 'flex-1' : ''}`}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="loading-spinner-mobile"></div>
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>{client ? 'Actualizar' : 'Crear'} Cliente</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
