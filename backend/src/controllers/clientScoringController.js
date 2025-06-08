@@ -12,88 +12,15 @@ const getClientScore = async (req, res) => {
       });
     }
 
-    // DATOS DE PRUEBA TEMPORALES - Para demo visual
-    const testData = {
-      'juan.perez@email.com': {
-        hasScore: true,
-        starRating: 4,
-        totalBookings: 6,
-        attendedCount: 5,
-        noShowCount: 1,
-        lastActivity: '2025-06-01T10:00:00.000Z'
-      },
-      'maria.garcia@email.com': {
-        hasScore: true,
-        starRating: 5,
-        totalBookings: 5,
-        attendedCount: 5,
-        noShowCount: 0,
-        lastActivity: '2025-06-05T14:30:00.000Z'
-      },
-      'carlos.lopez@email.com': {
-        hasScore: true,
-        starRating: 2,
-        totalBookings: 5,
-        attendedCount: 2,
-        noShowCount: 3,
-        lastActivity: '2025-06-01T09:15:00.000Z'
-      }
-    };
-
-    // Si es uno de nuestros emails de prueba, devolver datos simulados
-    if (email && testData[email]) {
-      console.log(`🌟 Devolviendo datos de prueba para: ${email}`);
-      return res.json({
-        success: true,
-        data: testData[email]
-      });
-    }
-
-    // Continuar con lógica normal
-    console.log('🔍 Buscando scoring para:', { email, phone });
+    const score = await clientScoringService.getClientScore(email, phone);
     
-    let clientScore;
-    try {
-      const { getClientScoring } = require('../services/clientScoringService');
-      clientScore = await getClientScoring(email, phone);
-    } catch (error) {
-      console.log('⚠️ Error accediendo a scoring (tablas no existen):', error.message);
-      // Sistema resiliente: continuar sin scoring
-      return res.json({
-        success: true,
-        data: {
-          hasScore: false,
-          starRating: null,
-          message: 'Sin historial'
-        }
-      });
-    }
-
-    if (!clientScore || !clientScore.hasScore) {
-      return res.json({
-        success: true,
-        data: {
-          hasScore: false,
-          starRating: null,
-          message: 'Sin historial'
-        }
-      });
-    }
-
     res.json({
       success: true,
-      data: {
-        hasScore: true,
-        starRating: clientScore.starRating,
-        totalBookings: clientScore.totalBookings,
-        attendedCount: clientScore.attendedCount,
-        noShowCount: clientScore.noShowCount,
-        lastActivity: clientScore.lastActivity
-      }
+      data: score
     });
-
+    
   } catch (error) {
-    console.error('❌ Error en getClientScore:', error);
+    console.error('Error obteniendo scoring del cliente:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'

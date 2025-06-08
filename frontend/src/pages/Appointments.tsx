@@ -112,9 +112,62 @@ const Appointments: React.FC = () => {
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
+      // Encontrar la cita para obtener datos del cliente
+      const appointment = appointments.find(apt => apt.id === appointmentId);
+      
       await appointmentService.updateAppointment(appointmentId, { 
         status: newStatus as 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED' 
       });
+
+      // Registrar evento de scoring automáticamente
+      if (appointment?.client && (appointment.client.email || appointment.client.phone)) {
+        try {
+          let eventType = '';
+          let notes = '';
+          
+          switch (newStatus) {
+            case 'COMPLETED':
+              eventType = 'ATTENDED';
+              notes = 'Cita completada exitosamente';
+              break;
+            case 'NO_SHOW':
+              eventType = 'NO_SHOW';
+              notes = 'Cliente no se presentó a la cita';
+              break;
+            case 'CANCELLED':
+              eventType = 'CANCELLED_LATE';
+              notes = 'Cita cancelada';
+              break;
+          }
+
+          if (eventType) {
+            const scoringData = {
+              email: appointment.client.email || null,
+              phone: appointment.client.phone || null,
+              clientName: appointment.client.name,
+              eventType,
+              eventDate: new Date().toISOString(),
+              appointmentId: appointmentId,
+              notes
+            };
+
+            await fetch('https://turnio-backend-production.up.railway.app/api/client-scoring/event', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify(scoringData)
+            });
+
+            console.log(`✅ Evento de scoring registrado: ${eventType} para ${appointment.client.name}`);
+          }
+        } catch (scoringError) {
+          console.error('Error registrando evento de scoring:', scoringError);
+          // No bloqueamos el flujo principal si falla el scoring
+        }
+      }
+
       await loadData();
     } catch (error) {
       console.error('Error actualizando estado:', error);
