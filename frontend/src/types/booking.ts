@@ -1,16 +1,23 @@
+export interface Business {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface Service {
   id: string;
   name: string;
   description?: string;
   duration: number;
   price: number;
+  color?: string;
   isActive: boolean;
 }
 
 export interface TimeSlot {
   time: string;
   datetime: string;
-  available: boolean;
+  isAvailable: boolean;
 }
 
 export interface Professional {
@@ -18,27 +25,34 @@ export interface Professional {
   name: string;
   avatar?: string;
   phone?: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: string;
   availableSlots?: TimeSlot[];
   workingToday?: boolean;
+  slotsCount?: number;
   workingHours?: {
     start: string;
     end: string;
   };
 }
 
+export interface UrgencyStats {
+  totalSlots: number;
+  availableSlots: number;
+  occupiedSlots?: number;
+  occupancy?: number;
+  urgencyLevel: 'low' | 'medium' | 'high';
+  urgencyMessage: string;
+}
+
 export interface ProfessionalsResponse {
   success: boolean;
   data: {
-    business: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-    service: Service | null;
+    business: Business;
+    service?: Service;
     professionals: Professional[];
     totalProfessionals: number;
-    date: string | null;
+    date?: string;
+    urgency?: UrgencyStats;
   };
 }
 
@@ -66,4 +80,25 @@ export interface BookingResponse {
     businessName: string;
     wasAutoAssigned: boolean;
   };
+}
+
+export interface BookingData {
+  business: Business;
+  service?: Service;
+  date: string;
+  slots: {
+    professional: {
+      id: string;
+      name: string;
+      avatar?: string;
+      phone?: string;
+      role: string;
+    };
+    slots: TimeSlot[];
+    workingHours: {
+      start: string;  
+      end: string;
+    };
+  }[];
+  urgency: UrgencyStats;
 } 

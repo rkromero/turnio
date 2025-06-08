@@ -476,84 +476,62 @@ const getAvailableSlots = async (req, res) => {
     // Generar slots disponibles basados en horarios de trabajo
     const dayOfWeek = targetDate.getDay();
     const availableSlots = [];
+    let totalSlotsCount = 0; // Contador total de slots para el día
+    let availableSlotsCount = 0; // Contador de slots disponibles
 
     for (const user of business.users) {
-      let workingHour = user.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
-      
-      // Si no hay horarios configurados, usar horarios por defecto (Lunes a Viernes 9-18)
-      if (!workingHour && dayOfWeek >= 1 && dayOfWeek <= 5) {
-        workingHour = {
-          startTime: '09:00',
-          endTime: '18:00'
-        };
-      }
+      const workingHour = user.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
       
       if (!workingHour) continue;
 
-      const [startHour, startMinute] = workingHour.startTime.split(':').map(Number);
-      const [endHour, endMinute] = workingHour.endTime.split(':').map(Number);
+      // Generar slots para este profesional
+      const userSlots = await generateAvailableSlots(
+        user.id,
+        targetDate,
+        workingHour,
+        service?.duration || 60
+      );
 
-      const workStart = new Date(targetDate);
-      workStart.setHours(startHour, startMinute, 0, 0);
-      
-      const workEnd = new Date(targetDate);
-      workEnd.setHours(endHour, endMinute, 0, 0);
-
-      const serviceDuration = service ? service.duration : 60; // Default 60 minutos
-      
-      // Generar slots cada 30 minutos
-      for (let time = new Date(workStart); time < workEnd; time.setMinutes(time.getMinutes() + 30)) {
-        const slotEnd = new Date(time.getTime() + serviceDuration * 60000);
+      // Filtrar slots ocupados
+      const availableUserSlots = userSlots.filter(slot => {
+        const slotStart = new Date(slot.datetime);
+        const slotEnd = new Date(slotStart.getTime() + (service?.duration || 60) * 60000);
         
-        if (slotEnd <= workEnd) {
-          // Verificar si el slot está ocupado
-          const isOccupied = occupiedSlots.some(occupied => 
-            occupied.userId === user.id &&
-            time < new Date(occupied.endTime) &&
-            slotEnd > new Date(occupied.startTime)
-          );
+        return !occupiedSlots.some(occupied => {
+          return occupied.userId === user.id &&
+                 ((occupied.startTime <= slotStart && occupied.endTime > slotStart) ||
+                  (occupied.startTime < slotEnd && occupied.endTime >= slotEnd));
+        });
+      });
 
-          if (!isOccupied) {
-            availableSlots.push({
-              time: time.toISOString(),
-              userId: user.id,
-              userName: user.name
-            });
-          }
+      totalSlotsCount += userSlots.length;
+      availableSlotsCount += availableUserSlots.length;
+
+      availableSlots.push({
+        professional: {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar,
+          phone: user.phone,
+          role: user.role
+        },
+        slots: availableUserSlots,
+        workingHours: {
+          start: workingHour.startTime,
+          end: workingHour.endTime
         }
-      }
+      });
     }
 
-    // Si no hay usuarios o no hay slots, crear slots básicos con el primer usuario
-    if (availableSlots.length === 0 && business.users.length > 0) {
-      const user = business.users[0];
-      const serviceDuration = service ? service.duration : 60;
-      
-      // Horarios por defecto: 9:00 - 18:00
-      for (let hour = 9; hour < 18; hour++) {
-        for (let minute = 0; minute < 60; minute += 30) {
-          const slotStart = new Date(targetDate);
-          slotStart.setHours(hour, minute, 0, 0);
-          
-          const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-          
-          if (slotEnd.getHours() < 18 || (slotEnd.getHours() === 18 && slotEnd.getMinutes() === 0)) {
-            const isOccupied = occupiedSlots.some(occupied => 
-              slotStart < new Date(occupied.endTime) &&
-              slotEnd > new Date(occupied.startTime)
-            );
-
-            if (!isOccupied) {
-              availableSlots.push({
-                time: slotStart.toISOString(),
-                userId: user.id,
-                userName: user.name
-              });
-            }
-          }
-        }
-      }
-    }
+    // Calcular estadísticas de urgencia
+    const urgencyStats = {
+      totalSlots: totalSlotsCount,
+      availableSlots: availableSlotsCount,
+      occupiedSlots: totalSlotsCount - availableSlotsCount,
+      occupancy: totalSlotsCount > 0 ? Math.round(((totalSlotsCount - availableSlotsCount) / totalSlotsCount) * 100) : 0,
+      urgencyLevel: availableSlotsCount <= 3 ? 'high' : availableSlotsCount <= 8 ? 'medium' : 'low',
+      urgencyMessage: getUrgencyMessage(availableSlotsCount, targetDate)
+    };
 
     res.json({
       success: true,
@@ -563,8 +541,10 @@ const getAvailableSlots = async (req, res) => {
           name: business.name,
           slug: business.slug
         },
-        services: business.services,
-        availableSlots: availableSlots.sort((a, b) => new Date(a.time) - new Date(b.time))
+        service,
+        date: targetDate.toISOString().split('T')[0],
+        slots: availableSlots,
+        urgency: urgencyStats
       }
     });
 
@@ -577,15 +557,51 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
+// Función auxiliar para generar mensaje de urgencia
+function getUrgencyMessage(availableCount, date) {
+  const isToday = new Date().toDateString() === date.toDateString();
+  const isTomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toDateString() === date.toDateString();
+  
+  let timeReference = '';
+  if (isToday) timeReference = 'hoy';
+  else if (isTomorrow) timeReference = 'mañana';
+  else timeReference = 'este día';
+
+  if (availableCount === 0) {
+    return `No quedan horarios disponibles para ${timeReference}`;
+  } else if (availableCount === 1) {
+    return `¡Solo queda 1 horario disponible ${timeReference}!`;
+  } else if (availableCount <= 3) {
+    return `¡Solo quedan ${availableCount} horarios disponibles ${timeReference}!`;
+  } else if (availableCount <= 8) {
+    return `Quedan ${availableCount} horarios disponibles ${timeReference}`;
+  } else {
+    return `Varios horarios disponibles ${timeReference}`;
+  }
+}
+
 // Obtener profesionales disponibles y sus horarios para un negocio
 const getAvailableProfessionals = async (req, res) => {
   try {
     const { businessSlug } = req.params;
     const { date, serviceId } = req.query;
 
-    // Buscar el negocio
+    // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
-      where: { slug: businessSlug }
+      where: { slug: businessSlug },
+      include: {
+        services: {
+          where: { isActive: true }
+        },
+        users: {
+          where: { isActive: true },
+          include: {
+            workingHours: {
+              where: { isActive: true }
+            }
+          }
+        }
+      }
     });
 
     if (!business) {
@@ -595,17 +611,10 @@ const getAvailableProfessionals = async (req, res) => {
       });
     }
 
-    // Obtener el servicio si se especifica
+    // Si se especifica un servicio, verificar que existe
     let service = null;
     if (serviceId) {
-      service = await prisma.service.findFirst({
-        where: {
-          id: serviceId,
-          businessId: business.id,
-          isActive: true
-        }
-      });
-
+      service = business.services.find(s => s.id === serviceId);
       if (!service) {
         return res.status(404).json({
           success: false,
@@ -614,31 +623,10 @@ const getAvailableProfessionals = async (req, res) => {
       }
     }
 
-    // Obtener profesionales activos del negocio
-    const professionals = await prisma.user.findMany({
-      where: {
-        businessId: business.id,
-        isActive: true
-      },
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        phone: true,
-        role: true,
-        workingHours: {
-          where: { isActive: true },
-          orderBy: { dayOfWeek: 'asc' }
-        }
-      },
-      orderBy: [
-        { role: 'asc' }, // ADMIN primero
-        { name: 'asc' }
-      ]
-    });
-
-    // Si se especifica una fecha, calcular horarios disponibles
+    const professionals = business.users;
     let professionalsWithSlots = [];
+    let totalSlotsCount = 0;
+    let availableSlotsCount = 0;
     
     if (date) {
       const targetDate = new Date(date);
@@ -653,7 +641,8 @@ const getAvailableProfessionals = async (req, res) => {
           professionalsWithSlots.push({
             ...professional,
             availableSlots: [],
-            workingToday: false
+            workingToday: false,
+            slotsCount: 0
           });
           continue;
         }
@@ -666,6 +655,9 @@ const getAvailableProfessionals = async (req, res) => {
           service?.duration || 60 // duración por defecto 60 min
         );
 
+        totalSlotsCount += availableSlots.length;
+        availableSlotsCount += availableSlots.length;
+
         professionalsWithSlots.push({
           id: professional.id,
           name: professional.name,
@@ -674,6 +666,7 @@ const getAvailableProfessionals = async (req, res) => {
           role: professional.role,
           availableSlots,
           workingToday: true,
+          slotsCount: availableSlots.length,
           workingHours: {
             start: workingHour.startTime,
             end: workingHour.endTime
@@ -688,9 +681,18 @@ const getAvailableProfessionals = async (req, res) => {
         avatar: prof.avatar,
         phone: prof.phone,
         role: prof.role,
-        workingHours: prof.workingHours
+        workingHours: prof.workingHours,
+        slotsCount: 0
       }));
     }
+
+    // Calcular estadísticas de urgencia solo si hay fecha
+    const urgencyStats = date ? {
+      totalSlots: totalSlotsCount,
+      availableSlots: availableSlotsCount,
+      urgencyLevel: availableSlotsCount <= 3 ? 'high' : availableSlotsCount <= 8 ? 'medium' : 'low',
+      urgencyMessage: getUrgencyMessage(availableSlotsCount, new Date(date))
+    } : null;
 
     res.json({
       success: true,
@@ -703,12 +705,13 @@ const getAvailableProfessionals = async (req, res) => {
         service,
         professionals: professionalsWithSlots,
         totalProfessionals: professionals.length,
-        date: date || null
+        date: date || null,
+        urgency: urgencyStats
       }
     });
 
   } catch (error) {
-    console.error('Error obteniendo profesionales disponibles:', error);
+    console.error('Error obteniendo profesionales:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'

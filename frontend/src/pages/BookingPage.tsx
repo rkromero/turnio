@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { bookingService } from '../services/bookingService';
-import { Professional, Service, BookingFormData } from '../types/booking';
-import ProfessionalSelector from '../components/ProfessionalSelector';
-import Logo from '../components/Logo';
 import { 
-  Clock, 
-  User, 
-  Mail, 
-  Phone, 
-  MessageCircle, 
   ArrowLeft, 
   CheckCircle,
   MapPin
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { bookingService } from '../services/bookingService';
+import { Professional, Service, BookingFormData, UrgencyStats } from '../types/booking';
+import ProfessionalSelector from '../components/ProfessionalSelector';
+import Logo from '../components/Logo';
+import { toast } from 'react-hot-toast';
 
 interface SuccessData {
   appointmentId: string;
@@ -36,6 +31,7 @@ interface BookingState {
   selectedProfessional: string | null;
   selectedDate: string;
   selectedTime: string | null;
+  urgency?: UrgencyStats;
   clientData: {
     name: string;
     email: string;
@@ -116,7 +112,8 @@ const BookingPage: React.FC = () => {
       if (professionalsResponse.success) {
         setBooking(prev => ({
           ...prev,
-          professionals: professionalsResponse.data.professionals
+          professionals: professionalsResponse.data.professionals,
+          urgency: professionalsResponse.data.urgency
         }));
       }
     } catch (error) {
@@ -358,45 +355,55 @@ const BookingPage: React.FC = () => {
           
           {/* Step 1: Service Selection */}
           {step === 1 && (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">¿Qué servicio necesitas?</h2>
-                <p className="text-gray-600">Elige el servicio que mejor se adapte a tus necesidades</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">¿Qué servicio necesitas?</h2>
+                <p className="text-gray-600 text-sm md:text-base">Selecciona el servicio que más te convenga</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
                 {booking.services.map((service) => (
                   <div
                     key={service.id}
                     onClick={() => handleServiceSelect(service)}
                     className={`
-                      p-6 rounded-xl border cursor-pointer transition-all duration-200
+                      p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg min-h-[80px] md:min-h-[100px]
                       ${booking.selectedService?.id === service.id
                         ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
                       }
                     `}
                   >
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
-                      <span className="text-lg font-bold text-blue-600">{formatCurrency(service.price)}</span>
-                    </div>
-                    {service.description && (
-                      <p className="text-gray-600 mb-3">{service.description}</p>
-                    )}
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatDuration(service.duration)}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-base md:text-lg">{service.name}</h3>
+                        {service.description && (
+                          <p className="text-gray-600 text-sm md:text-base mt-1">{service.description}</p>
+                        )}
+                        <div className="flex items-center space-x-4 mt-3">
+                          <span className="text-blue-600 font-medium text-sm md:text-base">
+                            {formatCurrency(service.price)}
+                          </span>
+                          <span className="text-gray-500 text-sm md:text-base">
+                            {formatDuration(service.duration)}
+                          </span>
+                        </div>
+                      </div>
+                      {booking.selectedService?.id === service.id && (
+                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                          <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white"></div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
               {booking.selectedService && (
-                <div className="mt-8 text-center">
+                <div className="text-center mt-8">
                   <button
                     onClick={goToNextStep}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                   >
                     Continuar
                   </button>
@@ -407,33 +414,35 @@ const BookingPage: React.FC = () => {
 
           {/* Step 2: Date Selection */}
           {step === 2 && (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               <div className="flex items-center mb-6">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Selecciona la fecha</h2>
-                  <p className="text-gray-600">¿Cuándo te gustaría agendar tu cita?</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Cuándo te conviene?</h2>
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Servicio: {booking.selectedService?.name}
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
                 {generateDateOptions().map((dateOption) => (
                   <button
                     key={dateOption.value}
                     onClick={() => handleDateSelect(dateOption.value)}
                     className={`
-                      p-3 rounded-xl text-center transition-colors relative
+                      p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px]
                       ${booking.selectedDate === dateOption.value
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 text-white shadow-md'
                         : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
                       }
                     `}
                   >
-                    <div className="text-sm font-medium">{dateOption.label}</div>
+                    <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
                     {dateOption.isToday && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
                     )}
                   </button>
                 ))}
@@ -443,7 +452,7 @@ const BookingPage: React.FC = () => {
                 <div className="text-center">
                   <button
                     onClick={goToNextStep}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                   >
                     Continuar
                   </button>
@@ -454,14 +463,14 @@ const BookingPage: React.FC = () => {
 
           {/* Step 3: Professional Selection */}
           {step === 3 && (
-            <div className="p-8">
-              <div className="flex items-center mb-6">
+            <div className="p-4 md:p-8">
+              <div className="flex items-center mb-6 px-0">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Selecciona profesional y horario</h2>
-                  <p className="text-gray-600">
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
+                  <p className="text-gray-600 text-sm md:text-base">
                     Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
                       weekday: 'long', day: 'numeric', month: 'long' 
                     })}
@@ -477,14 +486,15 @@ const BookingPage: React.FC = () => {
                 selectedTime={booking.selectedTime}
                 onTimeSelect={handleTimeSelect}
                 showTimeSlots={true}
+                urgency={booking.urgency}
               />
 
               {(booking.selectedProfessional !== null || booking.selectedTime) && (
-                <div className="mt-8 text-center">
+                <div className="mt-8 text-center px-4">
                   <button
                     onClick={goToNextStep}
                     disabled={!booking.selectedTime}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                   >
                     Continuar
                   </button>
@@ -495,21 +505,21 @@ const BookingPage: React.FC = () => {
 
           {/* Step 4: Client Information */}
           {step === 4 && (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               <div className="flex items-center mb-6">
                 <button onClick={goBack} className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Tus datos</h2>
-                  <p className="text-gray-600">Información necesaria para confirmar tu cita</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Tus datos</h2>
+                  <p className="text-gray-600 text-sm md:text-base">Información necesaria para confirmar tu cita</p>
                 </div>
               </div>
 
               {/* Resumen de la reserva */}
-              <div className="bg-gray-50 rounded-xl p-6 mb-8">
-                <h3 className="font-semibold text-gray-900 mb-4">Resumen de tu reserva</h3>
-                <div className="space-y-2 text-sm">
+              <div className="bg-gray-50 rounded-xl p-4 md:p-6 mb-8">
+                <h3 className="font-semibold text-gray-900 mb-4 text-base md:text-lg">Resumen de tu reserva</h3>
+                <div className="space-y-3 text-sm md:text-base">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Servicio:</span>
                     <span className="font-medium">{booking.selectedService?.name}</span>
@@ -524,84 +534,72 @@ const BookingPage: React.FC = () => {
                     <span className="text-gray-600">Duración:</span>
                     <span className="font-medium">{booking.selectedService && formatDuration(booking.selectedService.duration)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                     <span className="text-gray-600">Precio:</span>
-                    <span className="font-bold text-blue-600">{booking.selectedService && formatCurrency(booking.selectedService.price)}</span>
+                    <span className="font-bold text-blue-600 text-lg md:text-xl">{booking.selectedService && formatCurrency(booking.selectedService.price)}</span>
                   </div>
-                  {booking.selectedProfessional && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Profesional:</span>
-                      <span className="font-medium">
-                        {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
               {/* Formulario de datos del cliente */}
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <User className="w-4 h-4 inline mr-1" />
+                  <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                     Nombre completo *
                   </label>
                   <input
                     type="text"
                     value={booking.clientData.name}
                     onChange={(e) => handleClientDataChange('name', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-4 md:px-6 md:py-5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-lg min-h-[56px]"
                     placeholder="Tu nombre completo"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Mail className="w-4 h-4 inline mr-1" />
+                  <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                     Email
                   </label>
                   <input
                     type="email"
                     value={booking.clientData.email}
                     onChange={(e) => handleClientDataChange('email', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-4 md:px-6 md:py-5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-lg min-h-[56px]"
                     placeholder="tu@email.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Phone className="w-4 h-4 inline mr-1" />
+                  <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                     Teléfono
                   </label>
                   <input
                     type="tel"
                     value={booking.clientData.phone}
                     onChange={(e) => handleClientDataChange('phone', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-4 md:px-6 md:py-5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-lg min-h-[56px]"
                     placeholder="+54 9 11 1234-5678"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <MessageCircle className="w-4 h-4 inline mr-1" />
+                  <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                     Notas adicionales
                   </label>
                   <textarea
                     value={booking.clientData.notes}
                     onChange={(e) => handleClientDataChange('notes', e.target.value)}
+                    className="w-full px-4 py-4 md:px-6 md:py-5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-lg min-h-[80px] resize-none"
+                    placeholder="Información adicional que quieras compartir..."
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Información adicional que consideres importante..."
                   />
                 </div>
               </div>
 
               {error && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-red-600 text-sm">{error}</p>
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm md:text-base">{error}</p>
                 </div>
               )}
 
@@ -609,7 +607,7 @@ const BookingPage: React.FC = () => {
                 <button
                   onClick={handleSubmitBooking}
                   disabled={submitting || !booking.clientData.name}
-                  className="px-8 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-4 md:px-12 md:py-5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                 >
                   {submitting ? 'Confirmando...' : 'Confirmar reserva'}
                 </button>
