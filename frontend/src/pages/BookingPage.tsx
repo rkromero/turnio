@@ -8,6 +8,7 @@ import {
 import { bookingService } from '../services/bookingService';
 import { Professional, Service, BookingFormData, UrgencyStats } from '../types/booking';
 import ProfessionalSelector from '../components/ProfessionalSelector';
+import ClientStarRating from '../components/ClientStarRating';
 import Logo from '../components/Logo';
 import { toast } from 'react-hot-toast';
 
@@ -38,6 +39,14 @@ interface BookingState {
     phone: string;
     notes: string;
   };
+  clientScore?: {
+    hasScore: boolean;
+    starRating: number | null;
+    totalBookings: number;
+    attendedCount: number;
+    noShowCount: number;
+    lastActivity?: string;
+  } | null;
 }
 
 const BookingPage: React.FC = () => {
@@ -329,11 +338,36 @@ const BookingPage: React.FC = () => {
   const handleClientDataChange = (field: keyof BookingState['clientData'], value: string) => {
     setBooking(prev => ({
       ...prev,
-      clientData: {
-        ...prev.clientData,
-        [field]: value
-      }
+      clientData: { ...prev.clientData, [field]: value }
     }));
+    
+    // Si es email o teléfono, cargar scoring del cliente
+    if ((field === 'email' || field === 'phone') && value.length > 3) {
+      loadClientScore(field === 'email' ? value : null, field === 'phone' ? value : null);
+    }
+  };
+
+  const loadClientScore = async (email: string | null, phone: string | null) => {
+    if (!email && !phone) return;
+    
+    try {
+      const params = new URLSearchParams();
+      if (email) params.append('email', email);
+      if (phone) params.append('phone', phone);
+      
+      const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setBooking(prev => ({
+          ...prev,
+          clientScore: data.data
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando scoring del cliente:', error);
+      // No mostrar error al usuario, solo no mostrar scoring
+    }
   };
 
   const handleSubmitBooking = async () => {
@@ -1040,6 +1074,19 @@ const BookingPage: React.FC = () => {
                     className="w-full px-4 py-4 md:px-6 md:py-5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-lg min-h-[56px]"
                     placeholder="tu@email.com"
                   />
+                  {booking.clientScore?.hasScore && (
+                    <div className="mt-2 flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">Historial del cliente:</span>
+                      <ClientStarRating
+                        starRating={booking.clientScore.starRating}
+                        totalBookings={booking.clientScore.totalBookings}
+                        attendedCount={booking.clientScore.attendedCount}
+                        noShowCount={booking.clientScore.noShowCount}
+                        showDetails={true}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>
