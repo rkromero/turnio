@@ -1,6 +1,20 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Verificar si las tablas de scoring existen
+const checkScoringTablesExist = async () => {
+  try {
+    await prisma.clientScore.findFirst();
+    return true;
+  } catch (error) {
+    if (error.message.includes('does not exist') || error.message.includes('relation') || error.code === 'P2021') {
+      console.log('⚠️ Tablas de scoring no existen todavía. Sistema funcionando en modo básico.');
+      return false;
+    }
+    throw error;
+  }
+};
+
 // Configuración del sistema de scoring
 const SCORING_CONFIG = {
   ATTENDED: { points: 1, weight: 1 },
@@ -35,6 +49,7 @@ const calculateStarRating = (totalPoints, totalWeight) => {
 
 // Buscar o crear cliente por email/telefono
 const findOrCreateClient = async (email, phone, name) => {
+  // Las tablas ya fueron verificadas en las funciones que llaman a esta
   let clientScore = null;
   
   // Buscar por email primero
@@ -88,48 +103,83 @@ const findOrCreateClient = async (email, phone, name) => {
 
 // Recalcular scoring completo de un cliente
 const recalculateClientScore = async (clientScoreId) => {
-  // Obtener todo el historial del cliente
-  const history = await prisma.clientHistory.findMany({
-    where: { clientScoreId },
-    orderBy: { eventDate: 'desc' }
-  });
-  
-  let totalPoints = 0;
-  let totalWeight = 0;
-  let attendedCount = 0;
-  let noShowCount = 0;
-  
-  // Recalcular con pesos actualizados
-  history.forEach(event => {
-    const timeWeight = getTimeWeight(event.eventDate);
-    const finalWeight = event.weight * timeWeight;
-    
-    totalPoints += event.points * timeWeight;
-    totalWeight += finalWeight;
-    
-    if (event.eventType === 'ATTENDED') attendedCount++;
-    if (event.eventType === 'NO_SHOW') noShowCount++;
-  });
-  
-  const starRating = calculateStarRating(totalPoints, totalWeight);
-  
-  // Actualizar cliente
-  return await prisma.clientScore.update({
-    where: { id: clientScoreId },
-    data: {
-      totalPoints,
-      totalWeight,
-      starRating,
-      totalBookings: history.length,
-      attendedCount,
-      noShowCount
+  try {
+    // Verificar si las tablas existen
+    const tablesExist = await checkScoringTablesExist();
+    if (!tablesExist) {
+      return {
+        starRating: null,
+        totalBookings: 0,
+        attendedCount: 0,
+        noShowCount: 0
+      };
     }
-  });
+
+    // Obtener todo el historial del cliente
+    const history = await prisma.clientHistory.findMany({
+      where: { clientScoreId },
+      orderBy: { eventDate: 'desc' }
+    });
+    
+    let totalPoints = 0;
+    let totalWeight = 0;
+    let attendedCount = 0;
+    let noShowCount = 0;
+    
+    // Recalcular con pesos actualizados
+    history.forEach(event => {
+      const timeWeight = getTimeWeight(event.eventDate);
+      const finalWeight = event.weight * timeWeight;
+      
+      totalPoints += event.points * timeWeight;
+      totalWeight += finalWeight;
+      
+      if (event.eventType === 'ATTENDED') attendedCount++;
+      if (event.eventType === 'NO_SHOW') noShowCount++;
+    });
+    
+    const starRating = calculateStarRating(totalPoints, totalWeight);
+    
+    // Actualizar cliente
+    return await prisma.clientScore.update({
+      where: { id: clientScoreId },
+      data: {
+        totalPoints,
+        totalWeight,
+        starRating,
+        totalBookings: history.length,
+        attendedCount,
+        noShowCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error recalculando scoring:', error);
+    return {
+      starRating: null,
+      totalBookings: 0,
+      attendedCount: 0,
+      noShowCount: 0
+    };
+  }
 };
 
 // Registrar evento de cliente
 const recordClientEvent = async (email, phone, name, businessId, appointmentId, eventType, notes = null) => {
   try {
+    // Verificar si las tablas existen
+    const tablesExist = await checkScoringTablesExist();
+    if (!tablesExist) {
+      console.log('⚠️ Sistema de scoring no disponible - tablas no existen');
+      return {
+        starRating: null,
+        totalBookings: 0,
+        attendedCount: 0,
+        noShowCount: 0,
+        message: 'Sistema de scoring no disponible'
+      };
+    }
+
     // Buscar o crear cliente
     const clientScore = await findOrCreateClient(email, phone, name);
     
@@ -177,66 +227,105 @@ const recordClientEvent = async (email, phone, name, businessId, appointmentId, 
     
   } catch (error) {
     console.error('Error registrando evento de cliente:', error);
-    throw error;
+    // En caso de error, devolver valores por defecto
+    return {
+      starRating: null,
+      totalBookings: 0,
+      attendedCount: 0,
+      noShowCount: 0,
+      message: 'Error en sistema de scoring'
+    };
   }
 };
 
 // Obtener scoring de un cliente
 const getClientScore = async (email, phone) => {
-  let clientScore = null;
-  
-  if (email) {
-    clientScore = await prisma.clientScore.findUnique({
-      where: { email },
-      include: {
-        history: {
-          orderBy: { eventDate: 'desc' },
-          take: 10 // Últimos 10 eventos
+  try {
+    // Verificar si las tablas existen
+    const tablesExist = await checkScoringTablesExist();
+    if (!tablesExist) {
+      return null;
+    }
+
+    let clientScore = null;
+    
+    if (email) {
+      clientScore = await prisma.clientScore.findUnique({
+        where: { email },
+        include: {
+          history: {
+            orderBy: { eventDate: 'desc' },
+            take: 10 // Últimos 10 eventos
+          }
         }
-      }
-    });
-  }
-  
-  if (!clientScore && phone) {
-    clientScore = await prisma.clientScore.findUnique({
-      where: { phone },
-      include: {
-        history: {
-          orderBy: { eventDate: 'desc' },
-          take: 10
+      });
+    }
+    
+    if (!clientScore && phone) {
+      clientScore = await prisma.clientScore.findUnique({
+        where: { phone },
+        include: {
+          history: {
+            orderBy: { eventDate: 'desc' },
+            take: 10
+          }
         }
-      }
-    });
+      });
+    }
+    
+    return clientScore;
+
+  } catch (error) {
+    console.error('Error obteniendo scoring del cliente:', error);
+    return null;
   }
-  
-  return clientScore;
 };
 
 // Obtener estadísticas generales
 const getClientScoringStats = async () => {
-  const stats = await prisma.clientScore.aggregate({
-    _count: { id: true },
-    _avg: { starRating: true }
-  });
-  
-  const distributionQuery = await prisma.clientScore.groupBy({
-    by: ['starRating'],
-    _count: { starRating: true }
-  });
-  
-  const distribution = {
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, null: 0
-  };
-  
-  distributionQuery.forEach(item => {
-    distribution[item.starRating || 'null'] = item._count.starRating;
-  });
-  
-  return {
-    totalClients: stats._count.id,
-    averageRating: stats._avg.starRating,
-    distribution
-  };
+  try {
+    // Verificar si las tablas existen
+    const tablesExist = await checkScoringTablesExist();
+    if (!tablesExist) {
+      return {
+        totalClients: 0,
+        averageRating: null,
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, null: 0 }
+      };
+    }
+
+    const stats = await prisma.clientScore.aggregate({
+      _count: { id: true },
+      _avg: { starRating: true }
+    });
+    
+    const distributionQuery = await prisma.clientScore.groupBy({
+      by: ['starRating'],
+      _count: { starRating: true }
+    });
+    
+    const distribution = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0, null: 0
+    };
+    
+    distributionQuery.forEach(item => {
+      distribution[item.starRating || 'null'] = item._count.starRating;
+    });
+    
+    return {
+      totalClients: stats._count.id,
+      averageRating: stats._avg.starRating,
+      distribution
+    };
+
+  } catch (error) {
+    console.error('Error obteniendo estadísticas de scoring:', error);
+    return {
+      totalClients: 0,
+      averageRating: null,
+      distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, null: 0 }
+    };
+  }
 };
 
 module.exports = {
