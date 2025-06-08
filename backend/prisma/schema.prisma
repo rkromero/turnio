@@ -172,6 +172,49 @@ model Review {
   @@map("reviews")
 }
 
+// Sistema de Scoring de Clientes Global
+model ClientScore {
+  id            String   @id @default(cuid())
+  email         String?  // Identificador primario
+  phone         String?  // Identificador secundario
+  name          String   // Último nombre usado
+  totalPoints   Float    @default(0) // Puntos acumulados con ponderación
+  totalWeight   Float    @default(0) // Peso total para calcular promedio
+  starRating    Int?     // 1-5 estrellas calculadas
+  totalBookings Int      @default(0) // Total de reservas
+  attendedCount Int      @default(0) // Citas a las que asistió
+  noShowCount   Int      @default(0) // No-shows
+  lastActivity  DateTime @default(now()) // Última actividad
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  history ClientHistory[]
+
+  @@unique([email])
+  @@unique([phone])
+  @@map("client_scores")
+}
+
+// Historial detallado de eventos de cliente
+model ClientHistory {
+  id             String              @id @default(cuid())
+  clientScoreId  String
+  businessId     String             // Para referencia (sin relación directa)
+  appointmentId  String             // Para referencia
+  eventType      ClientEventType
+  points         Float              // Puntos otorgados/descontados
+  weight         Float              // Peso de este evento
+  notes          String?            // Notas adicionales
+  eventDate      DateTime           // Fecha del evento
+  createdAt      DateTime           @default(now())
+
+  // Relaciones
+  clientScore ClientScore @relation(fields: [clientScoreId], references: [id], onDelete: Cascade)
+
+  @@map("client_history")
+}
+
 // Enums
 enum PlanType {
   FREE
@@ -190,4 +233,11 @@ enum AppointmentStatus {
   CANCELLED
   NO_SHOW
   COMPLETED
+}
+
+enum ClientEventType {
+  ATTENDED       // Asistió a la cita
+  NO_SHOW        // No se presentó
+  CANCELLED_LATE // Canceló tarde (< 24h)
+  CANCELLED_GOOD // Canceló con tiempo (> 24h)
 }

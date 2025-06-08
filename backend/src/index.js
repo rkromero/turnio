@@ -201,6 +201,10 @@ async function startServer() {
     app.use('/api/users', userRoutes);
     app.use('/api/plans', planRoutes);
     app.use('/api/reviews', reviewRoutes);
+    
+    // Sistema de scoring de clientes
+    const clientScoringRoutes = require('./routes/clientScoring');
+    app.use('/api/client-scoring', clientScoringRoutes);
 
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
