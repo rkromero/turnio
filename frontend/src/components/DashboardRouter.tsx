@@ -5,6 +5,7 @@ import Dashboard from '../pages/Dashboard';
 import Services from '../pages/Services';
 import Appointments from '../pages/Appointments';
 import Clients from '../pages/Clients';
+import Reviews from '../pages/Reviews';
 import Users from '../pages/Users';
 import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
@@ -17,6 +18,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/services" element={<Services />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/reviews" element={<Reviews />} />
         <Route path="/users" element={<Users />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
