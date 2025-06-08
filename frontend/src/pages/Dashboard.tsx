@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardApi } from '../services/api';
 import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink } from 'lucide-react';
+import ClientStarRating from '../components/ClientStarRating';
 import toast from 'react-hot-toast';
 
 interface DashboardStats {
@@ -13,9 +14,18 @@ interface DashboardStats {
   upcomingAppointments: Array<{
     id: string;
     clientName: string;
+    clientEmail?: string;
+    clientPhone?: string;
     serviceName: string;
     startTime: string;
     status: string;
+    clientScore?: {
+      hasScore: boolean;
+      starRating: number | null;
+      totalBookings: number;
+      attendedCount: number;
+      noShowCount: number;
+    };
   }>;
 }
 
@@ -32,7 +42,40 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       const response = await dashboardApi.getStats();
-      setStats(response.data);
+      const statsData = response.data;
+      
+      // Cargar scoring para cada cita próxima
+      if (statsData.upcomingAppointments && statsData.upcomingAppointments.length > 0) {
+        const appointmentsWithScoring = await Promise.all(
+          statsData.upcomingAppointments.map(async (appointment: typeof statsData.upcomingAppointments[0]) => {
+            try {
+              if (appointment.clientEmail || appointment.clientPhone) {
+                const params = new URLSearchParams();
+                if (appointment.clientEmail) params.append('email', appointment.clientEmail);
+                if (appointment.clientPhone) params.append('phone', appointment.clientPhone);
+                
+                const scoreResponse = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+                const scoreData = await scoreResponse.json();
+                
+                if (scoreData.success) {
+                  return {
+                    ...appointment,
+                    clientScore: scoreData.data
+                  };
+                }
+              }
+              return appointment;
+            } catch (err) {
+              console.error('Error cargando scoring para cita:', err);
+              return appointment;
+            }
+          })
+        );
+        
+        statsData.upcomingAppointments = appointmentsWithScoring;
+      }
+      
+      setStats(statsData);
     } catch (error) {
       console.error('Error cargando datos del dashboard:', error);
     } finally {
@@ -302,6 +345,18 @@ const Dashboard: React.FC = () => {
                       <p className="text-sm text-gray-600 truncate">
                         {appointment.serviceName}
                       </p>
+                      {appointment.clientScore?.hasScore && (
+                        <div className="mt-1">
+                          <ClientStarRating
+                            starRating={appointment.clientScore.starRating}
+                            totalBookings={appointment.clientScore.totalBookings}
+                            attendedCount={appointment.clientScore.attendedCount}
+                            noShowCount={appointment.clientScore.noShowCount}
+                            showDetails={false}
+                            size="sm"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-3 flex-shrink-0">
