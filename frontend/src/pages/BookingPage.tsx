@@ -212,8 +212,6 @@ const BookingPage: React.FC = () => {
   };
 
   const loadProfessionalAvailabilityDirect = async (professionalId: string, serviceId: string) => {
-    console.log('🔍 DIRECT - Cargando disponibilidad para:', { professionalId, serviceId, businessSlug });
-    
     try {
       const availabilityResponse = await bookingService.getProfessionalAvailability(
         businessSlug!,
@@ -221,11 +219,8 @@ const BookingPage: React.FC = () => {
         serviceId
       );
       
-      console.log('📅 DIRECT - Respuesta de disponibilidad:', availabilityResponse);
-      
       if (availabilityResponse.success) {
         setDateAvailability(availabilityResponse.data.availability);
-        console.log('✅ DIRECT - Disponibilidad cargada:', availabilityResponse.data.availability);
       }
     } catch (error) {
       console.error('❌ DIRECT - Error cargando disponibilidad:', error);
@@ -235,8 +230,6 @@ const BookingPage: React.FC = () => {
 
   const loadSpecificTimeSlots = async () => {
     if (!booking.selectedProfessional || !booking.selectedService || !booking.selectedDate) return;
-    
-    console.log('🕐 Cargando horarios específicos para fecha:', booking.selectedDate);
     
     try {
       const professionalsResponse = await bookingService.getProfessionals(
@@ -256,7 +249,6 @@ const BookingPage: React.FC = () => {
             professionals: [specificProfessional],
             urgency: professionalsResponse.data.urgency
           }));
-          console.log('✅ Horarios específicos cargados:', specificProfessional.availableSlots);
         }
       }
     } catch (error) {
@@ -283,7 +275,6 @@ const BookingPage: React.FC = () => {
   };
 
   const handleServiceSelect = (service: Service) => {
-    console.log('🎯 Seleccionando servicio:', service.id);
     setBooking(prev => ({
       ...prev,
       selectedService: service,
@@ -294,15 +285,11 @@ const BookingPage: React.FC = () => {
     
     // Si estamos en modo profesional y tenemos profesional, cargar disponibilidad inmediatamente
     if (bookingMode === 'professional' && booking.selectedProfessional) {
-      console.log('🚀 Cargando disponibilidad para servicio seleccionado');
       loadProfessionalAvailabilityDirect(booking.selectedProfessional, service.id);
     }
   };
 
   const handleDateSelect = (date: string) => {
-    console.log('📅 Seleccionando fecha:', date, 'en modo:', bookingMode);
-    console.log('👤 Profesional actual:', booking.selectedProfessional);
-    
     setBooking(prev => ({
       ...prev,
       selectedDate: date,
@@ -312,33 +299,23 @@ const BookingPage: React.FC = () => {
       // En modo profesional mantener la lista de profesionales, en modo servicio limpiarla
       professionals: bookingMode === 'professional' ? prev.professionals : []
     }));
-    
-    console.log('✅ Fecha seleccionada, profesional mantenido:', booking.selectedProfessional);
   };
 
   const handleProfessionalSelect = (professionalId: string | null) => {
-    console.log('🔥 INICIO - Seleccionando profesional:', professionalId);
-    console.log('🔥 Estado actual booking:', booking);
-    console.log('🔥 Modo actual:', bookingMode);
-    
     setBooking(prev => {
       const newState = {
-        ...prev,
-        selectedProfessional: professionalId,
-        selectedTime: null
+      ...prev,
+      selectedProfessional: professionalId,
+      selectedTime: null
       };
-      console.log('🔥 Nuevo estado que se va a guardar:', newState);
       return newState;
     });
     
     // Si estamos en modo profesional y tenemos servicio, cargar disponibilidad inmediatamente
     if (bookingMode === 'professional' && booking.selectedService && professionalId) {
-      console.log('🚀 Cargando disponibilidad inmediatamente - Profesional:', professionalId, 'Servicio:', booking.selectedService.id);
       setTimeout(() => {
         loadProfessionalAvailabilityDirect(professionalId, booking.selectedService!.id);
       }, 100);
-    } else {
-      console.log('❌ NO se carga disponibilidad - Modo:', bookingMode, 'Servicio:', booking.selectedService?.id, 'Profesional:', professionalId);
     }
   };
 
@@ -459,9 +436,6 @@ const BookingPage: React.FC = () => {
     const dates = [];
     const today = new Date();
     
-    console.log('🗓️ dateAvailability actual:', dateAvailability);
-    console.log('📊 Modo actual:', bookingMode);
-    
     for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
@@ -489,9 +463,6 @@ const BookingPage: React.FC = () => {
         });
       }
     }
-    
-    console.log('📋 Fechas generadas:', dates.length, 'para modo:', bookingMode);
-    console.log('🔍 Primeras 3 fechas:', dates.slice(0, 3));
     
     return dates;
   };
@@ -872,29 +843,9 @@ const BookingPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Debug info - remover después */}
-              <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-                Debug: dateAvailability.length = {dateAvailability.length} | 
-                Profesional: {booking.selectedProfessional || 'NO SELECCIONADO'} | 
-                Servicio: {booking.selectedService?.id} |
-                Modo: {bookingMode} |
-                Step: {step}
-                <br />
-                <button 
-                  onClick={() => {
-                    console.log('🔧 FORZAR selección profesional');
-                    handleProfessionalSelect('cmbkuw1gx0002ro0fjtao3m91');
-                  }}
-                  className="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded"
-                >
-                  🔧 FORZAR selección Juan
-                </button>
-              </div>
-
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
                 {generateDateOptions().map((dateOption) => {
                   let colorClass = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
-                  const debugInfo = `Slots: ${dateOption.slotsCount}, Available: ${dateOption.available}`;
                   
                   if (booking.selectedDate === dateOption.value) {
                     colorClass = 'bg-blue-600 text-white shadow-md';
@@ -911,7 +862,6 @@ const BookingPage: React.FC = () => {
                       key={dateOption.value}
                       onClick={() => handleDateSelect(dateOption.value)}
                       className={`p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] ${colorClass}`}
-                      title={debugInfo}
                       disabled={!dateOption.available}
                     >
                       <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
