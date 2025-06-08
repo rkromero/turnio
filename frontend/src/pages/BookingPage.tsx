@@ -180,6 +180,12 @@ const BookingPage: React.FC = () => {
   const loadProfessionalAvailability = async () => {
     if (!booking.selectedProfessional || !booking.selectedService) return;
     
+    console.log('🔍 Cargando disponibilidad para:', {
+      professional: booking.selectedProfessional,
+      service: booking.selectedService.id,
+      businessSlug
+    });
+    
     try {
       const availabilityResponse = await bookingService.getProfessionalAvailability(
         businessSlug!,
@@ -187,11 +193,14 @@ const BookingPage: React.FC = () => {
         booking.selectedService.id
       );
       
+      console.log('📅 Respuesta de disponibilidad:', availabilityResponse);
+      
       if (availabilityResponse.success) {
         setDateAvailability(availabilityResponse.data.availability);
+        console.log('✅ Disponibilidad cargada:', availabilityResponse.data.availability);
       }
     } catch (error) {
-      console.error('Error cargando disponibilidad del profesional:', error);
+      console.error('❌ Error cargando disponibilidad del profesional:', error);
       toast.error('Error cargando disponibilidad');
     }
   };
@@ -358,6 +367,9 @@ const BookingPage: React.FC = () => {
     const dates = [];
     const today = new Date();
     
+    console.log('🗓️ dateAvailability actual:', dateAvailability);
+    console.log('📊 Modo actual:', bookingMode);
+    
     for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
@@ -378,6 +390,16 @@ const BookingPage: React.FC = () => {
         reason: availabilityInfo?.reason
       });
     }
+    
+    const filteredDates = dates.filter(dateOption => {
+      if (bookingMode === 'professional') {
+        return dateOption.available;
+      }
+      return true;
+    });
+    
+    console.log('📋 Fechas totales:', dates.length, 'Fechas filtradas:', filteredDates.length);
+    console.log('🔍 Primeras 3 fechas filtradas:', filteredDates.slice(0, 3));
     
     return dates;
   };
