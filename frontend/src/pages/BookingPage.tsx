@@ -780,16 +780,26 @@ const BookingPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Debug info - remover después */}
+              <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+                Debug: dateAvailability.length = {dateAvailability.length} | 
+                Profesional: {booking.selectedProfessional} | 
+                Servicio: {booking.selectedService?.id}
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
                 {generateDateOptions().map((dateOption) => {
                   let colorClass = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
+                  const debugInfo = `Slots: ${dateOption.slotsCount}, Available: ${dateOption.available}`;
                   
                   if (booking.selectedDate === dateOption.value) {
                     colorClass = 'bg-blue-600 text-white shadow-md';
                   } else if (dateOption.available && dateOption.slotsCount > 3) {
-                    colorClass = 'bg-green-50 hover:bg-green-100 text-green-800 border-2 border-green-300';
+                    colorClass = 'bg-green-100 hover:bg-green-200 text-green-800 border-2 border-green-400';
                   } else if (dateOption.available && dateOption.slotsCount > 0) {
-                    colorClass = 'bg-yellow-50 hover:bg-yellow-100 text-yellow-800 border-2 border-yellow-300';
+                    colorClass = 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border-2 border-yellow-400';
+                  } else if (!dateOption.available) {
+                    colorClass = 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60';
                   }
 
                   return (
@@ -797,12 +807,18 @@ const BookingPage: React.FC = () => {
                       key={dateOption.value}
                       onClick={() => handleDateSelect(dateOption.value)}
                       className={`p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] ${colorClass}`}
-                      title={`${dateOption.slotsCount} horarios disponibles`}
+                      title={debugInfo}
+                      disabled={!dateOption.available}
                     >
                       <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
                       {dateOption.available && dateOption.slotsCount > 0 && (
                         <div className="text-xs mt-1 opacity-75">
                           {dateOption.slotsCount} horarios
+                        </div>
+                      )}
+                      {!dateOption.available && (
+                        <div className="text-xs mt-1 opacity-75">
+                          Sin horarios
                         </div>
                       )}
                       {dateOption.isToday && (
