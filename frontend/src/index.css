@@ -27,12 +27,23 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Variables móviles */
+  --mobile-header-height: 60px;
+  --mobile-bottom-nav-height: 70px;
+  --mobile-safe-area-top: env(safe-area-inset-top);
+  --mobile-safe-area-bottom: env(safe-area-inset-bottom);
+  --mobile-safe-area-left: env(safe-area-inset-left);
+  --mobile-safe-area-right: env(safe-area-inset-right);
 }
 
 /* Estilos base */
 html {
   font-family: 'Inter', system-ui, sans-serif;
   scroll-behavior: smooth;
+  /* Prevenir zoom en inputs en iOS */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -42,6 +53,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--surface-gray);
   color: var(--text-primary);
+  /* Prevenir scroll horizontal en móvil */
+  overflow-x: hidden;
+  /* Soporte para safe areas en dispositivos con notch */
+  padding-top: var(--mobile-safe-area-top);
+  padding-bottom: var(--mobile-safe-area-bottom);
+  padding-left: var(--mobile-safe-area-left);
+  padding-right: var(--mobile-safe-area-right);
+}
+
+/* Prevenir zoom en inputs en iOS */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px !important;
 }
 
 @layer base {
@@ -52,39 +81,68 @@ body {
   * {
     border-color: var(--border-light);
   }
+  
+  /* Touch targets mínimos para móvil */
+  button, 
+  [role="button"], 
+  input[type="submit"], 
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 @layer components {
+  /* Botones optimizados para móvil */
   .btn-primary {
-    @apply bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2;
+    @apply bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 touch-manipulation;
+    min-height: 48px;
   }
   
   .btn-secondary {
-    @apply bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2;
+    @apply bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 active:bg-purple-100 font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 touch-manipulation;
+    min-height: 48px;
   }
   
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 touch-manipulation;
+    min-height: 48px;
   }
   
   .btn-ghost {
-    @apply bg-transparent hover:bg-gray-100 text-gray-600 hover:text-gray-900 font-medium py-2.5 px-5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+    @apply bg-transparent hover:bg-gray-100 active:bg-gray-200 text-gray-600 hover:text-gray-900 font-medium py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-manipulation;
+    min-height: 48px;
   }
   
+  /* Botón flotante (FAB) */
+  .btn-fab {
+    @apply fixed bottom-20 right-4 bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 touch-manipulation;
+    min-height: 56px;
+    min-width: 56px;
+  }
+  
+  /* Inputs optimizados para móvil */
   .input-field {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-offset-0 sm:text-sm transition-all duration-200;
+    @apply block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-offset-0 transition-all duration-200 touch-manipulation;
+    min-height: 48px;
+    font-size: 16px; /* Prevenir zoom en iOS */
   }
   
   .label {
     @apply block text-sm font-medium text-gray-700 mb-2;
   }
   
+  /* Cards optimizadas para móvil */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md;
+    @apply bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md touch-manipulation;
   }
   
   .card-modern {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 touch-manipulation;
+  }
+  
+  .card-mobile {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 active:scale-95 touch-manipulation;
   }
   
   .card-header {
@@ -93,6 +151,106 @@ body {
   
   .card-body {
     @apply px-6 py-6;
+  }
+  
+  /* Navegación móvil */
+  .mobile-header {
+    @apply fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40;
+    height: var(--mobile-header-height);
+    padding-top: var(--mobile-safe-area-top);
+  }
+  
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40;
+    height: calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-area-bottom));
+    padding-bottom: var(--mobile-safe-area-bottom);
+  }
+  
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 text-gray-500 hover:text-purple-600 active:text-purple-700 transition-colors duration-200 touch-manipulation;
+    min-height: 44px;
+  }
+  
+  .mobile-nav-item.active {
+    @apply text-purple-600;
+  }
+  
+  .mobile-nav-icon {
+    @apply text-xl mb-1;
+  }
+  
+  .mobile-nav-label {
+    @apply text-xs font-medium;
+  }
+  
+  /* Layout móvil */
+  .mobile-container {
+    @apply min-h-screen bg-gray-50;
+    padding-top: calc(var(--mobile-header-height) + var(--mobile-safe-area-top));
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-area-bottom));
+  }
+  
+  .mobile-content {
+    @apply px-4 py-6;
+  }
+  
+  /* Modales móviles */
+  .modal-mobile {
+    @apply fixed inset-0 bg-white z-50 overflow-y-auto;
+    padding-top: var(--mobile-safe-area-top);
+    padding-bottom: var(--mobile-safe-area-bottom);
+  }
+  
+  .modal-mobile-header {
+    @apply sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10;
+  }
+  
+  .modal-mobile-content {
+    @apply px-4 py-6;
+  }
+  
+  /* Swipe gestures */
+  .swipeable {
+    touch-action: pan-x;
+  }
+  
+  .swipe-action {
+    @apply absolute inset-y-0 right-0 flex items-center justify-center bg-red-500 text-white px-4 transform translate-x-full transition-transform duration-300;
+  }
+  
+  .swipe-action.active {
+    @apply translate-x-0;
+  }
+  
+  /* Pull to refresh */
+  .pull-to-refresh {
+    @apply relative overflow-hidden;
+  }
+  
+  .pull-indicator {
+    @apply absolute top-0 left-0 right-0 flex items-center justify-center py-4 bg-gray-100 transform -translate-y-full transition-transform duration-300;
+  }
+  
+  .pull-indicator.active {
+    @apply translate-y-0;
+  }
+  
+  /* Loading states móviles */
+  .skeleton-mobile {
+    @apply animate-pulse bg-gray-200 rounded-xl;
+  }
+  
+  .loading-spinner-mobile {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600;
+  }
+  
+  /* Toast notifications móviles */
+  .toast-mobile {
+    @apply fixed top-20 left-4 right-4 bg-white rounded-xl shadow-lg border border-gray-200 p-4 z-50 transform -translate-y-full transition-transform duration-300;
+  }
+  
+  .toast-mobile.show {
+    @apply translate-y-0;
   }
   
   .gradient-text {
@@ -116,7 +274,8 @@ body {
   }
   
   .nav-item {
-    @apply flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-purple-600 rounded-lg transition-all duration-200 cursor-pointer;
+    @apply flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-purple-600 rounded-lg transition-all duration-200 cursor-pointer touch-manipulation;
+    min-height: 44px;
   }
   
   .nav-item.active {
@@ -164,7 +323,7 @@ body {
   }
   
   .stats-card {
-    @apply bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300;
+    @apply bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 touch-manipulation;
   }
   
   .info-card {
@@ -218,13 +377,34 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Utilidades móviles */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  .safe-area-top {
+    padding-top: var(--mobile-safe-area-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: var(--mobile-safe-area-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: var(--mobile-safe-area-left);
+  }
+  
+  .safe-area-right {
+    padding-right: var(--mobile-safe-area-right);
+  }
 }
 
-/* Animaciones mejoradas */
+/* Animaciones */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -235,7 +415,7 @@ body {
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(30px);
   }
   to {
     opacity: 1;
@@ -245,11 +425,9 @@ body {
 
 @keyframes pulse-soft {
   0%, 100% {
-    transform: scale(1);
     opacity: 1;
   }
   50% {
-    transform: scale(1.02);
     opacity: 0.8;
   }
 }
@@ -260,6 +438,24 @@ body {
   }
   100% {
     background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
@@ -276,12 +472,20 @@ body {
 }
 
 .animate-shimmer {
-  animation: shimmer 2s infinite;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
 }
 
-/* Responsive design mejorado */
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Media queries móviles */
 @media (max-width: 640px) {
   .section-padding {
     @apply py-8;
@@ -292,22 +496,46 @@ body {
   }
   
   .modal-content {
-    @apply mx-4 max-h-[85vh];
+    @apply rounded-t-2xl rounded-b-none max-h-[95vh] mt-auto;
   }
   
   .btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
-    @apply py-2 px-4 text-sm;
+    @apply text-base px-6 py-3;
   }
   
   .stats-card {
     @apply p-4;
   }
+  
+  /* Ocultar elementos no esenciales en móvil */
+  .desktop-only {
+    @apply hidden;
+  }
+  
+  /* Mostrar elementos específicos de móvil */
+  .mobile-only {
+    @apply block;
+  }
+  
+  /* Grid responsive para móvil */
+  .grid-mobile {
+    @apply grid grid-cols-1 gap-4;
+  }
+  
+  /* Texto responsive */
+  .text-responsive {
+    @apply text-sm;
+  }
+  
+  /* Espaciado responsive */
+  .space-mobile {
+    @apply space-y-4;
+  }
 }
 
 @media (max-width: 768px) {
   .hero-title {
-    font-size: 2.25rem;
-    line-height: 1.2;
+    @apply text-3xl lg:text-4xl;
   }
   
   .section-container {
@@ -319,17 +547,49 @@ body {
   }
   
   .sidebar-nav {
-    @apply mb-6;
+    @apply rounded-none border-x-0;
   }
   
   .nav-item {
-    @apply px-3 py-2 text-sm;
+    @apply px-4 py-4;
+  }
+  
+  /* Ocultar desktop navigation */
+  .desktop-nav {
+    @apply hidden;
+  }
+  
+  /* Mostrar mobile navigation */
+  .mobile-nav {
+    @apply block;
+  }
+}
+
+@media (min-width: 641px) {
+  /* Ocultar elementos móviles en desktop */
+  .mobile-only {
+    @apply hidden;
+  }
+  
+  /* Mostrar elementos desktop */
+  .desktop-only {
+    @apply block;
   }
 }
 
 @media (min-width: 768px) {
   .grid-responsive {
     @apply grid-cols-2;
+  }
+  
+  /* Mostrar desktop navigation */
+  .desktop-nav {
+    @apply block;
+  }
+  
+  /* Ocultar mobile navigation */
+  .mobile-nav {
+    @apply hidden;
   }
 }
 
@@ -339,94 +599,113 @@ body {
   }
 }
 
-/* Loading states mejorados */
+/* Estados de carga y esqueletos */
 .skeleton {
-  @apply animate-shimmer bg-gray-200 rounded;
+  @apply animate-pulse bg-gray-200 rounded;
 }
 
 .skeleton-text {
-  @apply h-4 bg-gray-200 rounded animate-shimmer;
+  @apply h-4 bg-gray-200 rounded animate-pulse;
 }
 
 .skeleton-avatar {
-  @apply w-12 h-12 bg-gray-200 rounded-full animate-shimmer;
+  @apply h-10 w-10 bg-gray-200 rounded-full animate-pulse;
 }
 
 .skeleton-card {
-  @apply bg-white rounded-xl p-6 border border-gray-200;
+  @apply h-32 bg-gray-200 rounded-xl animate-pulse;
 }
 
-/* Focus states mejorados */
+/* Estados de focus mejorados */
 .focus-visible {
-  @apply outline-none ring-2 ring-purple-500 ring-offset-2;
+  @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2;
 }
 
-/* Hover states mejorados para móvil */
+/* Hover effects solo en dispositivos que soportan hover */
 @media (hover: hover) {
   .hover-lift:hover {
-    transform: translateY(-2px);
+    @apply transform -translate-y-1 shadow-lg;
   }
   
   .hover-scale:hover {
-    transform: scale(1.02);
+    @apply transform scale-105;
   }
 }
 
-/* Estados de error/éxito mejorados */
+/* Estados de input mejorados */
 .input-error {
-  @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+  @apply border-red-500 focus:border-red-500 focus:ring-red-500;
 }
 
 .input-success {
-  @apply border-green-300 focus:border-green-500 focus:ring-green-500;
+  @apply border-green-500 focus:border-green-500 focus:ring-green-500;
 }
 
-/* Estilos para elementos específicos de la aplicación */
+/* Estilos específicos para componentes */
 .plan-card {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  @apply relative overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300;
 }
 
 .plan-card.current {
-  @apply ring-2 ring-purple-500 relative;
+  @apply border-purple-500 ring-2 ring-purple-500 ring-opacity-50;
 }
 
 .testimonial-card {
-  @apply bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300;
+  @apply bg-white p-6 rounded-2xl shadow-sm border border-gray-200;
 }
 
 .faq-item {
-  @apply border border-gray-200 rounded-xl overflow-hidden;
+  @apply border-b border-gray-200 last:border-b-0;
 }
 
 .faq-button {
-  @apply w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:bg-gray-50;
+  @apply w-full text-left py-4 px-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded;
 }
 
 .faq-content {
-  @apply px-6 pb-4 text-gray-700 leading-relaxed;
+  @apply pb-4 text-gray-600 leading-relaxed;
 }
 
-/* Mejoras para notificaciones */
+/* Toast notifications */
 .toast-container {
   @apply fixed top-4 right-4 z-50 space-y-2;
 }
 
 .toast {
-  @apply bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm transform transition-all duration-300;
+  @apply bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm transform transition-all duration-300;
 }
 
 .toast.success {
-  @apply border-green-200 bg-green-50;
+  @apply border-green-500 bg-green-50;
 }
 
 .toast.error {
-  @apply border-red-200 bg-red-50;
+  @apply border-red-500 bg-red-50;
 }
 
 .toast.warning {
-  @apply border-yellow-200 bg-yellow-50;
+  @apply border-yellow-500 bg-yellow-50;
 }
 
 .toast.info {
-  @apply border-blue-200 bg-blue-50;
+  @apply border-blue-500 bg-blue-50;
+}
+
+/* Mejoras específicas para dispositivos táctiles */
+@media (pointer: coarse) {
+  /* Aumentar tamaños de touch targets */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Mejorar espaciado en listas */
+  .list-item {
+    @apply py-4;
+  }
+  
+  /* Botones más grandes */
+  .btn-touch {
+    @apply py-4 px-6 text-lg;
+  }
 }
