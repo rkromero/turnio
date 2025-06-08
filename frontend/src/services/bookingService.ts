@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { ProfessionalsResponse, BookingFormData, BookingResponse } from '../types/booking';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app/api';
+// Usar la misma configuración que api.ts
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
 
 export const bookingService = {
   // Obtener profesionales disponibles
@@ -11,14 +12,14 @@ export const bookingService = {
     if (serviceId) params.append('serviceId', serviceId);
     
     const response = await axios.get(
-      `${API_URL}/appointments/public/${businessSlug}/professionals?${params.toString()}`
+      `${BASE_URL}/api/appointments/public/${businessSlug}/professionals?${params.toString()}`
     );
     return response.data;
   },
 
   // Obtener servicios del negocio
   async getServices(businessSlug: string) {
-    const response = await axios.get(`${API_URL}/services/public/${businessSlug}`);
+    const response = await axios.get(`${BASE_URL}/api/services/public/${businessSlug}`);
     return response.data;
   },
 
@@ -30,7 +31,7 @@ export const bookingService = {
     if (professionalId) params.append('professionalId', professionalId);
     
     const response = await axios.get(
-      `${API_URL}/appointments/public/${businessSlug}/available-slots?${params.toString()}`
+      `${BASE_URL}/api/appointments/public/${businessSlug}/available-slots?${params.toString()}`
     );
     return response.data;
   },
@@ -38,7 +39,7 @@ export const bookingService = {
   // Crear reserva con soporte para profesional
   async createBooking(businessSlug: string, bookingData: BookingFormData): Promise<BookingResponse> {
     const response = await axios.post(
-      `${API_URL}/public/${businessSlug}/book`,
+      `${BASE_URL}/api/public/${businessSlug}/book`,
       bookingData
     );
     return response.data;
@@ -46,7 +47,7 @@ export const bookingService = {
 
   // Obtener información del negocio
   async getBusinessInfo(businessSlug: string) {
-    const response = await axios.get(`${API_URL}/businesses/public/${businessSlug}`);
+    const response = await axios.get(`${BASE_URL}/api/businesses/public/${businessSlug}`);
     return response.data;
   }
 }; 
