@@ -4,6 +4,7 @@ import type { Appointment, Service, AppointmentForm } from '../types';
 import AppointmentModal from '../components/AppointmentModal';
 import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
+import CalendarView from '../components/CalendarView';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { 
   Plus, 
@@ -16,7 +17,9 @@ import {
   MoreVertical,
   Filter,
   X,
-  Edit3
+  Edit3,
+  List,
+  CalendarDays
 } from 'lucide-react';
 
 interface AppointmentWithScoring extends Appointment {
@@ -37,6 +40,7 @@ const Appointments: React.FC = () => {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [filters, setFilters] = useState({
     date: '',
     status: '',
@@ -280,31 +284,41 @@ const Appointments: React.FC = () => {
             </p>
           </div>
           
-          {/* Desktop: Botón crear */}
-          {!isMobile && (
-            <button onClick={handleCreateAppointment} className="btn-primary">
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Cita
-            </button>
-          )}
-          
-          {/* Mobile: Botón filtros */}
-          {isMobile && (
-            <div className="flex space-x-2">
+          {/* Toggle de Vista - Entre stats y filtros */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-lg">
               <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`btn-secondary flex items-center space-x-2 ${hasActiveFilters ? 'bg-purple-50 border-purple-300' : ''}`}
+                onClick={() => setViewMode('list')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-white text-purple-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <Filter className="w-4 h-4" />
-                <span>Filtros</span>
-                {hasActiveFilters && (
-                  <span className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {[filters.date, filters.status, filters.serviceId].filter(Boolean).length}
-                  </span>
-                )}
+                <List className="w-4 h-4" />
+                <span>{isMobile ? 'Lista' : 'Vista Lista'}</span>
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'calendar'
+                    ? 'bg-white text-purple-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" />
+                <span>{isMobile ? 'Calendario' : 'Vista Calendario'}</span>
               </button>
             </div>
-          )}
+
+            {/* Desktop: Botón crear (movido aquí) */}
+            {!isMobile && (
+              <button onClick={handleCreateAppointment} className="btn-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Cita
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards - Grid responsive */}
@@ -362,8 +376,8 @@ const Appointments: React.FC = () => {
           </div>
         </div>
 
-        {/* Filtros - Responsive */}
-        {(showFilters || !isMobile) && (
+        {/* Filtros - Responsive (solo mostrar en vista lista o si están activos) */}
+        {(viewMode === 'list' && (showFilters || !isMobile)) && (
           <div className="card">
             <div className="card-body">
               {isMobile && (
@@ -438,7 +452,25 @@ const Appointments: React.FC = () => {
           </div>
         )}
 
-        {/* Lista de Citas - Cards para móvil, tabla para desktop */}
+        {/* Mobile: Botón filtros (solo en vista lista) */}
+        {isMobile && viewMode === 'list' && (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`btn-secondary flex items-center space-x-2 ${hasActiveFilters ? 'bg-purple-50 border-purple-300' : ''}`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filtros</span>
+              {hasActiveFilters && (
+                <span className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {[filters.date, filters.status, filters.serviceId].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Contenido Principal - Vista Lista o Calendario */}
         {appointments.length === 0 ? (
           <div className="card">
             <div className="card-body text-center py-12">
@@ -458,7 +490,16 @@ const Appointments: React.FC = () => {
               </button>
             </div>
           </div>
+        ) : viewMode === 'calendar' ? (
+          /* Vista Calendario */
+          <CalendarView
+            appointments={appointments}
+            onEditAppointment={handleEditAppointment}
+            onCreateAppointment={handleCreateAppointment}
+            onStatusChange={handleStatusChange}
+          />
         ) : (
+          /* Vista Lista */
           <>
             {/* Vista móvil - Cards */}
             {isMobile ? (
