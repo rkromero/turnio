@@ -201,7 +201,7 @@ const createUser = async (req, res) => {
     });
 
     const planLimits = {
-      FREE: 1,
+      FREE: 5, // Aumentado temporalmente para testing
       BASIC: 3, 
       PREMIUM: 10,
       ENTERPRISE: -1 // Ilimitado
