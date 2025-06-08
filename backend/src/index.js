@@ -190,6 +190,102 @@ async function startServer() {
       }
     });
 
+    // Endpoint temporal para aplicar migraciones de scoring
+    app.post('/debug/apply-scoring-migrations', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        console.log('🔄 Aplicando migraciones del sistema de scoring...');
+        
+        // SQL commands para crear las tablas
+        const commands = [
+          `CREATE TYPE "ClientEventType" AS ENUM ('ATTENDED', 'NO_SHOW', 'CANCELLED_LATE', 'CANCELLED_GOOD')`,
+          `CREATE TABLE "client_scores" (
+            "id" TEXT NOT NULL,
+            "email" TEXT,
+            "phone" TEXT,
+            "name" TEXT NOT NULL,
+            "totalPoints" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "totalWeight" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "starRating" INTEGER,
+            "totalBookings" INTEGER NOT NULL DEFAULT 0,
+            "attendedCount" INTEGER NOT NULL DEFAULT 0,
+            "noShowCount" INTEGER NOT NULL DEFAULT 0,
+            "lastActivity" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "client_scores_pkey" PRIMARY KEY ("id")
+          )`,
+          `CREATE TABLE "client_history" (
+            "id" TEXT NOT NULL,
+            "clientScoreId" TEXT NOT NULL,
+            "businessId" TEXT NOT NULL,
+            "appointmentId" TEXT NOT NULL,
+            "eventType" "ClientEventType" NOT NULL,
+            "points" DOUBLE PRECISION NOT NULL,
+            "weight" DOUBLE PRECISION NOT NULL,
+            "notes" TEXT,
+            "eventDate" TIMESTAMP(3) NOT NULL,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "client_history_pkey" PRIMARY KEY ("id")
+          )`,
+          `CREATE UNIQUE INDEX "client_scores_email_key" ON "client_scores"("email")`,
+          `CREATE UNIQUE INDEX "client_scores_phone_key" ON "client_scores"("phone")`,
+          `ALTER TABLE "client_history" ADD CONSTRAINT "client_history_clientScoreId_fkey" FOREIGN KEY ("clientScoreId") REFERENCES "client_scores"("id") ON DELETE CASCADE ON UPDATE CASCADE`
+        ];
+        
+        const results = [];
+        
+        for (let i = 0; i < commands.length; i++) {
+          try {
+            await prisma.$executeRawUnsafe(commands[i]);
+            results.push(`✅ Comando ${i + 1}: Ejecutado exitosamente`);
+            console.log(`✅ Comando ${i + 1}: Ejecutado exitosamente`);
+          } catch (error) {
+            if (error.message.includes('already exists')) {
+              results.push(`⚠️ Comando ${i + 1}: Ya existe (omitido)`);
+              console.log(`⚠️ Comando ${i + 1}: Ya existe (omitido)`);
+            } else {
+              results.push(`❌ Comando ${i + 1}: Error - ${error.message}`);
+              console.error(`❌ Comando ${i + 1}: Error -`, error.message);
+            }
+          }
+        }
+        
+        // Verificar tablas creadas
+        let verification = {};
+        try {
+          const clientScoresCount = await prisma.clientScore.count();
+          const clientHistoryCount = await prisma.clientHistory.count();
+          verification = {
+            clientScoresTable: `${clientScoresCount} registros`,
+            clientHistoryTable: `${clientHistoryCount} registros`,
+            status: 'Tablas verificadas exitosamente'
+          };
+        } catch (error) {
+          verification = {
+            status: 'Error verificando tablas: ' + error.message
+          };
+        }
+        
+        res.json({
+          success: true,
+          message: 'Migraciones aplicadas',
+          results,
+          verification,
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error('❌ Error aplicando migraciones:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Rutas de la API
     app.use('/api/auth', authRoutes);
     app.use('/api/appointments', appointmentRoutes);
