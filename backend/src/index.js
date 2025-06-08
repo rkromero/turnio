@@ -128,6 +128,7 @@ async function startServer() {
     const userRoutes = require('./routes/userRoutes');
     const planRoutes = require('./routes/planRoutes');
     const reviewRoutes = require('./routes/reviewRoutes');
+    const clientScoringRoutes = require('./routes/clientScoring');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -372,7 +373,6 @@ async function startServer() {
     app.use('/api/reviews', reviewRoutes);
     
     // Sistema de scoring de clientes
-    const clientScoringRoutes = require('./routes/clientScoring');
     app.use('/api/client-scoring', clientScoringRoutes);
 
     // Ruta para reservas públicas (sin autenticación)
@@ -606,6 +606,8 @@ async function startServer() {
     // Debug endpoints para diagnóstico de scoring
     app.get('/debug/check-scoring-tables', async (req, res) => {
       try {
+        const { prisma } = require('./config/database');
+        
         // Verificar si las tablas existen
         const clientScoresCount = await prisma.clientScore.count();
         const clientHistoryCount = await prisma.clientHistory.count();
@@ -662,6 +664,8 @@ async function startServer() {
 
     app.get('/debug/list-clients', async (req, res) => {
       try {
+        const { prisma } = require('./config/database');
+        
         const clients = await prisma.client.findMany({
           take: 10,
           orderBy: { createdAt: 'desc' },
@@ -690,6 +694,8 @@ async function startServer() {
 
     app.get('/debug/list-appointments', async (req, res) => {
       try {
+        const { prisma } = require('./config/database');
+        
         const appointments = await prisma.appointment.findMany({
           take: 10,
           orderBy: { createdAt: 'desc' },
@@ -722,6 +728,7 @@ async function startServer() {
 
     app.post('/debug/create-test-scoring', async (req, res) => {
       try {
+        const { prisma } = require('./config/database');
         const { email, name } = req.body;
         
         // Buscar o crear cliente
