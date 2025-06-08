@@ -241,43 +241,75 @@ const recordClientEvent = async (email, phone, name, businessId, appointmentId, 
 // Obtener scoring de un cliente
 const getClientScore = async (email, phone) => {
   try {
-    // Verificar si las tablas existen
-    const tablesExist = await checkScoringTablesExist();
-    if (!tablesExist) {
-      return null;
-    }
-
+    await ensureTablesExist();
+    
+    // Primero buscar en el sistema de scoring
     let clientScore = null;
     
     if (email) {
       clientScore = await prisma.clientScore.findUnique({
-        where: { email },
-        include: {
-          history: {
-            orderBy: { eventDate: 'desc' },
-            take: 10 // Últimos 10 eventos
-          }
-        }
+        where: { email }
       });
     }
     
     if (!clientScore && phone) {
       clientScore = await prisma.clientScore.findUnique({
-        where: { phone },
-        include: {
-          history: {
-            orderBy: { eventDate: 'desc' },
-            take: 10
-          }
-        }
+        where: { phone }
       });
     }
     
-    return clientScore;
-
+    // Si no existe en scoring, buscar en la tabla principal de clientes
+    if (!clientScore && (email || phone)) {
+      const mainClient = await prisma.client.findFirst({
+        where: {
+          OR: [
+            email ? { email } : {},
+            phone ? { phone } : {}
+          ].filter(condition => Object.keys(condition).length > 0)
+        }
+      });
+      
+      // Si existe en la tabla principal, crear registro de scoring
+      if (mainClient) {
+        console.log('🔗 Cliente encontrado en tabla principal, creando scoring:', mainClient.name);
+        
+        clientScore = await prisma.clientScore.create({
+          data: {
+            email: mainClient.email || null,
+            phone: mainClient.phone || null,
+            name: mainClient.name,
+            totalPoints: 0,
+            totalWeight: 0,
+            starRating: null,
+            totalBookings: 0,
+            attendedCount: 0,
+            noShowCount: 0,
+            lastActivity: new Date()
+          }
+        });
+        
+        console.log('✅ Registro de scoring creado para:', mainClient.name);
+      }
+    }
+    
+    if (!clientScore) {
+      return null;
+    }
+    
+    return {
+      hasScore: true,
+      starRating: clientScore.starRating,
+      totalBookings: clientScore.totalBookings,
+      attendedCount: clientScore.attendedCount,
+      noShowCount: clientScore.noShowCount,
+      cancelledLateCount: clientScore.cancelledLateCount || 0,
+      cancelledGoodCount: clientScore.cancelledGoodCount || 0,
+      lastActivity: clientScore.lastActivity
+    };
+    
   } catch (error) {
-    console.error('Error obteniendo scoring del cliente:', error);
-    return null;
+    console.error('Error obteniendo cliente scoring:', error);
+    throw error;
   }
 };
 

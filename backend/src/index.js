@@ -190,6 +190,79 @@ async function startServer() {
       }
     });
 
+    // Endpoint de debug para profesionales y horarios
+    app.get('/debug/professionals', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        const business = await prisma.business.findUnique({
+          where: { slug: 'cdfa' }
+        });
+
+        if (!business) {
+          return res.json({
+            success: false,
+            error: 'Negocio CDFA no encontrado'
+          });
+        }
+
+        const professionals = await prisma.user.findMany({
+          where: {
+            businessId: business.id
+          },
+          include: {
+            workingHours: true,
+            _count: {
+              select: {
+                appointments: true
+              }
+            }
+          }
+        });
+
+        const result = {
+          success: true,
+          debug: {
+            businessId: business.id,
+            businessName: business.name,
+            totalProfessionals: professionals.length,
+            professionals: professionals.map(prof => ({
+              id: prof.id,
+              name: prof.name,
+              email: prof.email,
+              isActive: prof.isActive,
+              totalAppointments: prof._count.appointments,
+              workingHours: prof.workingHours.map(wh => ({
+                dayOfWeek: wh.dayOfWeek,
+                dayName: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][wh.dayOfWeek],
+                startTime: wh.startTime,
+                endTime: wh.endTime,
+                isActive: wh.isActive
+              }))
+            })),
+            summary: {
+              total: professionals.length,
+              active: professionals.filter(p => p.isActive).length,
+              withSchedules: professionals.filter(p => p.workingHours.length > 0).length,
+              fullyConfigured: professionals.filter(p => 
+                p.isActive && p.workingHours.some(wh => wh.isActive)
+              ).length
+            },
+            timestamp: new Date().toISOString()
+          }
+        };
+
+        res.json(result);
+
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Endpoint temporal para aplicar migraciones de scoring
     app.post('/debug/apply-scoring-migrations', async (req, res) => {
       try {
@@ -443,9 +516,9 @@ async function startServer() {
           where: {
             businessId: business.id,
             OR: [
-              { email: clientEmail },
-              { phone: clientPhone }
-            ]
+              ...(clientEmail ? [{ email: clientEmail }] : []),
+              ...(clientPhone ? [{ phone: clientPhone }] : [])
+            ].filter(condition => Object.keys(condition).length > 0)
           }
         });
 
@@ -458,6 +531,19 @@ async function startServer() {
               phone: clientPhone
             }
           });
+        } else {
+          // ✅ ACTUALIZAR NOMBRE SI SE PROPORCIONA UNO NUEVO
+          if (clientName && clientName.trim() !== client.name) {
+            client = await prisma.client.update({
+              where: { id: client.id },
+              data: { 
+                name: clientName,
+                // Actualizar email y teléfono si se proporcionan y no existen
+                email: clientEmail || client.email,
+                phone: clientPhone || client.phone
+              }
+            });
+          }
         }
 
         // Crear el turno
