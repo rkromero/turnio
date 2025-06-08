@@ -86,6 +86,39 @@ const createAppointment = async (req, res) => {
     const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes } = req.body;
     const businessId = req.businessId;
 
+    // Verificar límites del plan
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { planType: true }
+    });
+
+    // Contar citas del mes actual
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const currentMonthAppointments = await prisma.appointment.count({
+      where: {
+        businessId,
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        },
+        status: { not: 'CANCELLED' }
+      }
+    });
+
+    // Usar los límites del planController
+    const { AVAILABLE_PLANS } = require('./planController');
+    const appointmentLimit = AVAILABLE_PLANS[business.planType].limits.appointments;
+    
+    if (appointmentLimit !== -1 && currentMonthAppointments >= appointmentLimit) {
+      return res.status(400).json({
+        success: false,
+        message: `Has alcanzado el límite de citas de tu plan ${business.planType} (${appointmentLimit} citas por mes). Considera actualizar tu plan.`
+      });
+    }
+
     // Verificar que el servicio pertenezca al negocio
     const service = await prisma.service.findFirst({
       where: {

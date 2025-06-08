@@ -110,6 +110,7 @@ const Settings: React.FC = () => {
         return (
           <PlanUsageTab
             planUsage={planUsage}
+            onPlanChanged={loadData}
           />
         );
       default:

@@ -48,6 +48,27 @@ const createService = async (req, res) => {
     const { name, description, duration, price, color } = req.body;
     const businessId = req.businessId;
 
+    // Verificar límites del plan
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { planType: true }
+    });
+
+    const activeServicesCount = await prisma.service.count({
+      where: { businessId, isActive: true }
+    });
+
+    // Usar los límites del planController
+    const { AVAILABLE_PLANS } = require('./planController');
+    const serviceLimit = AVAILABLE_PLANS[business.planType].limits.services;
+    
+    if (serviceLimit !== -1 && activeServicesCount >= serviceLimit) {
+      return res.status(400).json({
+        success: false,
+        message: `Has alcanzado el límite de servicios de tu plan ${business.planType} (${serviceLimit} servicios). Considera actualizar tu plan.`
+      });
+    }
+
     const service = await prisma.service.create({
       data: {
         businessId,

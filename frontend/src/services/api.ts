@@ -297,4 +297,22 @@ export const reportService = {
   }
 };
 
+// Servicios de planes
+export const planService = {
+  getAvailablePlans: async () => {
+    const response = await api.get('/plans/available');
+    return response.data.data;
+  },
+
+  getCurrentPlan: async () => {
+    const response = await api.get('/plans/current');
+    return response.data.data;
+  },
+
+  changePlan: async (newPlan: string) => {
+    const response = await api.put('/plans/change', { newPlan });
+    return response.data.data;
+  },
+};
+
 export default api; 

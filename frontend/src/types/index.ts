@@ -362,4 +362,39 @@ export interface UserStats {
       appointments: number;
     };
   }>;
+}
+
+// Tipos para el sistema de planes
+export interface AvailablePlan {
+  key: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+  name: string;
+  description: string;
+  price: number;
+  limits: {
+    appointments: number;
+    services: number;
+    users: number;
+  };
+  features: string[];
+  isCurrent: boolean;
+}
+
+export interface AvailablePlansResponse {
+  currentPlan: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+  plans: AvailablePlan[];
+}
+
+export interface PlanChangeResponse {
+  business: BusinessConfig;
+  newPlan: {
+    name: string;
+    description: string;
+    price: number;
+    limits: {
+      appointments: number;
+      services: number;
+      users: number;
+    };
+    features: string[];
+  };
 } 

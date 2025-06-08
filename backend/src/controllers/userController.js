@@ -130,55 +130,28 @@ const createUser = async (req, res) => {
   try {
     console.log('📥 Datos recibidos para crear usuario:', {
       body: req.body,
-      businessId: req.businessId,
-      headers: {
-        'content-type': req.headers['content-type'],
-        'user-agent': req.headers['user-agent']
-      }
+      email: req.body.email,
+      role: req.body.role,
+      avatar: req.body.avatar
     });
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('❌ Errores de validación detallados:', {
-        errorsArray: errors.array(),
-        errorsByField: errors.mapped(),
-        receivedData: req.body
-      });
-      return res.status(400).json({
-        success: false,
-        message: 'Datos inválidos',
-        errors: errors.array(),
-        debug: {
-          receivedFields: Object.keys(req.body),
-          receivedData: req.body
-        }
-      });
-    }
 
     const businessId = req.businessId;
     const { name, email, password, role, phone, avatar } = req.body;
 
-    console.log('🔍 Validando contraseña:', {
-      password: password ? `${password.substring(0, 3)}***` : 'undefined',
-      length: password ? password.length : 0,
-      hasLower: password ? /[a-z]/.test(password) : false,
-      hasUpper: password ? /[A-Z]/.test(password) : false,
-      hasNumber: password ? /\d/.test(password) : false
-    });
+    // Validaciones básicas
+    if (!name || !email || !password) {
+      console.log('⚠️ Faltan campos requeridos');
+      return res.status(400).json({
+        success: false,
+        message: 'Los campos nombre, email y contraseña son requeridos'
+      });
+    }
 
-    console.log('🔍 Validando otros campos:', {
-      name: name ? `${name.substring(0, 10)}...` : 'undefined',
-      email: email || 'undefined',
-      role: role || 'undefined',
-      phone: phone || 'undefined',
-      avatar: avatar || 'undefined'
-    });
-
-    // Verificar que el email no esté en uso en este negocio
+    // Verificar si el email ya existe
     const existingUser = await prisma.user.findFirst({
-      where: { 
+      where: {
         email,
-        businessId 
+        businessId
       }
     });
 
@@ -200,19 +173,15 @@ const createUser = async (req, res) => {
       where: { businessId, isActive: true }
     });
 
-    const planLimits = {
-      FREE: 5, // Aumentado temporalmente para testing
-      BASIC: 3, 
-      PREMIUM: 10,
-      ENTERPRISE: -1 // Ilimitado
-    };
-
-    const userLimit = planLimits[business.planType];
+    // Usar los límites del planController
+    const { AVAILABLE_PLANS } = require('./planController');
+    const userLimit = AVAILABLE_PLANS[business.planType].limits.users;
+    
     if (userLimit !== -1 && activeUsersCount >= userLimit) {
       console.log(`⚠️ Límite de usuarios alcanzado: ${activeUsersCount}/${userLimit}`);
       return res.status(400).json({
         success: false,
-        message: `Has alcanzado el límite de usuarios de tu plan ${business.planType} (${userLimit} usuarios)`
+        message: `Has alcanzado el límite de usuarios de tu plan ${business.planType} (${userLimit} usuarios). Considera actualizar tu plan.`
       });
     }
 
@@ -252,15 +221,7 @@ const createUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('💥 Error creando usuario:', error);
-    
-    if (error.code === 'P2002') {
-      return res.status(400).json({
-        success: false,
-        message: 'Este email ya está registrado en el sistema'
-      });
-    }
-
+    console.error('Error creando usuario:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'

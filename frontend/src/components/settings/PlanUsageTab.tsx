@@ -1,9 +1,12 @@
-import React from 'react';
-import { CreditCard, Users, Calendar, Wrench, TrendingUp, Check, X } from 'lucide-react';
-import type { PlanUsage } from '../../types';
+import React, { useState } from 'react';
+import { CreditCard, Users, Calendar, Wrench, TrendingUp, Check, X, ArrowRight, Zap, Crown } from 'lucide-react';
+import { planService } from '../../services/api';
+import toast from 'react-hot-toast';
+import type { PlanUsage, AvailablePlansResponse, AvailablePlan } from '../../types';
 
 interface PlanUsageTabProps {
   planUsage: PlanUsage | null;
+  onPlanChanged?: () => void;
 }
 
 const PLAN_FEATURES = {
@@ -90,7 +93,128 @@ const ProgressBar: React.FC<{ current: number; limit: number; color?: string }> 
   );
 };
 
-const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage }) => {
+const PlanCard: React.FC<{ 
+  plan: AvailablePlan; 
+  onSelect: (planKey: string) => void;
+  isChanging: boolean;
+}> = ({ plan, onSelect, isChanging }) => {
+  const colorClasses = {
+    blue: 'border-blue-200 bg-blue-50',
+    purple: 'border-purple-200 bg-purple-50',
+    gray: 'border-gray-200 bg-gray-50',
+    gold: 'border-yellow-200 bg-yellow-50'
+  };
+  
+  const buttonClasses = {
+    blue: 'bg-blue-600 hover:bg-blue-700',
+    purple: 'bg-purple-600 hover:bg-purple-700',
+    gray: 'bg-gray-600 hover:bg-gray-700',
+    gold: 'bg-yellow-600 hover:bg-yellow-700'
+  };
+
+  const features = PLAN_FEATURES[plan.key as keyof typeof PLAN_FEATURES];
+  const colorKey = features.color as keyof typeof colorClasses;
+
+  return (
+    <div className={`relative border-2 rounded-xl p-6 transition-all ${
+      plan.isCurrent 
+        ? 'border-purple-500 bg-purple-50 scale-105 shadow-lg' 
+        : `${colorClasses[colorKey]} hover:shadow-md`
+    }`}>
+      {plan.isCurrent && (
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+          <div className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
+            <Crown className="w-4 h-4 mr-1" />
+            Plan Actual
+          </div>
+        </div>
+      )}
+
+      <div className="text-center mb-4">
+        <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
+        <p className="text-gray-600 text-sm mb-3">{plan.description}</p>
+        <div className="flex items-baseline justify-center mb-4">
+          <span className="text-3xl font-bold text-gray-900">
+            ${plan.price === 0 ? 'Gratis' : plan.price.toLocaleString()}
+          </span>
+          {plan.price > 0 && <span className="text-gray-500 ml-1">/mes</span>}
+        </div>
+      </div>
+
+      <ul className="space-y-2 mb-6">
+        {plan.features.slice(0, 5).map((feature, index) => (
+          <li key={index} className="flex items-center text-sm">
+            <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+            <span className="text-gray-700">{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      {!plan.isCurrent && (
+        <button
+          onClick={() => onSelect(plan.key)}
+          disabled={isChanging}
+          className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            buttonClasses[colorKey]
+          }`}
+        >
+          {isChanging ? 'Cambiando...' : 'Seleccionar Plan'}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged }) => {
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<AvailablePlansResponse | null>(null);
+  const [isChangingPlan, setIsChangingPlan] = useState(false);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+
+  const loadAvailablePlans = async () => {
+    try {
+      setIsLoadingPlans(true);
+      const data = await planService.getAvailablePlans();
+      setAvailablePlans(data);
+    } catch (error) {
+      console.error('Error cargando planes:', error);
+      toast.error('Error al cargar los planes disponibles');
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  };
+
+  const handleChangePlan = async (newPlanKey: string) => {
+    try {
+      setIsChangingPlan(true);
+      await planService.changePlan(newPlanKey);
+      toast.success('Plan actualizado exitosamente');
+      setShowPlanModal(false);
+      
+      // Recargar datos
+      if (onPlanChanged) {
+        onPlanChanged();
+      }
+      
+    } catch (error: unknown) {
+      let message = 'Error al cambiar el plan';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        message = axiosError.response?.data?.message || message;
+      }
+      
+      toast.error(message);
+    } finally {
+      setIsChangingPlan(false);
+    }
+  };
+
+  const openPlanModal = () => {
+    setShowPlanModal(true);
+    loadAvailablePlans();
+  };
+
   if (!planUsage) {
     return (
       <div className="p-6 text-center">
@@ -105,14 +229,23 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage }) => {
 
   return (
     <div className="p-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <CreditCard className="h-6 w-6 text-primary-600" />
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Información del Plan</h3>
-          <p className="text-sm text-gray-600">
-            Revisa el uso actual de tu plan y las características disponibles
-          </p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <CreditCard className="h-6 w-6 text-primary-600" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Información del Plan</h3>
+            <p className="text-sm text-gray-600">
+              Revisa el uso actual de tu plan y las características disponibles
+            </p>
+          </div>
         </div>
+        <button
+          onClick={openPlanModal}
+          className="btn-primary flex items-center space-x-2"
+        >
+          <Zap className="w-4 h-4" />
+          <span>Cambiar Plan</span>
+        </button>
       </div>
 
       {/* Plan actual */}
@@ -247,16 +380,71 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage }) => {
               <li>• Estás cerca del límite de usuarios. Actualiza tu plan para agregar más miembros del equipo.</li>
             )}
           </ul>
+          <div className="mt-3">
+            <button
+              onClick={openPlanModal}
+              className="text-yellow-800 hover:text-yellow-900 font-medium flex items-center space-x-1"
+            >
+              <span>Ver planes disponibles</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de cambio de plan */}
+      {showPlanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Cambiar Plan</h2>
+                  <p className="text-gray-600 mt-1">Selecciona el plan que mejor se adapte a tu negocio</p>
+                </div>
+                <button
+                  onClick={() => setShowPlanModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {isLoadingPlans ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Cargando planes...</p>
+                </div>
+              ) : availablePlans ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {availablePlans.plans.map((plan) => (
+                    <PlanCard
+                      key={plan.key}
+                      plan={plan}
+                      onSelect={handleChangePlan}
+                      isChanging={isChangingPlan}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Error al cargar los planes</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Información de contacto */}
       <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="text-sm font-medium text-blue-900 mb-2">
-          ¿Necesitas un plan diferente?
+          ¿Necesitas ayuda con tu plan?
         </h4>
         <p className="text-sm text-blue-800">
-          Si necesitas actualizar tu plan o tienes preguntas sobre las características disponibles, 
+          Si tienes preguntas sobre las características disponibles o necesitas ayuda para elegir el plan correcto, 
           no dudes en contactarnos. Estamos aquí para ayudarte a encontrar el plan perfecto para tu negocio.
         </p>
       </div>
