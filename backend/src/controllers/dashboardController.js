@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database');
+const { getActiveBranchIds } = require('../utils/branchUtils');
 
 // Obtener estadísticas del dashboard
 const getDashboardStats = async (req, res) => {
@@ -11,41 +12,8 @@ const getDashboardStats = async (req, res) => {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
-    // Obtener todas las sucursales activas del negocio para incluir en las consultas
-    const activeBranches = await prisma.branch.findMany({
-      where: {
-        businessId,
-        isActive: true
-      },
-      select: { id: true }
-    });
-
-    const branchIds = activeBranches.map(branch => branch.id);
-
-    // Si no hay sucursales, crear una automáticamente
-    if (branchIds.length === 0) {
-      console.log('🔄 Creando sucursal principal automáticamente para businessId:', businessId);
-      
-      const business = await prisma.business.findUnique({
-        where: { id: businessId }
-      });
-
-      if (business) {
-        const newBranch = await prisma.branch.create({
-          data: {
-            businessId,
-            name: business.name + ' - Principal',
-            slug: 'principal',
-            address: business.address,
-            phone: business.phone,
-            description: 'Sucursal principal (creada automáticamente)',
-            isMain: true,
-            isActive: true
-          }
-        });
-        branchIds.push(newBranch.id);
-      }
-    }
+    // Obtener sucursales activas (auto-crea si no existen)
+    const branchIds = await getActiveBranchIds(businessId);
 
     // Estadísticas paralelas
     const [
