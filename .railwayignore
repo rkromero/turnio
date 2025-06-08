@@ -1,0 +1,26 @@
+# Frontend (no se despliega con el backend)
+node_modules/
+.next/
+out/
+
+# Archivos de desarrollo
+.env.local
+.env.development
+*.log
+.DS_Store
+
+# Documentación
+*.md
+REVIEW_SYSTEM_IMPLEMENTATION.md
+
+# Archivos temporales
+tmp/
+temp/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore 

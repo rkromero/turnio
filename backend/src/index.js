@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const { connectDatabase, disconnectDatabase } = require('./config/database');
 const { exec } = require('child_process');
 const util = require('util');
+const { startReviewNotificationService } = require('./services/reviewNotificationService');
 
 const execAsync = util.promisify(exec);
 
@@ -109,17 +110,24 @@ async function startServer() {
     
     // 2. Conectar a la base de datos
     await connectDatabase();
+    console.log('✅ Conectado a la base de datos');
+    
+    // Inicializar servicio de notificaciones de reseñas
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_REVIEW_NOTIFICATIONS === 'true') {
+      startReviewNotificationService();
+    }
     
     // 3. Configurar rutas
     const authRoutes = require('./routes/auth');
     const appointmentRoutes = require('./routes/appointments');
     const serviceRoutes = require('./routes/services');
     const dashboardRoutes = require('./routes/dashboard');
-    const clientRoutes = require('./routes/clientRoutes');
-    const reportRoutes = require('./routes/reportRoutes');
-    const configRoutes = require('./routes/configRoutes');
-    const userRoutes = require('./routes/userRoutes');
-    const planRoutes = require('./routes/planRoutes');
+    const clientRoutes = require('./routes/clients');
+    const reportRoutes = require('./routes/reports');
+    const configRoutes = require('./routes/config');
+    const userRoutes = require('./routes/users');
+    const planRoutes = require('./routes/plans');
+    const reviewRoutes = require('./routes/reviewRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -192,6 +200,7 @@ async function startServer() {
     app.use('/api/config', configRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/plans', planRoutes);
+    app.use('/api/reviews', reviewRoutes);
 
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
