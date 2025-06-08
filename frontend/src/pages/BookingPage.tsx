@@ -42,12 +42,13 @@ interface BookingState {
 
 const BookingPage: React.FC = () => {
   const { businessSlug } = useParams<{ businessSlug: string }>();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [bookingMode, setBookingMode] = useState<'service' | 'professional'>('service');
+  const [dateAvailability, setDateAvailability] = useState<Array<{ date: string; available: boolean; slotsCount: number; reason?: string }>>([]);
 
   const [booking, setBooking] = useState<BookingState>({
     business: null,
@@ -84,6 +85,13 @@ const BookingPage: React.FC = () => {
       loadProfessionalServices();
     }
   }, [booking.selectedProfessional, bookingMode]);
+
+  // Cargar disponibilidad cuando se selecciona servicio en modo profesional
+  useEffect(() => {
+    if (bookingMode === 'professional' && booking.selectedProfessional && booking.selectedService) {
+      loadProfessionalAvailability();
+    }
+  }, [booking.selectedProfessional, booking.selectedService, bookingMode]);
 
   const loadBusinessData = async () => {
     try {
@@ -173,6 +181,26 @@ const BookingPage: React.FC = () => {
     } catch (error) {
       console.error('Error cargando profesionales:', error);
       toast.error('Error cargando profesionales disponibles');
+    }
+  };
+
+  // Cargar disponibilidad de fechas para profesional + servicio
+  const loadProfessionalAvailability = async () => {
+    if (!booking.selectedProfessional || !booking.selectedService) return;
+    
+    try {
+      const availabilityResponse = await bookingService.getProfessionalAvailability(
+        businessSlug!,
+        booking.selectedProfessional,
+        booking.selectedService.id
+      );
+      
+      if (availabilityResponse.success) {
+        setDateAvailability(availabilityResponse.data.availability);
+      }
+    } catch (error) {
+      console.error('Error cargando disponibilidad:', error);
+      toast.error('Error cargando disponibilidad de fechas');
     }
   };
 
@@ -287,24 +315,25 @@ const BookingPage: React.FC = () => {
       setStep(2);
     } else if (step === 2) {
       // En modo servicio: fecha seleccionada → ir a step 3
-      // En modo profesional: servicio seleccionado → ir a step 2.5 (fecha)
+      // En modo profesional: servicio seleccionado → ir a step 3 (fecha)
       if (bookingMode === 'service' && booking.selectedDate) {
         setStep(3);
       } else if (bookingMode === 'professional' && booking.selectedService) {
-        setStep(2.5);
+        setStep(3);
       }
-    } else if (step === 2.5 && booking.selectedDate) {
-      // Paso intermedio para modo profesional: fecha seleccionada → ir a step 3
-      setStep(3);
-    } else if (step === 3 && (booking.selectedProfessional !== null || booking.selectedTime)) {
+    } else if (step === 3 && bookingMode === 'professional' && booking.selectedDate) {
+      // En modo profesional: fecha seleccionada → ir a step 4 (horarios)
       setStep(4);
+    } else if ((step === 3 && bookingMode === 'service') || (step === 4 && bookingMode === 'professional')) {
+      // Horarios seleccionados → ir a datos del cliente
+      if (booking.selectedTime) {
+        setStep(bookingMode === 'service' ? 4 : 5);
+      }
     }
   };
 
   const goBack = () => {
-    if (step === 2.5) {
-      setStep(2);
-    } else if (step > 1) {
+    if (step > 1) {
       setStep(step - 1);
     }
   };
@@ -339,7 +368,7 @@ const BookingPage: React.FC = () => {
     };
   };
 
-  // Generate date options (next 30 days)
+  // Generate date options (next 30 days) con información de disponibilidad
   const generateDateOptions = () => {
     const dates = [];
     const today = new Date();
@@ -347,14 +376,22 @@ const BookingPage: React.FC = () => {
     for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
+      const dateString = date.toISOString().split('T')[0];
+      
+      // Buscar información de disponibilidad para esta fecha
+      const availabilityInfo = dateAvailability.find(d => d.date === dateString);
+      
       dates.push({
-        value: date.toISOString().split('T')[0],
+        value: dateString,
         label: date.toLocaleDateString('es-ES', { 
           weekday: 'short', 
           day: 'numeric', 
           month: 'short' 
         }),
-        isToday: i === 0
+        isToday: i === 0,
+        available: availabilityInfo?.available ?? true, // Por defecto disponible si no hay info
+        slotsCount: availabilityInfo?.slotsCount ?? 0,
+        reason: availabilityInfo?.reason
       });
     }
     
@@ -711,9 +748,8 @@ const BookingPage: React.FC = () => {
                       >
                         Continuar
                       </button>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
               )}
             </div>
           )}
@@ -733,35 +769,115 @@ const BookingPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                {generateDateOptions().map((dateOption) => (
-                  <button
-                    key={dateOption.value}
-                    onClick={() => handleDateSelect(dateOption.value)}
-                    className={`
-                      p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px]
-                      ${booking.selectedDate === dateOption.value
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
-                      }
-                    `}
-                  >
-                    <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
-                    {dateOption.isToday && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                    )}
-                  </button>
-                ))}
+              {/* Leyenda de disponibilidad */}
+              <div className="flex justify-center items-center space-x-6 mb-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-blue-600 rounded"></div>
+                  <span>Disponible</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                  <span>Pocos horarios</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                  <span>Sin disponibilidad</span>
+                </div>
               </div>
 
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+                {generateDateOptions().map((dateOption) => {
+                  let bgColor = 'bg-gray-50 hover:bg-gray-100 text-gray-900';
+                  let borderColor = '';
+                  
+                  if (booking.selectedDate === dateOption.value) {
+                    bgColor = 'bg-blue-600 text-white shadow-md';
+                  } else if (!dateOption.available) {
+                    bgColor = 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-75';
+                  } else if (dateOption.slotsCount <= 3 && dateOption.slotsCount > 0) {
+                    bgColor = 'bg-yellow-50 hover:bg-yellow-100 text-gray-900';
+                    borderColor = 'border-yellow-300';
+                  } else if (dateOption.slotsCount > 3) {
+                    bgColor = 'bg-green-50 hover:bg-green-100 text-gray-900';
+                    borderColor = 'border-green-300';
+                  }
+
+                  return (
+                    <button
+                      key={dateOption.value}
+                      onClick={() => handleDateSelect(dateOption.value)}
+                      disabled={!dateOption.available}
+                      className={`
+                        p-3 md:p-4 rounded-xl text-center transition-colors relative min-h-[64px] md:min-h-[72px] border-2
+                        ${bgColor} ${borderColor}
+                      `}
+                      title={dateOption.reason || `${dateOption.slotsCount} horarios disponibles`}
+                    >
+                      <div className="text-sm md:text-base font-medium">{dateOption.label}</div>
+                      {dateOption.available && dateOption.slotsCount > 0 && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          {dateOption.slotsCount} horarios
+                        </div>
+                      )}
+                      {!dateOption.available && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Sin horarios
+                        </div>
+                      )}
+                      {dateOption.isToday && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Mensaje de ayuda y sugerencias */}
               {booking.selectedDate && (
-                <div className="text-center">
-                  <button
-                    onClick={goToNextStep}
-                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
-                  >
-                    Continuar
-                  </button>
+                <div className="mb-6">
+                  {dateAvailability.find(d => d.date === booking.selectedDate)?.available ? (
+                    <div className="text-center">
+                      <button
+                        onClick={goToNextStep}
+                        className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                      <h4 className="font-medium text-gray-900 mb-2">Sin horarios disponibles</h4>
+                      <p className="text-gray-600 text-sm mb-4">
+                        {booking.professionals.find(p => p.id === booking.selectedProfessional)?.name} no tiene horarios disponibles el {new Date(booking.selectedDate).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}.
+                      </p>
+                      
+                      {/* Sugerencias de fechas alternativas */}
+                      {dateAvailability.filter(d => d.available).length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-3">Te sugerimos estas fechas alternativas:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {dateAvailability
+                              .filter(d => d.available && d.slotsCount > 0)
+                              .slice(0, 4)
+                              .map(suggestion => (
+                                <button
+                                  key={suggestion.date}
+                                  onClick={() => handleDateSelect(suggestion.date)}
+                                  className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg text-sm transition-colors"
+                                >
+                                  {new Date(suggestion.date).toLocaleDateString('es-ES', { 
+                                    weekday: 'short', 
+                                    day: 'numeric', 
+                                    month: 'short' 
+                                  })}
+                                  <span className="text-xs ml-1">({suggestion.slotsCount})</span>
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

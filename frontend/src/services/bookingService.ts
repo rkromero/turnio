@@ -33,6 +33,22 @@ export const bookingService = {
     return response.data;
   },
 
+  // Obtener disponibilidad de un profesional para un servicio específico
+  async getProfessionalAvailability(businessSlug: string, professionalId: string, serviceId: string): Promise<{ 
+    success: boolean; 
+    data: { 
+      professional: { id: string; name: string };
+      service: { id: string; name: string; duration: number };
+      availability: Array<{ date: string; available: boolean; slotsCount: number; reason?: string }>;
+      suggestedDates: string[];
+    } 
+  }> {
+    const response = await axios.get(
+      `${BASE_URL}/api/appointments/public/${businessSlug}/professional/${professionalId}/availability?serviceId=${serviceId}`
+    );
+    return response.data;
+  },
+
   // Obtener servicios del negocio
   async getServices(businessSlug: string): Promise<{ success: boolean; business: Business; services: Service[] }> {
     const response = await axios.get(

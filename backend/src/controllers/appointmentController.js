@@ -949,6 +949,130 @@ const getBusinessServices = async (req, res) => {
   }
 };
 
+// Obtener disponibilidad por fechas para un profesional y servicio específico
+const getProfessionalAvailability = async (req, res) => {
+  try {
+    const { businessSlug, professionalId } = req.params;
+    const { serviceId, fromDate, toDate } = req.query;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      include: {
+        services: {
+          where: { isActive: true }
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    // Verificar que el profesional pertenezca al negocio
+    const professional = await prisma.user.findFirst({
+      where: {
+        id: professionalId,
+        businessId: business.id,
+        isActive: true
+      },
+      include: {
+        workingHours: {
+          where: { isActive: true }
+        }
+      }
+    });
+
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profesional no encontrado'
+      });
+    }
+
+    // Verificar que el servicio exista
+    const service = business.services.find(s => s.id === serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Generar fechas desde fromDate hasta toDate (o los próximos 30 días por defecto)
+    const startDate = fromDate ? new Date(fromDate) : new Date();
+    const endDate = toDate ? new Date(toDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    
+    const dateAvailability = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      
+      // Buscar horarios de trabajo para este día
+      const workingHour = professional.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
+      
+      if (!workingHour) {
+        // No trabaja este día
+        dateAvailability.push({
+          date: currentDate.toISOString().split('T')[0],
+          available: false,
+          slotsCount: 0,
+          reason: 'No trabaja este día'
+        });
+      } else {
+        // Generar slots disponibles para este día
+        const availableSlots = await generateAvailableSlots(
+          professionalId,
+          currentDate,
+          workingHour,
+          service.duration
+        );
+
+        dateAvailability.push({
+          date: currentDate.toISOString().split('T')[0],
+          available: availableSlots.length > 0,
+          slotsCount: availableSlots.length,
+          reason: availableSlots.length === 0 ? 'Sin horarios disponibles' : null
+        });
+      }
+
+      // Avanzar al siguiente día
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        professional: {
+          id: professional.id,
+          name: professional.name
+        },
+        service: {
+          id: service.id,
+          name: service.name,
+          duration: service.duration
+        },
+        availability: dateAvailability,
+        suggestedDates: dateAvailability
+          .filter(d => d.available && d.slotsCount > 0)
+          .slice(0, 5) // Primeras 5 fechas disponibles
+          .map(d => d.date)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo disponibilidad del profesional:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getAppointments,
   createAppointment,
@@ -958,5 +1082,6 @@ module.exports = {
   getAvailableProfessionals,
   getAllProfessionals,
   getProfessionalServices,
-  getBusinessServices
+  getBusinessServices,
+  getProfessionalAvailability
 }; 

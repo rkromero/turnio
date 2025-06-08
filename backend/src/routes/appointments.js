@@ -9,7 +9,8 @@ const {
   getAvailableProfessionals,
   getAllProfessionals,
   getProfessionalServices,
-  getBusinessServices
+  getBusinessServices,
+  getProfessionalAvailability
 } = require('../controllers/appointmentController');
 const { authenticateToken, requireBusinessAccess } = require('../middleware/auth');
 
@@ -42,6 +43,7 @@ const createAppointmentValidation = [
 router.get('/public/:businessSlug/professionals', getAvailableProfessionals);
 router.get('/public/:businessSlug/all-professionals', getAllProfessionals);
 router.get('/public/:businessSlug/professional/:professionalId/services', getProfessionalServices);
+router.get('/public/:businessSlug/professional/:professionalId/availability', getProfessionalAvailability);
 router.get('/public/:businessSlug/services', getBusinessServices);
 router.get('/public/:businessSlug/available-slots', getAvailableSlots);
 
