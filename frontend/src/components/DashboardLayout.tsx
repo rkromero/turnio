@@ -30,6 +30,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Clientes', href: '/dashboard/clients', icon: '👥' },
     { name: 'Reseñas', href: '/dashboard/reviews', icon: '⭐' },
     { name: 'Usuarios', href: '/dashboard/users', icon: '👤' },
+    { name: 'Sucursales', href: '/dashboard/branches', icon: '🏢' },
     { name: 'Reportes', href: '/dashboard/reports', icon: '📈' },
     { name: 'Configuraciones', href: '/dashboard/settings', icon: '🔧' },
   ];

@@ -129,6 +129,7 @@ async function startServer() {
     const planRoutes = require('./routes/planRoutes');
     const reviewRoutes = require('./routes/reviewRoutes');
     const clientScoringRoutes = require('./routes/clientScoring');
+    const branchRoutes = require('./routes/branchRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -360,6 +361,206 @@ async function startServer() {
       }
     });
 
+    // Endpoint para aplicar migraciones del sistema multi-sucursal
+    app.post('/debug/apply-branch-migrations', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        console.log('🔄 Aplicando migraciones del sistema multi-sucursal...');
+        
+        // SQL commands para crear las tablas del sistema multi-sucursal
+        const commands = [
+          // Crear tabla branches
+          `CREATE TABLE IF NOT EXISTS "branches" (
+            "id" TEXT NOT NULL,
+            "businessId" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "slug" TEXT NOT NULL,
+            "address" TEXT,
+            "phone" TEXT,
+            "description" TEXT,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "isMain" BOOLEAN NOT NULL DEFAULT false,
+            "latitude" DOUBLE PRECISION,
+            "longitude" DOUBLE PRECISION,
+            "timezone" TEXT DEFAULT 'America/Argentina/Buenos_Aires',
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "branches_pkey" PRIMARY KEY ("id")
+          )`,
+          
+          // Crear tabla branch_services
+          `CREATE TABLE IF NOT EXISTS "branch_services" (
+            "id" TEXT NOT NULL,
+            "branchId" TEXT NOT NULL,
+            "serviceId" TEXT NOT NULL,
+            "price" DOUBLE PRECISION,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "branch_services_pkey" PRIMARY KEY ("id")
+          )`,
+          
+          // Crear tabla branch_holidays
+          `CREATE TABLE IF NOT EXISTS "branch_holidays" (
+            "id" TEXT NOT NULL,
+            "branchId" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "date" TIMESTAMP(3) NOT NULL,
+            "isRecurring" BOOLEAN NOT NULL DEFAULT false,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "branch_holidays_pkey" PRIMARY KEY ("id")
+          )`,
+          
+          // Agregar columnas a tablas existentes
+          `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "branchId" TEXT`,
+          `ALTER TABLE "services" ADD COLUMN IF NOT EXISTS "isGlobal" BOOLEAN DEFAULT true`,
+          `ALTER TABLE "appointments" ADD COLUMN IF NOT EXISTS "branchId" TEXT`,
+          `ALTER TABLE "holidays" ADD COLUMN IF NOT EXISTS "branchId" TEXT`,
+          
+          // Crear índices únicos
+          `CREATE UNIQUE INDEX IF NOT EXISTS "branches_businessId_slug_key" ON "branches"("businessId", "slug")`,
+          `CREATE UNIQUE INDEX IF NOT EXISTS "branch_services_branchId_serviceId_key" ON "branch_services"("branchId", "serviceId")`,
+          
+          // Crear foreign keys
+          `ALTER TABLE "branches" ADD CONSTRAINT IF NOT EXISTS "branches_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+          `ALTER TABLE "branch_services" ADD CONSTRAINT IF NOT EXISTS "branch_services_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+          `ALTER TABLE "branch_services" ADD CONSTRAINT IF NOT EXISTS "branch_services_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+          `ALTER TABLE "branch_holidays" ADD CONSTRAINT IF NOT EXISTS "branch_holidays_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+          `ALTER TABLE "users" ADD CONSTRAINT IF NOT EXISTS "users_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+          `ALTER TABLE "appointments" ADD CONSTRAINT IF NOT EXISTS "appointments_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE CASCADE`
+        ];
+        
+        const results = [];
+        
+        for (let i = 0; i < commands.length; i++) {
+          try {
+            await prisma.$executeRawUnsafe(commands[i]);
+            results.push(`✅ Comando ${i + 1}: Ejecutado exitosamente`);
+            console.log(`✅ Comando ${i + 1}: Ejecutado exitosamente`);
+          } catch (error) {
+            if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+              results.push(`⚠️ Comando ${i + 1}: Ya existe (omitido)`);
+              console.log(`⚠️ Comando ${i + 1}: Ya existe (omitido)`);
+            } else {
+              results.push(`❌ Comando ${i + 1}: Error - ${error.message}`);
+              console.error(`❌ Comando ${i + 1}: Error -`, error.message);
+            }
+          }
+        }
+        
+        // Crear sucursal principal para negocios existentes
+        console.log('🔄 Creando sucursales principales para negocios existentes...');
+        
+        const businesses = await prisma.business.findMany({
+          where: {
+            branches: {
+              none: {}
+            }
+          }
+        });
+        
+        const branchCreationResults = [];
+        
+        for (const business of businesses) {
+          try {
+            await prisma.branch.create({
+              data: {
+                businessId: business.id,
+                name: business.name + ' - Principal',
+                slug: 'principal',
+                address: business.address,
+                phone: business.phone,
+                description: 'Sucursal principal',
+                isMain: true,
+                isActive: true
+              }
+            });
+            branchCreationResults.push(`✅ Sucursal principal creada para: ${business.name}`);
+            console.log(`✅ Sucursal principal creada para: ${business.name}`);
+          } catch (error) {
+            branchCreationResults.push(`❌ Error creando sucursal para ${business.name}: ${error.message}`);
+            console.error(`❌ Error creando sucursal para ${business.name}:`, error.message);
+          }
+        }
+        
+        // Asignar branchId a citas existentes que no lo tengan
+        console.log('🔄 Asignando sucursales a citas existentes...');
+        
+        const appointmentUpdateResults = [];
+        
+        try {
+          const appointmentsWithoutBranch = await prisma.appointment.findMany({
+            where: {
+              branchId: null
+            },
+            include: {
+              business: {
+                include: {
+                  branches: {
+                    where: { isMain: true }
+                  }
+                }
+              }
+            }
+          });
+          
+          for (const appointment of appointmentsWithoutBranch) {
+            const mainBranch = appointment.business.branches[0];
+            if (mainBranch) {
+              await prisma.appointment.update({
+                where: { id: appointment.id },
+                data: { branchId: mainBranch.id }
+              });
+            }
+          }
+          
+          appointmentUpdateResults.push(`✅ ${appointmentsWithoutBranch.length} citas actualizadas`);
+          console.log(`✅ ${appointmentsWithoutBranch.length} citas actualizadas`);
+        } catch (error) {
+          appointmentUpdateResults.push(`❌ Error actualizando citas: ${error.message}`);
+          console.error('❌ Error actualizando citas:', error.message);
+        }
+        
+        // Verificar tablas creadas
+        let verification = {};
+        try {
+          const branchesCount = await prisma.branch.count();
+          const branchServicesCount = await prisma.branchService.count();
+          const branchHolidaysCount = await prisma.branchHoliday.count();
+          
+          verification = {
+            branchesTable: `${branchesCount} registros`,
+            branchServicesTable: `${branchServicesCount} registros`,
+            branchHolidaysTable: `${branchHolidaysCount} registros`,
+            status: 'Tablas multi-sucursal verificadas exitosamente'
+          };
+        } catch (error) {
+          verification = {
+            status: 'Error verificando tablas: ' + error.message
+          };
+        }
+        
+        res.json({
+          success: true,
+          message: 'Migraciones del sistema multi-sucursal aplicadas',
+          results,
+          branchCreationResults,
+          appointmentUpdateResults,
+          verification,
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error('❌ Error aplicando migraciones multi-sucursal:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Rutas de la API
     app.use('/api/auth', authRoutes);
     app.use('/api/appointments', appointmentRoutes);
@@ -371,6 +572,7 @@ async function startServer() {
     app.use('/api/users', userRoutes);
     app.use('/api/plans', planRoutes);
     app.use('/api/reviews', reviewRoutes);
+    app.use('/api/branches', branchRoutes);
     
     // Sistema de scoring de clientes
     app.use('/api/client-scoring', clientScoringRoutes);

@@ -29,6 +29,7 @@ model Business {
   updatedAt       DateTime @updatedAt
 
   // Relaciones
+  branches     Branch[]
   users        User[]
   services     Service[]
   clients      Client[]
@@ -39,9 +40,38 @@ model Business {
   @@map("businesses")
 }
 
+// Nuevo modelo para sucursales
+model Branch {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String   // "Sucursal Centro", "Local Belgrano"
+  slug        String   // URL-friendly identifier
+  address     String?
+  phone       String?
+  description String?
+  isActive    Boolean  @default(true)
+  isMain      Boolean  @default(false) // Sucursal principal
+  latitude    Float?   // Para geolocalización
+  longitude   Float?
+  timezone    String?  @default("America/Argentina/Buenos_Aires")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  users        User[]
+  services     BranchService[]
+  appointments Appointment[]
+  holidays     BranchHoliday[]
+
+  @@unique([businessId, slug])
+  @@map("branches")
+}
+
 model User {
   id         String   @id @default(cuid())
   businessId String
+  branchId   String? // Sucursal específica (null = puede trabajar en todas)
   name       String
   email      String   @unique
   password   String
@@ -54,6 +84,7 @@ model User {
 
   // Relaciones
   business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch       Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
   appointments Appointment[]
   workingHours WorkingHours[]
 
@@ -69,14 +100,33 @@ model Service {
   price       Float
   isActive    Boolean  @default(true)
   color       String?
+  isGlobal    Boolean  @default(true) // Si está disponible en todas las sucursales
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relaciones
-  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+  branchServices BranchService[] // Servicios específicos por sucursal
 
   @@map("services")
+}
+
+// Tabla intermedia para servicios específicos por sucursal
+model BranchService {
+  id        String  @id @default(cuid())
+  branchId  String
+  serviceId String
+  price     Float?  // Precio específico para esta sucursal (override)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, serviceId])
+  @@map("branch_services")
 }
 
 model Client {
@@ -100,6 +150,7 @@ model Client {
 model Appointment {
   id           String            @id @default(cuid())
   businessId   String
+  branchId     String            // Sucursal donde se realiza la cita
   clientId     String
   serviceId    String
   userId       String? // profesional asignado (opcional)
@@ -114,6 +165,7 @@ model Appointment {
 
   // Relaciones
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -140,6 +192,7 @@ model WorkingHours {
 model Holiday {
   id          String   @id @default(cuid())
   businessId  String
+  branchId    String?  // null = feriado global, específico = feriado por sucursal
   name        String
   date        DateTime
   isRecurring Boolean  @default(false)
@@ -150,6 +203,22 @@ model Holiday {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@map("holidays")
+}
+
+// Modelo específico para feriados por sucursal (alternativa)
+model BranchHoliday {
+  id          String   @id @default(cuid())
+  branchId    String
+  name        String
+  date        DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("branch_holidays")
 }
 
 model Review {

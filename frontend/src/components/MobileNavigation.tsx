@@ -8,6 +8,7 @@ import {
   BarChart3,
   Star,
   UserCog,
+  Building2,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
@@ -58,6 +59,12 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
       name: 'Usuarios',
       href: '/dashboard/users',
       icon: UserCog,
+      exactMatch: false
+    },
+    {
+      name: 'Sucursales',
+      href: '/dashboard/branches',
+      icon: Building2,
       exactMatch: false
     },
     {

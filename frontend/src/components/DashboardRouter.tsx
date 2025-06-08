@@ -9,6 +9,7 @@ import Reviews from '../pages/Reviews';
 import Users from '../pages/Users';
 import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
+import Branches from '../pages/Branches';
 
 const DashboardRouter: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/clients" element={<Clients />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/branches" element={<Branches />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
         
