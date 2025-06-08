@@ -240,13 +240,20 @@ const BookingPage: React.FC = () => {
   };
 
   const handleDateSelect = (date: string) => {
+    console.log('📅 Seleccionando fecha:', date, 'en modo:', bookingMode);
+    console.log('👤 Profesional actual:', booking.selectedProfessional);
+    
     setBooking(prev => ({
       ...prev,
       selectedDate: date,
-      selectedProfessional: null,
+      // En modo profesional mantener el profesional, en modo servicio limpiarlo
+      selectedProfessional: bookingMode === 'professional' ? prev.selectedProfessional : null,
       selectedTime: null,
-      professionals: []
+      // En modo profesional mantener la lista de profesionales, en modo servicio limpiarla
+      professionals: bookingMode === 'professional' ? prev.professionals : []
     }));
+    
+    console.log('✅ Fecha seleccionada, profesional mantenido:', booking.selectedProfessional);
   };
 
   const handleProfessionalSelect = (professionalId: string | null) => {
