@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Building2, Globe, MapPin } from 'lucide-react';
 import type { Service, ServiceForm } from '../types';
+import { Branch } from '../types/branch';
+import { branchService } from '../services/branchService';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -21,10 +24,33 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     description: '',
     duration: 60,
     price: 0,
-    color: '#3B82F6'
+    color: '#3B82F6',
+    isGlobal: true,
+    branchIds: []
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  // Cargar sucursales disponibles
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        setLoadingBranches(true);
+        const availableBranches = await branchService.getBranches();
+        setBranches(availableBranches);
+      } catch (error) {
+        console.error('Error cargando sucursales:', error);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    if (isOpen) {
+      loadBranches();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (service) {
@@ -33,7 +59,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         description: service.description || '',
         duration: service.duration,
         price: service.price,
-        color: service.color || '#3B82F6'
+        color: service.color || '#3B82F6',
+        isGlobal: true, // Por defecto, los servicios editados son globales
+        branchIds: []
       });
     } else {
       setFormData({
@@ -41,7 +69,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         description: '',
         duration: 60,
         price: 0,
-        color: '#3B82F6'
+        color: '#3B82F6',
+        isGlobal: true,
+        branchIds: []
       });
     }
     setErrors({});
@@ -60,6 +90,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
     if (formData.price < 0) {
       newErrors.price = 'El precio no puede ser negativo';
+    }
+
+    // Validar sucursales para servicios específicos
+    if (!formData.isGlobal && (!formData.branchIds || formData.branchIds.length === 0)) {
+      newErrors.branchIds = 'Debes seleccionar al menos una sucursal para servicios específicos';
     }
 
     setErrors(newErrors);
@@ -94,11 +129,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
   };
 
+  const handleBranchToggle = (branchId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      branchIds: prev.branchIds?.includes(branchId)
+        ? prev.branchIds.filter(id => id !== branchId)
+        : [...(prev.branchIds || []), branchId]
+    }));
+
+    // Limpiar error al seleccionar sucursales
+    if (errors.branchIds) {
+      setErrors(prev => ({ ...prev, branchIds: '' }));
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             {service ? 'Editar Servicio' : 'Nuevo Servicio'}
@@ -211,20 +260,88 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Disponibilidad por Sucursal */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Disponibilidad por Sucursal
+            </label>
+            <div className="space-y-3">
+              {/* Opción Global */}
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  id="global"
+                  checked={formData.isGlobal}
+                  onChange={() => setFormData(prev => ({ ...prev, isGlobal: true, branchIds: [] }))}
+                  className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                />
+                <label htmlFor="global" className="ml-2 flex items-center text-sm text-gray-700">
+                  <Globe className="w-4 h-4 mr-1" />
+                  Disponible en todas las sucursales
+                </label>
+              </div>
+
+              {/* Opción Específica */}
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  id="specific"
+                  checked={!formData.isGlobal}
+                  onChange={() => setFormData(prev => ({ ...prev, isGlobal: false }))}
+                  className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                />
+                <label htmlFor="specific" className="ml-2 flex items-center text-sm text-gray-700">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  Disponible en sucursales específicas
+                </label>
+              </div>
+
+              {/* Selección de Sucursales Específicas */}
+              {!formData.isGlobal && (
+                <div className="ml-6 mt-3 space-y-2">
+                  {loadingBranches ? (
+                    <p className="text-sm text-gray-500">Cargando sucursales...</p>
+                  ) : branches.length === 0 ? (
+                    <p className="text-sm text-gray-500">No hay sucursales disponibles</p>
+                  ) : (
+                    branches.map(branch => (
+                      <div key={branch.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`branch-${branch.id}`}
+                          checked={formData.branchIds?.includes(branch.id) || false}
+                          onChange={() => handleBranchToggle(branch.id)}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <label htmlFor={`branch-${branch.id}`} className="ml-2 flex items-center text-sm text-gray-700">
+                          <Building2 className="w-4 h-4 mr-1" />
+                          {branch.name} {branch.isMain ? '(Principal)' : ''}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                  {errors.branchIds && (
+                    <p className="mt-1 text-sm text-red-600">{errors.branchIds}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </form>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary"
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
             disabled={isLoading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="btn-primary"
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -242,4 +359,4 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   );
 };
 
-export default ServiceModal; 
+export default ServiceModal;

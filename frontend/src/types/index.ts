@@ -17,6 +17,7 @@ export interface Business {
 export interface User {
   id: string;
   businessId: string;
+  branchId?: string; // Sucursal específica del usuario
   name: string;
   email: string;
   role: 'ADMIN' | 'EMPLOYEE';
@@ -129,6 +130,8 @@ export interface ServiceForm {
   duration: number;
   price: number;
   color?: string;
+  isGlobal?: boolean; // Si está disponible en todas las sucursales
+  branchIds?: string[]; // Sucursales específicas (para servicios no globales)
 }
 
 // Tipos para respuestas de API
@@ -333,6 +336,7 @@ export interface UserForm {
 
 export interface CreateUserForm extends UserForm {
   password: string;
+  branchId?: string; // Sucursal específica (opcional)
 }
 
 export interface UpdateUserForm extends Partial<UserForm> {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, User, Mail, Phone, Shield, Image, Key } from 'lucide-react';
+import { X, Eye, EyeOff, User, Mail, Phone, Shield, Image, Key, Building2 } from 'lucide-react';
 import { UserWithStats, CreateUserForm } from '../../types';
+import { Branch } from '../../types/branch';
 import { userService } from '../../services/userService';
+import { branchService } from '../../services/branchService';
 
 interface UserModalProps {
   user?: UserWithStats | null;
@@ -16,14 +18,34 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
     password: '',
     role: 'EMPLOYEE',
     phone: '',
-    avatar: ''
+    avatar: '',
+    branchId: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [emailAvailable, setEmailAvailable] = useState(true);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   const isEditing = !!user;
+
+  // Cargar sucursales disponibles
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        setLoadingBranches(true);
+        const availableBranches = await branchService.getBranches();
+        setBranches(availableBranches);
+      } catch (error) {
+        console.error('Error cargando sucursales:', error);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    loadBranches();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -33,16 +55,19 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
         password: '', // No mostrar contraseña existente
         role: user.role,
         phone: user.phone || '',
-        avatar: user.avatar || ''
+        avatar: user.avatar || '',
+        branchId: user.branchId || ''
       });
     } else {
       // Generar contraseña temporal para nuevos usuarios
       setFormData(prev => ({
         ...prev,
-        password: userService.generateTempPassword()
+        password: userService.generateTempPassword(),
+        // Asignar sucursal principal por defecto
+        branchId: branches.find(b => b.isMain)?.id || (branches[0]?.id || '')
       }));
     }
-  }, [user]);
+  }, [user, branches]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -109,6 +134,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
         if (formData.phone !== (user.phone || '')) updateData.phone = formData.phone;
         if (formData.avatar !== (user.avatar || '')) updateData.avatar = formData.avatar;
         if (formData.password) updateData.password = formData.password;
+        if (formData.branchId !== (user.branchId || '')) updateData.branchId = formData.branchId;
 
         await (onSave as (id: string, data: Partial<CreateUserForm>) => Promise<void>)(user.id, updateData);
       } else {
@@ -292,6 +318,32 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
                 />
               </div>
             )}
+          </div>
+
+          {/* Sucursal */}
+          <div>
+            <label className="label">
+              <Building2 className="w-4 h-4 inline mr-1" />
+              Sucursal
+            </label>
+            <select
+              value={formData.branchId}
+              onChange={(e) => setFormData(prev => ({ ...prev, branchId: e.target.value }))}
+              className="input-field"
+              disabled={loadingBranches}
+            >
+              {loadingBranches ? (
+                <option value="">Cargando sucursales...</option>
+              ) : branches.length === 0 ? (
+                <option value="">No hay sucursales disponibles</option>
+              ) : (
+                branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name} {branch.isMain ? '(Principal)' : ''}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
           {/* Buttons */}
