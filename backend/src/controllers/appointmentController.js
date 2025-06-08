@@ -773,14 +773,9 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
 
     // Solo agregar si el slot completo cabe antes del fin del horario laboral
     if (isAvailable && slotEnd <= endTime) {
-      // Compensar zona horaria de Argentina (UTC-3)
-      // Agregar 3 horas para que cuando el frontend lo interprete como UTC, 
-      // muestre la hora correcta en Argentina
-      const adjustedTime = new Date(currentTime.getTime() + 3 * 60 * 60 * 1000);
-      
       slots.push({
-        time: currentTime.toTimeString().slice(0, 5), // HH:MM (hora local)
-        datetime: adjustedTime.toISOString(), // UTC+3 para compensar
+        time: currentTime.toTimeString().slice(0, 5), // HH:MM
+        datetime: currentTime.toISOString(),
         available: true
       });
     }

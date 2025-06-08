@@ -385,12 +385,17 @@ const BookingPage: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
+      // Compensar zona horaria de Argentina (UTC-3)
+      // Agregar 3 horas para que cuando llegue al backend se interprete correctamente
+      const selectedDateTime = new Date(booking.selectedTime);
+      const adjustedDateTime = new Date(selectedDateTime.getTime() + 3 * 60 * 60 * 1000);
+
       const bookingData: BookingFormData = {
         clientName: booking.clientData.name,
         clientEmail: booking.clientData.email,
         clientPhone: booking.clientData.phone,
         serviceId: booking.selectedService.id,
-        startTime: booking.selectedTime,
+        startTime: adjustedDateTime.toISOString(),
         notes: booking.clientData.notes,
         professionalId: booking.selectedProfessional || undefined
       };

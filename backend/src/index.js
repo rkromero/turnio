@@ -603,6 +603,170 @@ async function startServer() {
       }
     });
 
+    // Debug endpoints para diagnóstico de scoring
+    app.get('/debug/check-scoring-tables', async (req, res) => {
+      try {
+        // Verificar si las tablas existen
+        const clientScoresCount = await prisma.clientScore.count();
+        const clientHistoryCount = await prisma.clientHistory.count();
+        const clientsCount = await prisma.client.count();
+        const appointmentsCount = await prisma.appointment.count();
+        
+        // Obtener algunos registros de ejemplo
+        const sampleScores = await prisma.clientScore.findMany({
+          take: 5,
+          include: {
+            client: {
+              select: { name: true, email: true }
+            }
+          }
+        });
+        
+        const sampleHistory = await prisma.clientHistory.findMany({
+          take: 5,
+          include: {
+            clientScore: {
+              include: {
+                client: {
+                  select: { name: true, email: true }
+                }
+              }
+            }
+          }
+        });
+        
+        res.json({
+          success: true,
+          data: {
+            tables: {
+              clientScores: clientScoresCount,
+              clientHistory: clientHistoryCount,
+              clients: clientsCount,
+              appointments: appointmentsCount
+            },
+            samples: {
+              scores: sampleScores,
+              history: sampleHistory
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error checking scoring tables:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message,
+          details: error.stack
+        });
+      }
+    });
+
+    app.get('/debug/list-clients', async (req, res) => {
+      try {
+        const clients = await prisma.client.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            createdAt: true,
+            businessId: true
+          }
+        });
+        
+        res.json({
+          success: true,
+          data: clients
+        });
+      } catch (error) {
+        console.error('Error listing clients:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message
+        });
+      }
+    });
+
+    app.get('/debug/list-appointments', async (req, res) => {
+      try {
+        const appointments = await prisma.appointment.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            status: true,
+            startTime: true,
+            createdAt: true,
+            client: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
+        });
+        
+        res.json({
+          success: true,
+          data: appointments
+        });
+      } catch (error) {
+        console.error('Error listing appointments:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message
+        });
+      }
+    });
+
+    app.post('/debug/create-test-scoring', async (req, res) => {
+      try {
+        const { email, name } = req.body;
+        
+        // Buscar o crear cliente
+        let client = await prisma.client.findFirst({
+          where: { email }
+        });
+        
+        if (!client) {
+          client = await prisma.client.create({
+            data: {
+              name,
+              email,
+              businessId: 'cmbnph40y0002qh0ivwfpnf5v' // ID del negocio por defecto
+            }
+          });
+        }
+        
+        // Crear scoring
+        const clientScore = await prisma.clientScore.create({
+          data: {
+            clientId: client.id,
+            score: 3,
+            totalBookings: 1,
+            attendedCount: 1,
+            noShowCount: 0,
+            cancelledCount: 0
+          }
+        });
+        
+        res.json({
+          success: true,
+          data: {
+            client,
+            clientScore
+          }
+        });
+      } catch (error) {
+        console.error('Error creating test scoring:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message
+        });
+      }
+    });
+
     // Manejo de rutas no encontradas
     app.use('*', (req, res) => {
       res.status(404).json({
