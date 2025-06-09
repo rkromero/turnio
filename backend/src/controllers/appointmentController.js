@@ -559,13 +559,14 @@ const getAvailableSlots = async (req, res) => {
       
       if (!workingHour) continue;
 
-      // Generar slots para este profesional
-      const userSlots = await generateAvailableSlots(
-        user.id,
-        targetDate,
-        workingHour,
-        service?.duration || 60
-      );
+              // Generar slots para este profesional
+        const userSlots = await generateAvailableSlots(
+          user.id,
+          targetDate,
+          workingHour,
+          service?.duration || business.defaultAppointmentDuration || 60,
+          business.defaultAppointmentDuration || 30
+        );
 
       // Filtrar slots ocupados
       const availableUserSlots = userSlots.filter(slot => {
@@ -732,12 +733,14 @@ const getAvailableProfessionals = async (req, res) => {
           continue;
         }
 
-        // Generar slots disponibles
+        // Generar slots disponibles (en getAvailableProfessionals)
+        // Necesitamos pasar el business para acceder a defaultAppointmentDuration
         const availableSlots = await generateAvailableSlots(
           professional.id,
           targetDate,
           workingHour,
-          service?.duration || 60 // duración por defecto 60 min
+          service?.duration || business.defaultAppointmentDuration || 60,
+          business.defaultAppointmentDuration || 30
         );
 
         totalSlotsCount += availableSlots.length;
@@ -805,7 +808,7 @@ const getAvailableProfessionals = async (req, res) => {
 };
 
 // Función auxiliar para generar slots disponibles
-async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration) {
+async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration, businessSlotDuration = 30) {
   const slots = [];
   
   // Parsear horarios de trabajo
@@ -837,8 +840,8 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
     }
   });
 
-  // Generar slots de 30 minutos (o según la duración del servicio)
-  const slotDuration = Math.min(serviceDuration, 30); // slots mínimos de 30 min
+  // Usar la duración configurada del negocio para los slots
+  const slotDuration = businessSlotDuration; // Usar configuración del negocio
   let currentTime = new Date(startTime);
   
   while (currentTime < endTime) {
@@ -1121,12 +1124,13 @@ const getProfessionalAvailability = async (req, res) => {
           reason: 'No trabaja este día'
         });
       } else {
-        // Generar slots disponibles para este día
+        // Generar slots disponibles para este día (en getProfessionalAvailability)
         const availableSlots = await generateAvailableSlots(
           professionalId,
           currentDate,
           workingHour,
-          service.duration
+          service.duration,
+          business.defaultAppointmentDuration || 30
         );
 
         dateAvailability.push({
