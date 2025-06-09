@@ -15,7 +15,7 @@ const registerBusiness = async (req, res) => {
       });
     }
 
-    const { businessName, email, password, phone, address, description } = req.body;
+    const { businessName, email, password, phone, address, description, businessType, defaultAppointmentDuration } = req.body;
 
     // Verificar si el email ya existe
     const existingUser = await prisma.user.findUnique({
@@ -55,14 +55,31 @@ const registerBusiness = async (req, res) => {
           address,
           description,
           planType: 'FREE',
-          maxAppointments: 30
+          maxAppointments: 30,
+          businessType: businessType || 'GENERAL',
+          defaultAppointmentDuration: defaultAppointmentDuration || 60
         }
       });
 
-      // Crear el usuario administrador
+      // Crear sucursal principal automáticamente
+      const mainBranch = await tx.branch.create({
+        data: {
+          businessId: business.id,
+          name: `${businessName} - Principal`,
+          slug: 'principal',
+          address: address || null,
+          phone: phone || null,
+          description: 'Sucursal principal (creada automáticamente)',
+          isMain: true,
+          isActive: true
+        }
+      });
+
+      // Crear el usuario administrador y asignarlo a la sucursal principal
       const user = await tx.user.create({
         data: {
           businessId: business.id,
+          branchId: mainBranch.id,
           name: businessName,
           email,
           password: hashedPassword,
@@ -70,7 +87,7 @@ const registerBusiness = async (req, res) => {
         }
       });
 
-      return { business, user };
+      return { business, user, mainBranch };
     });
 
     // Generar token JWT

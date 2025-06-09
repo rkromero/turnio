@@ -22,6 +22,14 @@ const registerValidation = [
     .optional()
     .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
     .withMessage('Número de teléfono inválido'),
+  body('businessType')
+    .optional()
+    .isIn(['GENERAL', 'BARBERSHOP', 'HAIR_SALON', 'BEAUTY_CENTER', 'MEDICAL_CENTER', 'MASSAGE_SPA'])
+    .withMessage('Tipo de negocio inválido'),
+  body('defaultAppointmentDuration')
+    .optional()
+    .isInt({ min: 15, max: 480 })
+    .withMessage('La duración debe estar entre 15 y 480 minutos'),
 ];
 
 // Validaciones para login

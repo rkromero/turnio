@@ -106,6 +106,18 @@ export interface RegisterForm {
   phone?: string;
   address?: string;
   description?: string;
+  businessType?: BusinessType;
+  defaultAppointmentDuration?: number;
+}
+
+// Enum para tipos de negocio
+export enum BusinessType {
+  GENERAL = 'GENERAL',
+  BARBERSHOP = 'BARBERSHOP',
+  HAIR_SALON = 'HAIR_SALON', 
+  BEAUTY_CENTER = 'BEAUTY_CENTER',
+  MEDICAL_CENTER = 'MEDICAL_CENTER',
+  MASSAGE_SPA = 'MASSAGE_SPA'
 }
 
 export interface LoginForm {
@@ -184,6 +196,8 @@ export interface BusinessConfigForm {
   description?: string;
   primaryColor?: string;
   logo?: string;
+  businessType?: BusinessType;
+  defaultAppointmentDuration?: number;
 }
 
 // Horarios de trabajo
