@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Clock, Edit2, Trash2, Coffee, AlertCircle } from 'lucide-react';
 import { BranchBreakTime, BranchBreakTimeForm } from '../../types';
 import { Branch } from '../../types/branch';
-import { useAuthenticatedFetch } from '../../hooks/useAuthenticatedFetch';
 
 interface BranchBreakTimesTabProps {
   branches: Branch[];
@@ -19,8 +18,28 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Sabado', short: 'Sab' }
 ];
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
+
+// Función helper para hacer peticiones autenticadas
+const fetchAuth = async (url: string, options: RequestInit = {}) => {
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    credentials: 'include', // Incluir cookies httpOnly
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Error del servidor' }));
+    throw new Error(errorData.message || `Error: ${response.status}`);
+  }
+
+  return response;
+};
+
 const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onRefresh }) => {
-  const fetchWithAuth = useAuthenticatedFetch();
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [breakTimes, setBreakTimes] = useState<BranchBreakTime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +63,7 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
   const loadBreakTimes = async (branchId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetchWithAuth(`/api/break-times/branch/${branchId}`);
+      const response = await fetchAuth(`/api/break-times/branch/${branchId}`);
       const data = await response.json();
       setBreakTimes(data.data.breakTimes || []);
     } catch (error) {
@@ -70,25 +89,16 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
       
       const method = editingBreakTime ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      await fetchAuth(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify(formData)
       });
 
-      if (response.ok) {
-        setShowModal(false);
-        setEditingBreakTime(null);
-        resetForm();
-        loadBreakTimes(selectedBranch);
-        onRefresh();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Error al guardar horario de descanso');
-      }
+      setShowModal(false);
+      setEditingBreakTime(null);
+      resetForm();
+      loadBreakTimes(selectedBranch);
+      onRefresh();
     } catch (error) {
       console.error('Error:', error);
       alert('Error al guardar horario de descanso');
@@ -104,20 +114,12 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/break-times/${breakTimeId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      await fetchAuth(`/api/break-times/${breakTimeId}`, {
+        method: 'DELETE'
       });
 
-      if (response.ok) {
-        loadBreakTimes(selectedBranch);
-        onRefresh();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Error al eliminar horario de descanso');
-      }
+      loadBreakTimes(selectedBranch);
+      onRefresh();
     } catch (error) {
       console.error('Error:', error);
       alert('Error al eliminar horario de descanso');
