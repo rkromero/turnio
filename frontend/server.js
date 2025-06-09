@@ -12,6 +12,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware para archivos estáticos con tipos MIME correctos
 app.use(express.static(path.join(__dirname, 'dist'), {
   setHeaders: (res, filePath) => {
+    console.log(`📁 Serving static file: ${filePath}`);
+    
     // Service Worker
     if (filePath.endsWith('/sw.js')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
@@ -45,6 +47,17 @@ app.get('/health', (req, res) => {
     server: 'express',
     version: '1.0.1'
   });
+});
+
+// Middleware para debug de archivos estáticos
+app.use((req, res, next) => {
+  if (req.path.includes('.') && !req.path.includes('/api/')) {
+    console.log(`🔍 Static file request: ${req.path}`);
+    const filePath = path.join(__dirname, 'dist', req.path);
+    const exists = fs.existsSync(filePath);
+    console.log(`📄 File ${req.path}: ${exists ? '✅ Found' : '❌ Missing'} at ${filePath}`);
+  }
+  next();
 });
 
 // SPA fallback - SOLO para rutas que no son archivos estáticos
