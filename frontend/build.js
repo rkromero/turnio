@@ -46,6 +46,23 @@ try {
     throw new Error('Build falló: no se generó dist/index.html');
   }
 
+  // Copiar archivos adicionales del directorio public si no se copiaron automáticamente
+  console.log('📋 Verificando archivos públicos...');
+  const publicFiles = ['manifest.json', 'sw.js'];
+  for (const file of publicFiles) {
+    const srcPath = path.join('public', file);
+    const destPath = path.join('dist', file);
+    
+    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+      console.log(`📄 Copiando ${file}...`);
+      fs.copyFileSync(srcPath, destPath);
+    } else if (fs.existsSync(destPath)) {
+      console.log(`✅ ${file} ya existe en dist/`);
+    } else {
+      console.log(`⚠️  ${file} no encontrado en public/`);
+    }
+  }
+
   console.log('✅ Build del frontend completado exitosamente!');
   console.log('📁 Archivos generados en ./dist/');
   
