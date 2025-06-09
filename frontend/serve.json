@@ -1,0 +1,12 @@
+{
+  "public": ".",
+  "rewrites": [
+    {
+      "source": "**",
+      "destination": "/index.html"
+    }
+  ],
+  "directoryListing": false,
+  "cleanUrls": false,
+  "trailingSlash": false
+} 
