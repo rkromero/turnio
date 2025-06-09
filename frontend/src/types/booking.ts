@@ -4,6 +4,19 @@ export interface Business {
   slug: string;
 }
 
+export interface Branch {
+  id: string;
+  name: string;
+  slug: string;
+  address: string | null;
+  phone: string | null;
+  description: string | null;
+  isMain: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  professionalCount: number;
+}
+
 export interface Service {
   id: string;
   name: string;

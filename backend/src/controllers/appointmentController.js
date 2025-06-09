@@ -1148,6 +1148,86 @@ const getProfessionalAvailability = async (req, res) => {
   }
 };
 
+// Obtener sucursales públicas de un negocio
+const getPublicBranches = async (req, res) => {
+  try {
+    const { businessSlug } = req.params;
+
+    // Buscar el negocio por slug
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      include: {
+        branches: {
+          where: { 
+            isActive: true 
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            address: true,
+            phone: true,
+            description: true,
+            isMain: true,
+            latitude: true,
+            longitude: true,
+            _count: {
+              select: {
+                users: { 
+                  where: { isActive: true } 
+                }
+              }
+            }
+          },
+          orderBy: [
+            { isMain: 'desc' }, // Principal primero
+            { name: 'asc' }
+          ]
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    const branches = business.branches.map(branch => ({
+      id: branch.id,
+      name: branch.name,
+      slug: branch.slug,
+      address: branch.address,
+      phone: branch.phone,
+      description: branch.description,
+      isMain: branch.isMain,
+      latitude: branch.latitude,
+      longitude: branch.longitude,
+      professionalCount: branch._count.users
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        business: {
+          id: business.id,
+          name: business.name,
+          slug: business.slug
+        },
+        branches
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo sucursales públicas:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getAppointments,
   createAppointment,
@@ -1158,5 +1238,6 @@ module.exports = {
   getAllProfessionals,
   getProfessionalServices,
   getBusinessServices,
-  getProfessionalAvailability
+  getProfessionalAvailability,
+  getPublicBranches
 }; 

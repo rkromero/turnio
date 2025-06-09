@@ -5,6 +5,31 @@ import { ProfessionalsResponse, BookingFormData, BookingResponse, BookingData, S
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
 
 export const bookingService = {
+  // Obtener sucursales públicas de un negocio
+  async getPublicBranches(businessSlug: string): Promise<{ 
+    success: boolean; 
+    data: { 
+      business: { id: string; name: string; slug: string };
+      branches: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        address: string | null;
+        phone: string | null;
+        description: string | null;
+        isMain: boolean;
+        latitude: number | null;
+        longitude: number | null;
+        professionalCount: number;
+      }>;
+    } 
+  }> {
+    const response = await axios.get(
+      `${BASE_URL}/api/appointments/public/${businessSlug}/branches`
+    );
+    return response.data;
+  },
+
   // Obtener profesionales disponibles
   async getProfessionals(businessSlug: string, date?: string, serviceId?: string): Promise<ProfessionalsResponse> {
     const params = new URLSearchParams();

@@ -10,7 +10,8 @@ const {
   getAllProfessionals,
   getProfessionalServices,
   getBusinessServices,
-  getProfessionalAvailability
+  getProfessionalAvailability,
+  getPublicBranches
 } = require('../controllers/appointmentController');
 const { authenticateToken, requireBusinessAccess } = require('../middleware/auth');
 
@@ -40,6 +41,7 @@ const createAppointmentValidation = [
 ];
 
 // Rutas públicas (para reservas online)
+router.get('/public/:businessSlug/branches', getPublicBranches);
 router.get('/public/:businessSlug/professionals', getAvailableProfessionals);
 router.get('/public/:businessSlug/all-professionals', getAllProfessionals);
 router.get('/public/:businessSlug/professional/:professionalId/services', getProfessionalServices);

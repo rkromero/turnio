@@ -3,10 +3,13 @@ import { useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
   CheckCircle,
-  MapPin
+  MapPin,
+  Phone,
+  User,
+  Building
 } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import { Professional, Service, BookingFormData, UrgencyStats } from '../types/booking';
+import { Professional, Service, BookingFormData, UrgencyStats, Branch } from '../types/booking';
 import ProfessionalSelector from '../components/ProfessionalSelector';
 import ClientStarRating from '../components/ClientStarRating';
 import Logo from '../components/Logo';
@@ -26,6 +29,8 @@ interface SuccessData {
 
 interface BookingState {
   business: { id: string; name: string; slug: string } | null;
+  branches: Branch[];
+  selectedBranch: Branch | null;
   services: Service[];
   professionals: Professional[];
   selectedService: Service | null;
@@ -61,6 +66,8 @@ const BookingPage: React.FC = () => {
 
   const [booking, setBooking] = useState<BookingState>({
     business: null,
+    branches: [],
+    selectedBranch: null,
     services: [],
     professionals: [],
     selectedService: null,
@@ -110,17 +117,34 @@ const BookingPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const servicesResponse = await bookingService.getServices(businessSlug!);
+      // Cargar sucursales primero
+      const branchesResponse = await bookingService.getPublicBranches(businessSlug!);
       
-      if (servicesResponse.success) {
+      if (branchesResponse.success) {
+        const branches = branchesResponse.data.branches;
+        const mainBranch = branches.find(b => b.isMain) || branches[0];
+        
         setBooking(prev => ({
           ...prev,
-          business: servicesResponse.business,
-          services: servicesResponse.services
+          business: branchesResponse.data.business,
+          branches: branches,
+          selectedBranch: branches.length === 1 ? mainBranch : null // Auto-seleccionar si hay solo una
         }));
+        
+        // Si hay solo una sucursal, cargar servicios automáticamente
+        if (branches.length === 1) {
+          const servicesResponse = await bookingService.getServices(businessSlug!);
+          
+          if (servicesResponse.success) {
+            setBooking(prev => ({
+              ...prev,
+              services: servicesResponse.services
+            }));
+          }
+          
+          await loadAllProfessionals();
+        }
       }
-
-      await loadAllProfessionals();
     } catch (error) {
       console.error('Error cargando datos del negocio:', error);
       setError('No se pudo cargar la información del negocio');
@@ -263,6 +287,36 @@ const BookingPage: React.FC = () => {
     } catch (error) {
       console.error('❌ Error cargando horarios específicos:', error);
       toast.error('Error cargando horarios disponibles');
+    }
+  };
+
+  const handleBranchSelect = async (branch: Branch) => {
+    setBooking(prev => ({
+      ...prev,
+      selectedBranch: branch,
+      selectedService: null,
+      selectedProfessional: null,
+      selectedDate: '',
+      selectedTime: null,
+      professionals: [],
+      services: []
+    }));
+
+    // Cargar servicios y profesionales de la sucursal seleccionada
+    try {
+      const servicesResponse = await bookingService.getServices(businessSlug!);
+      
+      if (servicesResponse.success) {
+        setBooking(prev => ({
+          ...prev,
+          services: servicesResponse.services
+        }));
+      }
+
+      await loadAllProfessionals();
+    } catch (error) {
+      console.error('Error cargando datos de la sucursal:', error);
+      toast.error('Error cargando servicios de la sucursal');
     }
   };
 
@@ -582,10 +636,92 @@ const BookingPage: React.FC = () => {
           
           {step === 1 && (
             <div className="p-4 md:p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">¿Cómo prefieres reservar?</h2>
-                <p className="text-gray-600 text-sm md:text-base">Elige la forma que más te convenga</p>
-              </div>
+              {/* Selección de Sucursal (solo si hay más de una) */}
+              {booking.branches.length > 1 && !booking.selectedBranch && (
+                <div>
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Selecciona una sucursal</h2>
+                    <p className="text-gray-600 text-sm md:text-base">¿En qué ubicación te gustaría ser atendido?</p>
+                  </div>
+
+                  <div className="grid gap-4 md:gap-6 max-w-2xl mx-auto">
+                    {booking.branches.map((branch) => (
+                      <div
+                        key={branch.id}
+                        onClick={() => handleBranchSelect(branch)}
+                        className="p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-blue-300 border-gray-200 bg-white"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-gray-900 text-base md:text-lg">{branch.name}</h3>
+                              {branch.isMain && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                                  Principal
+                                </span>
+                              )}
+                            </div>
+                            
+                            {branch.address && (
+                              <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
+                                <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+                                <span>{branch.address}</span>
+                              </div>
+                            )}
+                            
+                            {branch.phone && (
+                              <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
+                                <Phone className="w-4 h-4 mr-1 flex-shrink-0" />
+                                <span>{branch.phone}</span>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center text-gray-500 text-sm mt-2">
+                              <User className="w-4 h-4 mr-1" />
+                              <span>{branch.professionalCount} profesionales disponibles</span>
+                            </div>
+                            
+                            {branch.description && (
+                              <p className="text-gray-600 text-sm mt-2">{branch.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contenido principal cuando hay sucursal seleccionada o solo una sucursal */}
+              {(booking.selectedBranch || booking.branches.length === 1) && (
+                <div>
+                  {/* Mostrar sucursal seleccionada si hay múltiples */}
+                  {booking.branches.length > 1 && booking.selectedBranch && (
+                    <div className="mb-8 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Building className="w-5 h-5 text-blue-600" />
+                          <div>
+                            <h4 className="font-medium text-blue-900">{booking.selectedBranch.name}</h4>
+                            {booking.selectedBranch.address && (
+                              <p className="text-sm text-blue-700">{booking.selectedBranch.address}</p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setBooking(prev => ({ ...prev, selectedBranch: null }))}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">¿Cómo prefieres reservar?</h2>
+                    <p className="text-gray-600 text-sm md:text-base">Elige la forma que más te convenga</p>
+                  </div>
 
               <div className="flex bg-gray-100 rounded-xl p-1 mb-8 max-w-md mx-auto">
                 <button
@@ -723,15 +859,17 @@ const BookingPage: React.FC = () => {
                 </div>
               )}
 
-              {((bookingMode === 'service' && booking.selectedService) || 
-                (bookingMode === 'professional' && booking.selectedProfessional)) && (
-                <div className="text-center mt-8">
-                  <button
-                    onClick={goToNextStep}
-                    className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
-                  >
-                    Continuar
-                  </button>
+                  {((bookingMode === 'service' && booking.selectedService) || 
+                    (bookingMode === 'professional' && booking.selectedProfessional)) && (
+                    <div className="text-center mt-8">
+                      <button
+                        onClick={goToNextStep}
+                        className="px-8 py-4 md:px-12 md:py-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-base md:text-lg min-h-[56px] w-full sm:w-auto"
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
