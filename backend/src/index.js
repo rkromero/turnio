@@ -646,7 +646,7 @@ async function startServer() {
     app.use('/api/reviews', reviewRoutes);
     app.use('/api/branches', branchRoutes);
     app.use('/api/migration', migrationRoutes);
-    app.use('/api/break-times', requireAuth, breakTimeRoutes);
+    app.use('/api/break-times', breakTimeRoutes);
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
