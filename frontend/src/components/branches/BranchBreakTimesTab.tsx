@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Clock, Edit2, Trash2, Coffee, AlertCircle } from 'lucide-react';
 import { BranchBreakTime, BranchBreakTimeForm } from '../../types';
 import { Branch } from '../../types/branch';
+import { useAuthenticatedFetch } from '../../hooks/useAuthenticatedFetch';
 
 interface BranchBreakTimesTabProps {
   branches: Branch[];
@@ -19,6 +20,7 @@ const DAYS_OF_WEEK = [
 ];
 
 const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onRefresh }) => {
+  const fetchWithAuth = useAuthenticatedFetch();
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [breakTimes, setBreakTimes] = useState<BranchBreakTime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,22 +44,15 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
   const loadBreakTimes = async (branchId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/break-times/branch/${branchId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setBreakTimes(data.data.breakTimes || []);
-      } else {
-        console.error('Error cargando horarios de descanso');
-        setBreakTimes([]);
-      }
+      const response = await fetchWithAuth(`/api/break-times/branch/${branchId}`);
+      const data = await response.json();
+      setBreakTimes(data.data.breakTimes || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando horarios de descanso:', error);
       setBreakTimes([]);
+      if (error instanceof Error) {
+        alert(error.message);
+      }
     } finally {
       setIsLoading(false);
     }
