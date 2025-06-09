@@ -659,7 +659,7 @@ function getUrgencyMessage(availableCount, date) {
 const getAvailableProfessionals = async (req, res) => {
   try {
     const { businessSlug } = req.params;
-    const { date, serviceId } = req.query;
+    const { date, serviceId, branchId } = req.query;
 
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
@@ -669,10 +669,20 @@ const getAvailableProfessionals = async (req, res) => {
           where: { isActive: true }
         },
         users: {
-          where: { isActive: true },
+          where: { 
+            isActive: true,
+            ...(branchId && { branchId: branchId })
+          },
           include: {
             workingHours: {
               where: { isActive: true }
+            },
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
             }
           }
         }
@@ -866,19 +876,31 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
 const getAllProfessionals = async (req, res) => {
   try {
     const { businessSlug } = req.params;
+    const { branchId } = req.query;
 
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
       where: { slug: businessSlug },
       include: {
         users: {
-          where: { isActive: true },
+          where: { 
+            isActive: true,
+            ...(branchId && { branchId: branchId })
+          },
           select: {
             id: true,
             name: true,
             avatar: true,
             phone: true,
-            role: true
+            role: true,
+            branchId: true,
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
           }
         }
       }

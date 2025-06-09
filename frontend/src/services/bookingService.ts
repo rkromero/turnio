@@ -31,10 +31,11 @@ export const bookingService = {
   },
 
   // Obtener profesionales disponibles
-  async getProfessionals(businessSlug: string, date?: string, serviceId?: string): Promise<ProfessionalsResponse> {
+  async getProfessionals(businessSlug: string, date?: string, serviceId?: string, branchId?: string): Promise<ProfessionalsResponse> {
     const params = new URLSearchParams();
     if (date) params.append('date', date);
     if (serviceId) params.append('serviceId', serviceId);
+    if (branchId) params.append('branchId', branchId);
     
     const response = await axios.get(
       `${BASE_URL}/api/appointments/public/${businessSlug}/professionals?${params.toString()}`
@@ -43,9 +44,12 @@ export const bookingService = {
   },
 
   // Obtener todos los profesionales del negocio (para modo "por profesional")
-  async getAllProfessionals(businessSlug: string): Promise<ProfessionalsResponse> {
+  async getAllProfessionals(businessSlug: string, branchId?: string): Promise<ProfessionalsResponse> {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    
     const response = await axios.get(
-      `${BASE_URL}/api/appointments/public/${businessSlug}/all-professionals`
+      `${BASE_URL}/api/appointments/public/${businessSlug}/all-professionals?${params.toString()}`
     );
     return response.data;
   },

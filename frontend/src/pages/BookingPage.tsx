@@ -155,7 +155,10 @@ const BookingPage: React.FC = () => {
 
   const loadAllProfessionals = async () => {
     try {
-      const professionalsResponse = await bookingService.getAllProfessionals(businessSlug!);
+      const professionalsResponse = await bookingService.getAllProfessionals(
+        businessSlug!,
+        booking.selectedBranch?.id
+      );
       
       if (professionalsResponse.success) {
         setBooking(prev => ({
@@ -200,7 +203,8 @@ const BookingPage: React.FC = () => {
       const professionalsResponse = await bookingService.getProfessionals(
         businessSlug!,
         booking.selectedDate,
-        booking.selectedService.id
+        booking.selectedService.id,
+        booking.selectedBranch?.id
       );
       
       if (professionalsResponse.success) {
@@ -268,7 +272,8 @@ const BookingPage: React.FC = () => {
       const professionalsResponse = await bookingService.getProfessionals(
         businessSlug!,
         booking.selectedDate,
-        booking.selectedService.id
+        booking.selectedService.id,
+        booking.selectedBranch?.id
       );
       
       if (professionalsResponse.success) {
