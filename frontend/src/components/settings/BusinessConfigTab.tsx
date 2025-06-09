@@ -24,8 +24,8 @@ const BusinessConfigTab: React.FC<BusinessConfigTabProps> = ({ businessConfig, o
         description: businessConfig.description || '',
         primaryColor: businessConfig.primaryColor || '#3B82F6',
         logo: businessConfig.logo || '',
-        businessType: (businessConfig as any).businessType || BusinessType.GENERAL,
-        defaultAppointmentDuration: (businessConfig as any).defaultAppointmentDuration || 60
+        businessType: businessConfig.businessType || BusinessType.GENERAL,
+        defaultAppointmentDuration: businessConfig.defaultAppointmentDuration || 60
       });
     }
   }, [businessConfig]);

@@ -10,6 +10,8 @@ export interface Business {
   address?: string;
   description?: string;
   primaryColor?: string;
+  businessType?: BusinessType;
+  defaultAppointmentDuration?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -185,6 +187,8 @@ export interface BusinessConfig {
   address?: string;
   description?: string;
   primaryColor?: string;
+  businessType?: BusinessType;
+  defaultAppointmentDuration?: number;
   createdAt: string;
   updatedAt: string;
 }
