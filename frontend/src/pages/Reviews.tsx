@@ -58,54 +58,17 @@ const Reviews: React.FC = () => {
       // Aquí iría la llamada real a la API
       // const data = await reviewService.getReviews(showUnapproved);
       
-      // Por ahora, datos de ejemplo
+      // Base de datos limpia - sin datos de prueba
       const mockData: ReviewData = {
-        reviews: [
-          {
-            id: '1',
-            businessId: 'biz1',
-            clientId: 'client1',
-            appointmentId: 'app1',
-            rating: 5,
-            comment: 'Excelente servicio, muy profesional y puntual.',
-            isPublic: true,
-            isApproved: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            client: { id: 'client1', name: 'María García' },
-            appointment: {
-              id: 'app1',
-              startTime: new Date().toISOString(),
-              service: { name: 'Corte de cabello' }
-            }
-          },
-          {
-            id: '2',
-            businessId: 'biz1',
-            clientId: 'client2',
-            appointmentId: 'app2',
-            rating: 4,
-            comment: 'Muy buen trato, aunque hubo una pequeña demora.',
-            isPublic: true,
-            isApproved: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            client: { id: 'client2', name: 'Juan Pérez' },
-            appointment: {
-              id: 'app2',
-              startTime: new Date().toISOString(),
-              service: { name: 'Manicure' }
-            }
-          }
-        ],
+        reviews: [],
         stats: {
-          totalReviews: 15,
-          averageRating: 4.3,
+          totalReviews: 0,
+          averageRating: 0,
           ratingDistribution: {
-            5: 8,
-            4: 4,
-            3: 2,
-            2: 1,
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
             1: 0
           }
         }
