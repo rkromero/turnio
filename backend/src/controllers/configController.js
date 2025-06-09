@@ -49,8 +49,16 @@ const getBusinessConfig = async (req, res) => {
 // Actualizar configuración del negocio
 const updateBusinessConfig = async (req, res) => {
   try {
+    // Logging temporal para depuración
+    console.log('=== DATOS RECIBIDOS ===');
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('businessType:', req.body.businessType, typeof req.body.businessType);
+    console.log('defaultAppointmentDuration:', req.body.defaultAppointmentDuration, typeof req.body.defaultAppointmentDuration);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('=== ERRORES DE VALIDACIÓN ===');
+      console.log(JSON.stringify(errors.array(), null, 2));
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
