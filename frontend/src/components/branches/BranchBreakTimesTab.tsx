@@ -40,6 +40,8 @@ const fetchAuth = async (url: string, options: RequestInit = {}) => {
 };
 
 const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onRefresh }) => {
+  console.log('🏢 BranchBreakTimesTab renderizado con branches:', branches);
+  
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [breakTimes, setBreakTimes] = useState<BranchBreakTime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -200,16 +202,30 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
         </label>
         <select
           value={selectedBranch}
-          onChange={(e) => setSelectedBranch(e.target.value)}
+          onChange={(e) => {
+            console.log('🔄 Seleccionando sucursal:', e.target.value);
+            setSelectedBranch(e.target.value);
+          }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Selecciona una sucursal...</option>
-          {branches.map(branch => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name} {branch.isMain && '(Principal)'}
-            </option>
-          ))}
+          {branches.map(branch => {
+            console.log('🏬 Renderizando opción de sucursal:', branch);
+            return (
+              <option key={branch.id} value={branch.id}>
+                {branch.name} {branch.isMain && '(Principal)'}
+              </option>
+            );
+          })}
         </select>
+        
+        {/* Debug info */}
+        <div className="mt-2 text-xs text-gray-500">
+          Debug: {branches.length} sucursales encontradas
+          {branches.length > 0 && (
+            <div>Sucursales: {branches.map(b => b.name).join(', ')}</div>
+          )}
+        </div>
       </div>
 
       {/* Informacion de la sucursal seleccionada */}
