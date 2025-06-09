@@ -365,7 +365,7 @@ async function startServer() {
     // Endpoint temporal para reset completo de base de datos
     app.post('/debug/reset-complete-database', async (req, res) => {
       try {
-        const { resetCompleteDatabase } = require('../../reset-database');
+        const { resetCompleteDatabase } = require('../reset-database');
         
         console.log('🗑️ Endpoint de reset completo invocado');
         
