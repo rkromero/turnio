@@ -672,9 +672,8 @@ const getAvailableProfessionals = async (req, res) => {
         },
         users: {
           where: { 
-            isActive: true
-            // NO filtrar por branchId aquí - los horarios de descanso se aplican globalmente
-            // Los profesionales pueden trabajar desde cualquier sucursal
+            isActive: true,
+            ...(branchId && { branchId: branchId })
           },
           include: {
             workingHours: {
@@ -860,6 +859,12 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
         name: true
       }
     });
+    
+    console.log(`🔍 DEBUG - Profesional ${professionalId}, Fecha: ${date.toDateString()}, DayOfWeek: ${dayOfWeek}`);
+    console.log(`🏢 DEBUG - BranchID: ${branchId}, BreakTimes encontrados: ${breakTimes.length}`);
+    if (breakTimes.length > 0) {
+      console.log(`⏰ DEBUG - Horarios de descanso:`, breakTimes);
+    }
   }
 
   // Usar la duración configurada del negocio para los slots
@@ -892,11 +897,17 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
       const breakEnd = new Date(date);
       breakEnd.setHours(breakEndHour, breakEndMin, 0, 0);
       
-      return (
+      const overlaps = (
         (currentTime >= breakStart && currentTime < breakEnd) ||
         (slotEnd > breakStart && slotEnd <= breakEnd) ||
         (currentTime <= breakStart && slotEnd >= breakEnd)
       );
+      
+      if (overlaps) {
+        console.log(`🚫 DEBUG - Slot bloqueado: ${currentTime.toTimeString().slice(0, 5)} por descanso ${breakTime.name} (${breakTime.startTime}-${breakTime.endTime})`);
+      }
+      
+      return overlaps;
     });
 
     // Solo agregar si el slot completo cabe antes del fin del horario laboral
