@@ -37,20 +37,26 @@ app.use(express.static(path.join(__dirname, 'dist'), {
   }
 }));
 
-// API proxy (si es necesario)
-app.use('/api', (req, res) => {
-  // Redirigir requests de API al backend
-  const backendUrl = process.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
-  const targetUrl = `${backendUrl}${req.originalUrl}`;
-  
-  res.redirect(302, targetUrl);
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    server: 'express',
+    version: '1.0.1'
+  });
 });
 
-// SPA fallback - todas las rutas de la app van a index.html
-app.get('*', (req, res) => {
+// SPA fallback - SOLO para rutas que no son archivos estáticos
+app.get('*', (req, res, next) => {
+  // Si es una petición de archivo estático que no existe, dejar que express.static maneje el 404
+  if (req.path.includes('.') && !req.path.includes('/api/')) {
+    return next();
+  }
+  
+  // Si es una ruta de la SPA, servir index.html
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   
-  // Verificar si el archivo existe
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
@@ -61,6 +67,15 @@ app.get('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Frontend server running on port ${PORT}`);
   console.log(`📁 Serving static files from: ${path.join(__dirname, 'dist')}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Verificar que los archivos importantes existen
+  const criticalFiles = ['index.html', 'manifest.json', 'sw.js'];
+  criticalFiles.forEach(file => {
+    const filePath = path.join(__dirname, 'dist', file);
+    const exists = fs.existsSync(filePath);
+    console.log(`📄 ${file}: ${exists ? '✅ Found' : '❌ Missing'}`);
+  });
 });
 
 // Graceful shutdown
