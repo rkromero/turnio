@@ -131,6 +131,7 @@ async function startServer() {
     const clientScoringRoutes = require('./routes/clientScoring');
     const branchRoutes = require('./routes/branchRoutes');
     const migrationRoutes = require('./routes/migrationRoutes');
+    const breakTimeRoutes = require('./routes/breakTimeRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -645,6 +646,7 @@ async function startServer() {
     app.use('/api/reviews', reviewRoutes);
     app.use('/api/branches', branchRoutes);
     app.use('/api/migration', migrationRoutes);
+    app.use('/api/break-times', requireAuth, breakTimeRoutes);
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);

@@ -84,6 +84,27 @@ export interface WorkingHours {
   isActive: boolean;
 }
 
+// Horarios de descanso por sucursal
+export interface BranchBreakTime {
+  id: string;
+  branchId: string;
+  dayOfWeek: number; // 0=Domingo, 1=Lunes, ..., 6=Sábado
+  startTime: string; // HH:MM formato
+  endTime: string; // HH:MM formato
+  name?: string; // Ej: "Almuerzo", "Pausa de la tarde"
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BranchBreakTimeForm {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  name?: string;
+  isActive?: boolean;
+}
+
 export interface AvailableSlot {
   time: string;
   userId: string;

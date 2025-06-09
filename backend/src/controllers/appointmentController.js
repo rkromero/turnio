@@ -482,7 +482,7 @@ const cancelAppointment = async (req, res) => {
 const getAvailableSlots = async (req, res) => {
   try {
     const { businessSlug } = req.params;
-    const { date, serviceId } = req.query;
+    const { date, serviceId, branchId } = req.query;
 
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
@@ -565,7 +565,8 @@ const getAvailableSlots = async (req, res) => {
           targetDate,
           workingHour,
           service?.duration || business.defaultAppointmentDuration || 60,
-          business.defaultAppointmentDuration || 30
+          business.defaultAppointmentDuration || 30,
+          branchId || user.branchId // Usar branchId del query o del usuario
         );
 
       // Filtrar slots ocupados
@@ -740,7 +741,8 @@ const getAvailableProfessionals = async (req, res) => {
           targetDate,
           workingHour,
           service?.duration || business.defaultAppointmentDuration || 60,
-          business.defaultAppointmentDuration || 30
+          business.defaultAppointmentDuration || 30,
+          branchId || professional.branchId // Usar branchId del query o del profesional
         );
 
         totalSlotsCount += availableSlots.length;
@@ -808,7 +810,7 @@ const getAvailableProfessionals = async (req, res) => {
 };
 
 // Función auxiliar para generar slots disponibles
-async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration, businessSlotDuration = 30) {
+async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration, businessSlotDuration = 30, branchId = null) {
   const slots = [];
   
   // Parsear horarios de trabajo
@@ -840,6 +842,25 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
     }
   });
 
+  // Obtener horarios de descanso de la sucursal para este día
+  let breakTimes = [];
+  if (branchId) {
+    const dayOfWeek = date.getDay(); // 0=domingo, 1=lunes, etc.
+    
+    breakTimes = await prisma.branchBreakTime.findMany({
+      where: {
+        branchId: branchId,
+        dayOfWeek: dayOfWeek,
+        isActive: true
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+        name: true
+      }
+    });
+  }
+
   // Usar la duración configurada del negocio para los slots
   const slotDuration = businessSlotDuration; // Usar configuración del negocio
   let currentTime = new Date(startTime);
@@ -848,7 +869,7 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
     const slotEnd = new Date(currentTime.getTime() + serviceDuration * 60000);
     
     // Verificar si este slot no se superpone con citas existentes
-    const isAvailable = !existingAppointments.some(appointment => {
+    const isAvailableAppointments = !existingAppointments.some(appointment => {
       const appointmentStart = new Date(appointment.startTime);
       const appointmentEnd = new Date(appointment.endTime);
       
@@ -859,8 +880,27 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
       );
     });
 
+    // Verificar si este slot no se superpone con horarios de descanso
+    const isAvailableBreakTimes = !breakTimes.some(breakTime => {
+      const [breakStartHour, breakStartMin] = breakTime.startTime.split(':').map(Number);
+      const [breakEndHour, breakEndMin] = breakTime.endTime.split(':').map(Number);
+      
+      const breakStart = new Date(date);
+      breakStart.setHours(breakStartHour, breakStartMin, 0, 0);
+      
+      const breakEnd = new Date(date);
+      breakEnd.setHours(breakEndHour, breakEndMin, 0, 0);
+      
+      return (
+        (currentTime >= breakStart && currentTime < breakEnd) ||
+        (slotEnd > breakStart && slotEnd <= breakEnd) ||
+        (currentTime <= breakStart && slotEnd >= breakEnd)
+      );
+    });
+
     // Solo agregar si el slot completo cabe antes del fin del horario laboral
-    if (isAvailable && slotEnd <= endTime) {
+    // y no se superpone con citas existentes ni horarios de descanso
+    if (isAvailableAppointments && isAvailableBreakTimes && slotEnd <= endTime) {
       slots.push({
         time: currentTime.toTimeString().slice(0, 5), // HH:MM
         datetime: currentTime.toISOString(),
@@ -1130,7 +1170,8 @@ const getProfessionalAvailability = async (req, res) => {
           currentDate,
           workingHour,
           service.duration,
-          business.defaultAppointmentDuration || 30
+          business.defaultAppointmentDuration || 30,
+          professional.branchId // Usar la sucursal del profesional
         );
 
         dateAvailability.push({

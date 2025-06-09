@@ -1,3 +1,5 @@
+import { BranchBreakTime } from './index';
+
 export interface Branch {
   id: string;
   businessId: string;
@@ -23,6 +25,7 @@ export interface Branch {
   
   users?: BranchUser[];
   services?: BranchService[];
+  breakTimes?: BranchBreakTime[];
 }
 
 export interface BranchUser {

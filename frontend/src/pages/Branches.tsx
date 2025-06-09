@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Building2, MapPin, Phone, Users, Calendar, Search, MoreVertical, Edit, Trash2, Star } from 'lucide-react';
+import { Plus, Building2, MapPin, Phone, Users, Calendar, Search, MoreVertical, Edit, Trash2, Star, Coffee } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BranchModal from '../components/branches/BranchModal';
+import BranchBreakTimesTab from '../components/branches/BranchBreakTimesTab';
 import { branchService } from '../services/branchService';
 import type { Branch, CreateBranchData } from '../types/branch';
 
@@ -14,6 +15,7 @@ const Branches: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'branches' | 'break-times'>('branches');
 
   useEffect(() => {
     loadBranches();
@@ -91,11 +93,11 @@ const Branches: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Sucursales</h1>
           <p className="text-gray-600">
-            Gestiona las ubicaciones de tu negocio
+            Gestiona las ubicaciones y configuración de tu negocio
           </p>
         </div>
 
-        {canCreateMultipleBranches && (
+        {canCreateMultipleBranches && activeTab === 'branches' && (
           <button
             onClick={handleCreateBranch}
             className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -106,68 +108,106 @@ const Branches: React.FC = () => {
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <input
-          type="text"
-          placeholder="Buscar sucursales..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-        />
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('branches')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'branches'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Building2 className="w-4 h-4 inline mr-2" />
+            Sucursales
+          </button>
+          <button
+            onClick={() => setActiveTab('break-times')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'break-times'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Coffee className="w-4 h-4 inline mr-2" />
+            Horarios de Descanso
+          </button>
+        </nav>
       </div>
 
-      {/* Plan limitation message */}
-      {!canCreateMultipleBranches && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <Building2 className="w-5 h-5 text-amber-600 mr-3" />
-            <div>
-              <h3 className="text-sm font-medium text-amber-800">
-                Múltiples sucursales disponibles en Plan Empresarial
-              </h3>
-              <p className="text-sm text-amber-700 mt-1">
-                Actualiza tu plan para gestionar múltiples ubicaciones de tu negocio.
-              </p>
-            </div>
+      {/* Tab Content */}
+      {activeTab === 'branches' ? (
+        <>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Buscar sucursales..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
           </div>
-        </div>
-      )}
 
-      {/* Branches List */}
-      {filteredBranches.length === 0 ? (
-        <div className="text-center py-12">
-          <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay sucursales</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchTerm ? 'No se encontraron sucursales que coincidan con tu búsqueda.' : 'Comienza creando tu primera sucursal.'}
-          </p>
-          {canCreateMultipleBranches && !searchTerm && (
-            <div className="mt-6">
-              <button
-                onClick={handleCreateBranch}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Sucursal
-              </button>
+          {/* Plan limitation message */}
+          {!canCreateMultipleBranches && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <Building2 className="w-5 h-5 text-amber-600 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-800">
+                    Múltiples sucursales disponibles en Plan Empresarial
+                  </h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Actualiza tu plan para gestionar múltiples ubicaciones de tu negocio.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
-        </div>
+
+          {/* Branches List */}
+          {filteredBranches.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay sucursales</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm ? 'No se encontraron sucursales que coincidan con tu búsqueda.' : 'Comienza creando tu primera sucursal.'}
+              </p>
+              {canCreateMultipleBranches && !searchTerm && (
+                <div className="mt-6">
+                  <button
+                    onClick={handleCreateBranch}
+                    className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Sucursal
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredBranches.map((branch) => (
+                <BranchCard
+                  key={branch.id}
+                  branch={branch}
+                  onEdit={handleEditBranch}
+                  onDelete={handleDeleteBranch}
+                  onSelect={setSelectedBranch}
+                  isSelected={selectedBranch === branch.id}
+                />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredBranches.map((branch) => (
-            <BranchCard
-              key={branch.id}
-              branch={branch}
-              onEdit={handleEditBranch}
-              onDelete={handleDeleteBranch}
-              onSelect={setSelectedBranch}
-              isSelected={selectedBranch === branch.id}
-            />
-          ))}
-        </div>
+        <BranchBreakTimesTab 
+          branches={branches}
+          onRefresh={loadBranches}
+        />
       )}
 
       {/* Modal */}
