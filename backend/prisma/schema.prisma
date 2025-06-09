@@ -65,6 +65,7 @@ model Branch {
   services     BranchService[]
   appointments Appointment[]
   holidays     BranchHoliday[]
+  breakTimes   BranchBreakTime[]
 
   @@unique([businessId, slug])
   @@map("branches")
@@ -189,6 +190,25 @@ model WorkingHours {
 
   @@unique([userId, dayOfWeek])
   @@map("working_hours")
+}
+
+// Horarios de descanso por sucursal (ej: hora de almuerzo)
+model BranchBreakTime {
+  id        String  @id @default(cuid())
+  branchId  String
+  dayOfWeek Int // 0=Domingo, 1=Lunes, ..., 6=Sábado
+  startTime String // HH:MM formato
+  endTime   String // HH:MM formato
+  name      String? // Ej: "Almuerzo", "Pausa de la tarde"
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, dayOfWeek, startTime]) // Permitir múltiples descansos por día
+  @@map("branch_break_times")
 }
 
 model Holiday {

@@ -287,6 +287,28 @@ async function startServer() {
       }
     });
 
+    // Endpoint para migrar horarios de descanso
+    app.post('/debug/migrate-break-times', async (req, res) => {
+      try {
+        const { migrateBreakTimes } = require('../add-break-times-migration');
+        await migrateBreakTimes();
+        
+        res.json({
+          success: true,
+          message: 'Migración de horarios de descanso completada',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error ejecutando migración de horarios de descanso:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          message: 'Error al ejecutar la migración de horarios de descanso',
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Endpoint temporal para aplicar migraciones de scoring
     app.post('/debug/apply-scoring-migrations', async (req, res) => {
       try {
