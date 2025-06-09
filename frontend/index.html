@@ -15,14 +15,8 @@
     <!-- Prevenir zoom en inputs en iOS -->
     <meta name="format-detection" content="telephone=no" />
     
-    <!-- PWA Meta tags -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- Favicons optimizados -->
+    <!-- Favicons simplificados -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="icon" sizes="192x192" href="/icon-192.png" />
-    <link rel="icon" sizes="512x512" href="/icon-512.png" />
     
     <title>TurnIO - Gestión de Turnos</title>
     
@@ -34,8 +28,8 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- PWA Service Worker Registration -->
-    <script>
+    <!-- Service Worker deshabilitado temporalmente -->
+    <!-- <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
@@ -47,6 +41,6 @@
             });
         });
       }
-    </script>
+    </script> -->
   </body>
 </html>
