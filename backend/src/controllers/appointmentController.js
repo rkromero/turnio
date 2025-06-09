@@ -874,6 +874,11 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
   while (currentTime < endTime) {
     const slotEnd = new Date(currentTime.getTime() + serviceDuration * 60000);
     
+    // Solo considerar slots que caben completamente antes del fin del horario laboral
+    if (slotEnd > endTime) {
+      break;
+    }
+    
     // Verificar si este slot no se superpone con citas existentes
     const isAvailableAppointments = !existingAppointments.some(appointment => {
       const appointmentStart = new Date(appointment.startTime);
@@ -910,17 +915,18 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
       return overlaps;
     });
 
-    // Solo agregar si el slot completo cabe antes del fin del horario laboral
-    // y no se superpone con citas existentes ni horarios de descanso
-    if (isAvailableAppointments && isAvailableBreakTimes && slotEnd <= endTime) {
+    // Agregar slot si está disponible (no se superpone con citas ni descansos)
+    if (isAvailableAppointments && isAvailableBreakTimes) {
       slots.push({
         time: currentTime.toTimeString().slice(0, 5), // HH:MM
         datetime: currentTime.toISOString(),
         available: true
       });
+      console.log(`✅ DEBUG - Slot disponible: ${currentTime.toTimeString().slice(0, 5)}`);
     }
     
-    // Avanzar al siguiente slot
+    // SIEMPRE avanzar al siguiente slot, independientemente de si está disponible o no
+    // Esto asegura que no saltemos slots después de horarios de descanso
     currentTime = new Date(currentTime.getTime() + slotDuration * 60000);
   }
   
