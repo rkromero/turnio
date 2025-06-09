@@ -114,7 +114,15 @@ const BusinessConfigTab: React.FC<BusinessConfigTabProps> = ({ businessConfig, o
     setSuccessMessage('');
 
     try {
-      const updatedConfig = await configService.updateBusinessConfig(formData);
+      // Limpiar campos vacíos antes de enviar
+      const cleanFormData = Object.fromEntries(
+        Object.entries(formData).filter(([, value]) => 
+          value !== '' && value !== null && value !== undefined
+        )
+      );
+
+      console.log('Sending data:', cleanFormData); // Debug temporal
+      const updatedConfig = await configService.updateBusinessConfig(cleanFormData as BusinessConfigForm);
       onUpdate(updatedConfig);
       setSuccessMessage('Configuración actualizada exitosamente');
       
