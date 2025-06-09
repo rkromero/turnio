@@ -362,6 +362,33 @@ async function startServer() {
       }
     });
 
+    // Endpoint temporal para reset completo de base de datos
+    app.post('/debug/reset-complete-database', async (req, res) => {
+      try {
+        const { resetCompleteDatabase } = require('../../reset-database');
+        
+        console.log('🗑️ Endpoint de reset completo invocado');
+        
+        // Ejecutar el reset
+        await resetCompleteDatabase();
+        
+        res.json({
+          success: true,
+          message: 'Reset completo de base de datos ejecutado exitosamente',
+          timestamp: new Date().toISOString(),
+          warning: 'TODOS los datos han sido eliminados permanentemente'
+        });
+        
+      } catch (error) {
+        console.error('❌ Error en reset completo:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Endpoint para aplicar migraciones del sistema multi-sucursal
     app.post('/debug/apply-branch-migrations', async (req, res) => {
       try {
