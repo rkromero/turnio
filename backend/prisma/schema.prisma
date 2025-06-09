@@ -14,19 +14,21 @@ datasource db {
 }
 
 model Business {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   name            String
-  email           String   @unique
-  slug            String   @unique
-  planType        PlanType @default(FREE)
-  maxAppointments Int      @default(30)
+  email           String       @unique
+  slug            String       @unique
+  planType        PlanType     @default(FREE)
+  maxAppointments Int          @default(30)
   logo            String?
   phone           String?
   address         String?
   description     String?
   primaryColor    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  businessType    BusinessType @default(GENERAL)
+  defaultAppointmentDuration Int @default(60) // Duración en minutos
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   // Relaciones
   branches     Branch[]
@@ -290,6 +292,15 @@ enum PlanType {
   BASIC
   PREMIUM
   ENTERPRISE
+}
+
+enum BusinessType {
+  GENERAL      // Negocio general
+  BARBERSHOP   // Barbería
+  HAIR_SALON   // Peluquería
+  BEAUTY_CENTER // Centro estético
+  MEDICAL_CENTER // Centro médico
+  MASSAGE_SPA   // Centro de masajes/SPA
 }
 
 enum UserRole {

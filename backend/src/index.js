@@ -266,6 +266,27 @@ async function startServer() {
       }
     });
 
+    // Endpoint para migrar tipos de negocio
+    app.post('/debug/migrate-business-types', async (req, res) => {
+      try {
+        const migrateDatabaseSchema = require('../add-business-type-migration');
+        const result = await migrateDatabaseSchema();
+        
+        res.json({
+          ...result,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error ejecutando migración de tipos de negocio:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          message: 'Error al ejecutar la migración de tipos de negocio',
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Endpoint temporal para aplicar migraciones de scoring
     app.post('/debug/apply-scoring-migrations', async (req, res) => {
       try {
