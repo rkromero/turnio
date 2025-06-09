@@ -672,8 +672,9 @@ const getAvailableProfessionals = async (req, res) => {
         },
         users: {
           where: { 
-            isActive: true,
-            ...(branchId && { branchId: branchId })
+            isActive: true
+            // NO filtrar por branchId aquí - los horarios de descanso se aplican globalmente
+            // Los profesionales pueden trabajar desde cualquier sucursal
           },
           include: {
             workingHours: {
@@ -735,7 +736,7 @@ const getAvailableProfessionals = async (req, res) => {
         }
 
         // Generar slots disponibles (en getAvailableProfessionals)
-        // Necesitamos pasar el business para acceder a defaultAppointmentDuration
+        // Aplicar horarios de descanso de la sucursal especificada o del profesional
         const availableSlots = await generateAvailableSlots(
           professional.id,
           targetDate,
