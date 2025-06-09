@@ -46,7 +46,15 @@ const updateBusinessValidation = [
   body('logo')
     .optional()
     .isURL()
-    .withMessage('El logo debe ser una URL válida')
+    .withMessage('El logo debe ser una URL válida'),
+  body('businessType')
+    .optional()
+    .isIn(['GENERAL', 'BARBERSHOP', 'HAIR_SALON', 'BEAUTY_CENTER', 'MEDICAL_CENTER', 'MASSAGE_SPA'])
+    .withMessage('Tipo de negocio inválido'),
+  body('defaultAppointmentDuration')
+    .optional()
+    .isInt({ min: 15, max: 480 })
+    .withMessage('La duración debe estar entre 15 y 480 minutos')
 ];
 
 // Validaciones para horarios de trabajo

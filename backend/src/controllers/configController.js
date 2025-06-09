@@ -59,7 +59,7 @@ const updateBusinessConfig = async (req, res) => {
     }
 
     const businessId = req.businessId;
-    const { name, phone, address, description, primaryColor, logo } = req.body;
+    const { name, phone, address, description, primaryColor, logo, businessType, defaultAppointmentDuration } = req.body;
 
     const updatedBusiness = await prisma.business.update({
       where: { id: businessId },
@@ -69,7 +69,9 @@ const updateBusinessConfig = async (req, res) => {
         ...(address && { address }),
         ...(description && { description }),
         ...(primaryColor && { primaryColor }),
-        ...(logo && { logo })
+        ...(logo && { logo }),
+        ...(businessType && { businessType }),
+        ...(defaultAppointmentDuration && { defaultAppointmentDuration })
       }
     });
 
