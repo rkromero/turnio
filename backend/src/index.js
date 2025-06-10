@@ -1495,6 +1495,49 @@ async function startServer() {
       }
     });
 
+    // Debug endpoint para verificar sucursales
+    app.post('/api/debug/check-branches', async (req, res) => {
+      try {
+        const { businessId } = req.body;
+        const { prisma } = require('./config/database');
+        
+        const branches = await prisma.branch.findMany({
+          where: { businessId },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            isMain: true,
+            createdAt: true
+          }
+        });
+        
+        const business = await prisma.business.findUnique({
+          where: { id: businessId },
+          select: { name: true, slug: true }
+        });
+        
+        res.json({
+          success: true,
+          data: {
+            business,
+            branches,
+            branchCount: branches.length,
+            mainBranch: branches.find(b => b.isMain),
+            activeBranches: branches.filter(b => b.isActive)
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error checking branches:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message
+        });
+      }
+    });
+
     // Manejo de rutas no encontradas
     app.use('*', (req, res) => {
       res.status(404).json({
