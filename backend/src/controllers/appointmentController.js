@@ -860,11 +860,7 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
       }
     });
     
-    console.log(`🔍 DEBUG - Profesional ${professionalId}, Fecha: ${date.toDateString()}, DayOfWeek: ${dayOfWeek}`);
-    console.log(`🏢 DEBUG - BranchID: ${branchId}, BreakTimes encontrados: ${breakTimes.length}`);
-    if (breakTimes.length > 0) {
-      console.log(`⏰ DEBUG - Horarios de descanso:`, breakTimes);
-    }
+    console.log(`🔍 DEBUG - Profesional ${professionalId}, BranchID: ${branchId}, BreakTimes: ${breakTimes.length}`);
   }
 
   // Usar la duración configurada del negocio para los slots
@@ -908,8 +904,9 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
         (currentTime <= breakStart && slotEnd >= breakEnd)
       );
       
-      if (overlaps) {
-        console.log(`🚫 DEBUG - Slot bloqueado: ${currentTime.toTimeString().slice(0, 5)} por descanso ${breakTime.name} (${breakTime.startTime}-${breakTime.endTime})`);
+      // Log solo el primer overlap por profesional/día para evitar spam
+      if (overlaps && slots.length === 0) {
+        console.log(`🚫 DEBUG - Horarios de descanso aplicados para profesional ${professionalId}`);
       }
       
       return overlaps;
@@ -922,7 +919,6 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
         datetime: currentTime.toISOString(),
         available: true
       });
-      console.log(`✅ DEBUG - Slot disponible: ${currentTime.toTimeString().slice(0, 5)}`);
     }
     
     // SIEMPRE avanzar al siguiente slot, independientemente de si está disponible o no
