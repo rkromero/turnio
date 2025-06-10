@@ -900,6 +900,97 @@ async function startServer() {
       }
     });
 
+    // Endpoint simplificado de booking para evitar problemas
+    app.post('/api/debug/simple-booking', async (req, res) => {
+      try {
+        console.log('🔧 SIMPLE BOOKING - Starting...');
+        const { businessSlug, clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId } = req.body;
+        
+        const { prisma } = require('./config/database');
+        
+        // 1. Buscar negocio
+        const business = await prisma.business.findUnique({
+          where: { slug: businessSlug }
+        });
+        
+        if (!business) {
+          return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
+        }
+        
+        // 2. Buscar servicio
+        const service = await prisma.service.findFirst({
+          where: { id: serviceId, businessId: business.id, isActive: true }
+        });
+        
+        if (!service) {
+          return res.status(404).json({ success: false, message: 'Servicio no encontrado' });
+        }
+        
+        // 3. Buscar profesional
+        const professional = await prisma.user.findFirst({
+          where: { id: professionalId, businessId: business.id, isActive: true }
+        });
+        
+        if (!professional) {
+          return res.status(400).json({ success: false, message: 'Profesional no disponible' });
+        }
+        
+        // 4. Crear cliente (siempre nuevo para evitar problemas)
+        const client = await prisma.client.create({
+          data: {
+            businessId: business.id,
+            name: clientName,
+            email: clientEmail,
+            phone: clientPhone
+          }
+        });
+        
+        // 5. Crear turno
+        const startDateTime = new Date(startTime);
+        const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
+        
+        const appointment = await prisma.appointment.create({
+          data: {
+            businessId: business.id,
+            clientId: client.id,
+            serviceId,
+            userId: professional.id,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            notes,
+            status: 'CONFIRMED'
+          },
+          include: {
+            service: { select: { name: true, duration: true, price: true } },
+            user: { select: { name: true, avatar: true } }
+          }
+        });
+        
+        res.status(201).json({
+          success: true,
+          message: 'Turno reservado exitosamente',
+          data: {
+            appointmentId: appointment.id,
+            clientName: client.name,
+            serviceName: appointment.service.name,
+            professionalName: appointment.user.name,
+            startTime: appointment.startTime,
+            businessName: business.name
+          }
+        });
+        
+      } catch (error) {
+        console.error('🔧 SIMPLE BOOKING - Error:', error);
+        console.error('🔧 SIMPLE BOOKING - Stack:', error.stack);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error interno del servidor',
+          error: error.message
+        });
+      }
+    });
+
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
