@@ -39,6 +39,22 @@ const createBranchValidation = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('La descripción no puede exceder 1000 caracteres'),
+  body('banner')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true;
+      // Validar URL solo si tiene contenido
+      if (!value.match(/^https?:\/\/.+/)) {
+        throw new Error('La URL del banner debe ser válida');
+      }
+      return true;
+    }),
+  body('bannerAlt')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('El texto alternativo no puede exceder 200 caracteres'),
   body('isMain')
     .optional()
     .isBoolean()
@@ -102,6 +118,22 @@ const updateBranchValidation = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('La descripción no puede exceder 1000 caracteres'),
+  body('banner')
+    .optional()
+    .custom((value) => {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true;
+      // Validar URL solo si tiene contenido
+      if (!value.match(/^https?:\/\/.+/)) {
+        throw new Error('La URL del banner debe ser válida');
+      }
+      return true;
+    }),
+  body('bannerAlt')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('El texto alternativo no puede exceder 200 caracteres'),
   body('isMain')
     .optional()
     .isBoolean()
