@@ -743,14 +743,18 @@ async function startServer() {
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
+        console.log('🔧 BOOKING DEBUG - Starting booking process');
         const { businessSlug } = req.params;
         const { clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId } = req.body;
+        console.log('🔧 BOOKING DEBUG - Request data:', { businessSlug, clientName, serviceId, startTime, professionalId });
 
         // Buscar el negocio
         const { prisma } = require('./config/database');
+        console.log('🔧 BOOKING DEBUG - Looking for business:', businessSlug);
         const business = await prisma.business.findUnique({
           where: { slug: businessSlug }
         });
+        console.log('🔧 BOOKING DEBUG - Business found:', business ? business.name : 'NOT FOUND');
 
         if (!business) {
           return res.status(404).json({
@@ -760,6 +764,7 @@ async function startServer() {
         }
 
         // Verificar el servicio
+        console.log('🔧 BOOKING DEBUG - Looking for service:', serviceId);
         const service = await prisma.service.findFirst({
           where: {
             id: serviceId,
@@ -767,8 +772,10 @@ async function startServer() {
             isActive: true
           }
         });
+        console.log('🔧 BOOKING DEBUG - Service found:', service ? service.name : 'NOT FOUND');
 
         if (!service) {
+          console.log('🔧 BOOKING DEBUG - Service not found, returning 404');
           return res.status(404).json({
             success: false,
             message: 'Servicio no encontrado'
@@ -776,6 +783,7 @@ async function startServer() {
         }
 
         // Determinar el profesional a asignar
+        console.log('🔧 BOOKING DEBUG - Looking for professional:', professionalId);
         let assignedProfessional = null;
         
         if (professionalId) {
@@ -787,8 +795,10 @@ async function startServer() {
               isActive: true
             }
           });
+          console.log('🔧 BOOKING DEBUG - Professional found:', assignedProfessional ? assignedProfessional.name : 'NOT FOUND');
 
           if (!assignedProfessional) {
+            console.log('🔧 BOOKING DEBUG - Professional not found, returning 400');
             return res.status(400).json({
               success: false,
               message: 'Profesional no disponible'
@@ -960,7 +970,8 @@ async function startServer() {
         });
 
       } catch (error) {
-        console.error('Error en reserva pública:', error);
+        console.error('🔧 BOOKING DEBUG - Error en reserva pública:', error);
+        console.error('🔧 BOOKING DEBUG - Error stack:', error.stack);
         res.status(500).json({
           success: false,
           message: 'Error interno del servidor'
