@@ -740,6 +740,166 @@ async function startServer() {
       }
     });
 
+    // Debug endpoint paso a paso para booking
+    app.post('/api/debug/booking-step-by-step', async (req, res) => {
+      try {
+        console.log('🔧 STEP-BY-STEP DEBUG - Starting...');
+        const { businessSlug, clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId } = req.body;
+        
+        const results = [];
+        const { prisma } = require('./config/database');
+        
+        // PASO 1: Buscar negocio
+        console.log('🔧 STEP 1 - Looking for business:', businessSlug);
+        results.push('STEP 1: Looking for business');
+        
+        const business = await prisma.business.findUnique({
+          where: { slug: businessSlug }
+        });
+        
+        if (!business) {
+          results.push('STEP 1: FAILED - Business not found');
+          return res.json({ success: false, steps: results, error: 'Business not found' });
+        }
+        
+        results.push(`STEP 1: SUCCESS - Found business: ${business.name}`);
+        
+        // PASO 2: Buscar servicio
+        console.log('🔧 STEP 2 - Looking for service:', serviceId);
+        results.push('STEP 2: Looking for service');
+        
+        const service = await prisma.service.findFirst({
+          where: {
+            id: serviceId,
+            businessId: business.id,
+            isActive: true
+          }
+        });
+        
+        if (!service) {
+          results.push('STEP 2: FAILED - Service not found');
+          return res.json({ success: false, steps: results, error: 'Service not found' });
+        }
+        
+        results.push(`STEP 2: SUCCESS - Found service: ${service.name}`);
+        
+        // PASO 3: Buscar profesional
+        console.log('🔧 STEP 3 - Looking for professional:', professionalId);
+        results.push('STEP 3: Looking for professional');
+        
+        const professional = await prisma.user.findFirst({
+          where: {
+            id: professionalId,
+            businessId: business.id,
+            isActive: true
+          }
+        });
+        
+        if (!professional) {
+          results.push('STEP 3: FAILED - Professional not found');
+          return res.json({ success: false, steps: results, error: 'Professional not found' });
+        }
+        
+        results.push(`STEP 3: SUCCESS - Found professional: ${professional.name}`);
+        
+        // PASO 4: Crear o encontrar cliente
+        console.log('🔧 STEP 4 - Looking for/creating client');
+        results.push('STEP 4: Looking for/creating client');
+        
+        let client = await prisma.client.findFirst({
+          where: {
+            businessId: business.id,
+            OR: [
+              ...(clientEmail ? [{ email: clientEmail }] : []),
+              ...(clientPhone ? [{ phone: clientPhone }] : [])
+            ].filter(condition => Object.keys(condition).length > 0)
+          }
+        });
+        
+        if (!client) {
+          console.log('🔧 STEP 4a - Creating new client');
+          results.push('STEP 4a: Creating new client');
+          
+          client = await prisma.client.create({
+            data: {
+              businessId: business.id,
+              name: clientName,
+              email: clientEmail,
+              phone: clientPhone
+            }
+          });
+          
+          results.push(`STEP 4a: SUCCESS - Created client: ${client.name}`);
+        } else {
+          results.push(`STEP 4: SUCCESS - Found existing client: ${client.name}`);
+        }
+        
+        // PASO 5: Crear el turno
+        console.log('🔧 STEP 5 - Creating appointment');
+        results.push('STEP 5: Creating appointment');
+        
+        const startDateTime = new Date(startTime);
+        const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
+        
+        results.push(`STEP 5a: Start time: ${startDateTime.toISOString()}`);
+        results.push(`STEP 5b: End time: ${endDateTime.toISOString()}`);
+        
+        const appointment = await prisma.appointment.create({
+          data: {
+            businessId: business.id,
+            clientId: client.id,
+            serviceId,
+            userId: professional.id,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            notes,
+            status: 'CONFIRMED'
+          },
+          include: {
+            service: {
+              select: {
+                name: true,
+                duration: true,
+                price: true
+              }
+            },
+            user: {
+              select: {
+                name: true,
+                avatar: true
+              }
+            }
+          }
+        });
+        
+        results.push(`STEP 5: SUCCESS - Created appointment ID: ${appointment.id}`);
+        
+        res.json({
+          success: true,
+          steps: results,
+          appointment: {
+            id: appointment.id,
+            clientName: client.name,
+            serviceName: appointment.service.name,
+            professionalName: appointment.user.name,
+            startTime: appointment.startTime,
+            businessName: business.name
+          }
+        });
+        
+      } catch (error) {
+        console.error('🔧 STEP-BY-STEP DEBUG - Error:', error);
+        console.error('🔧 STEP-BY-STEP DEBUG - Stack:', error.stack);
+        
+        res.json({
+          success: false,
+          error: error.message,
+          stack: error.stack,
+          steps: results || []
+        });
+      }
+    });
+
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
