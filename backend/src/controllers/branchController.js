@@ -236,8 +236,13 @@ const createBranch = async (req, res) => {
 // Actualizar sucursal
 const updateBranch = async (req, res) => {
   try {
+    console.log('🔧 UPDATE BRANCH - Starting update process');
+    console.log('🔧 UPDATE BRANCH - Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔧 UPDATE BRANCH - Branch ID:', req.params.branchId);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('🔧 UPDATE BRANCH - Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
@@ -306,22 +311,26 @@ const updateBranch = async (req, res) => {
       });
     }
 
+    const updateData = {
+      ...(name && { name }),
+      ...(slug && { slug }),
+      ...(address !== undefined && { address }),
+      ...(phone !== undefined && { phone }),
+      ...(description !== undefined && { description }),
+      ...(banner !== undefined && { banner }),
+      ...(bannerAlt !== undefined && { bannerAlt }),
+      ...(isMain !== undefined && { isMain }),
+      ...(isActive !== undefined && { isActive }),
+      ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
+      ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+      ...(timezone && { timezone })
+    };
+    
+    console.log('🔧 UPDATE BRANCH - Update data:', JSON.stringify(updateData, null, 2));
+    
     const updatedBranch = await prisma.branch.update({
       where: { id: branchId },
-      data: {
-        ...(name && { name }),
-        ...(slug && { slug }),
-        ...(address !== undefined && { address }),
-        ...(phone !== undefined && { phone }),
-        ...(description !== undefined && { description }),
-        ...(banner !== undefined && { banner }),
-        ...(bannerAlt !== undefined && { bannerAlt }),
-        ...(isMain !== undefined && { isMain }),
-        ...(isActive !== undefined && { isActive }),
-        ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
-        ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
-        ...(timezone && { timezone })
-      }
+      data: updateData
     });
 
     res.json({

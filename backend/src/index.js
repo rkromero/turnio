@@ -1538,6 +1538,42 @@ async function startServer() {
       }
     });
 
+    // Debug endpoint para verificar estructura de tabla branches
+    app.get('/api/debug/branch-schema', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        // Intentar obtener una sucursal con los nuevos campos
+        const branch = await prisma.branch.findFirst({
+          select: {
+            id: true,
+            name: true,
+            banner: true,
+            bannerAlt: true,
+            createdAt: true
+          }
+        });
+        
+        res.json({
+          success: true,
+          message: 'Los campos banner están disponibles',
+          data: {
+            sampleBranch: branch,
+            fieldsAvailable: ['id', 'name', 'banner', 'bannerAlt', 'createdAt']
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error verificando schema de branches:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Error verificando schema',
+          error: error.message,
+          details: error.stack
+        });
+      }
+    });
+
     // Manejo de rutas no encontradas
     app.use('*', (req, res) => {
       res.status(404).json({
