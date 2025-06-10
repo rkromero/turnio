@@ -651,6 +651,36 @@ async function startServer() {
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
 
+    // Debug endpoint para diagnosticar problemas de booking
+    app.post('/api/debug/book-test', async (req, res) => {
+      try {
+        console.log('🔧 DEBUG - Test endpoint called');
+        console.log('Body:', req.body);
+        
+        const { prisma } = require('./config/database');
+        
+        // Test básico de conexión a DB
+        const businessCount = await prisma.business.count();
+        console.log('🔧 DEBUG - Business count:', businessCount);
+        
+        res.json({
+          success: true,
+          message: 'Debug endpoint working',
+          data: {
+            businessCount,
+            body: req.body
+          }
+        });
+      } catch (error) {
+        console.error('🔧 DEBUG - Error in test endpoint:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Debug endpoint failed',
+          error: error.message
+        });
+      }
+    });
+
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
