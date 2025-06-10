@@ -15,6 +15,8 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
     address: '',
     phone: '',
     description: '',
+    banner: '',
+    bannerAlt: '',
     isMain: false,
     latitude: undefined,
     longitude: undefined,
@@ -32,6 +34,8 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
         address: branch.address || '',
         phone: branch.phone || '',
         description: branch.description || '',
+        banner: branch.banner || '',
+        bannerAlt: branch.bannerAlt || '',
         isMain: branch.isMain,
         latitude: branch.latitude,
         longitude: branch.longitude,
@@ -53,7 +57,7 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
       newErrors.slug = 'Solo se permiten letras minúsculas, números y guiones';
     }
 
-    if (formData.phone && !/^[\+]?[\d\s\-\(\)]{10,20}$/.test(formData.phone)) {
+    if (formData.phone && !/^[+]?[\d\s\-()]{10,20}$/.test(formData.phone)) {
       newErrors.phone = 'Formato de teléfono inválido';
     }
 
@@ -79,9 +83,10 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
     try {
       setLoading(true);
       await onSave(formData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error guardando sucursal:', error);
-      setErrors({ general: error.response?.data?.message || 'Error al guardar la sucursal' });
+      const errorMessage = (error as any).response?.data?.message || 'Error al guardar la sucursal';
+      setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -257,6 +262,71 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="Descripción opcional de la sucursal..."
             />
+          </div>
+
+          {/* Banner de la sucursal */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Imagen de la sucursal</h3>
+            
+            {/* URL del banner */}
+            <div>
+              <label htmlFor="banner" className="block text-sm font-medium text-gray-700 mb-1">
+                URL de la imagen
+              </label>
+              <input
+                type="url"
+                id="banner"
+                name="banner"
+                value={formData.banner}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="https://ejemplo.com/imagen-sucursal.jpg"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                URL de la imagen que se mostrará como banner de la sucursal. Recomendado: 800x400px
+              </p>
+            </div>
+
+            {/* Texto alternativo */}
+            <div>
+              <label htmlFor="bannerAlt" className="block text-sm font-medium text-gray-700 mb-1">
+                Texto alternativo
+              </label>
+              <input
+                type="text"
+                id="bannerAlt"
+                name="bannerAlt"
+                value={formData.bannerAlt}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Descripción de la imagen para accesibilidad"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Descripción de la imagen para personas con discapacidad visual
+              </p>
+            </div>
+
+            {/* Vista previa del banner */}
+            {formData.banner && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vista previa</label>
+                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                  <img
+                    src={formData.banner}
+                    alt={formData.bannerAlt || 'Vista previa del banner'}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (nextElement) nextElement.style.display = 'block';
+                    }}
+                  />
+                  <div className="hidden p-4 text-center text-gray-500 bg-gray-50">
+                    Error al cargar la imagen. Verifica que la URL sea correcta.
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Coordenadas GPS */}

@@ -8,6 +8,8 @@ export interface Branch {
   address?: string;
   phone?: string;
   description?: string;
+  banner?: string;
+  bannerAlt?: string;
   isActive: boolean;
   isMain: boolean;
   latitude?: number;
@@ -58,6 +60,8 @@ export interface CreateBranchData {
   address?: string;
   phone?: string;
   description?: string;
+  banner?: string;
+  bannerAlt?: string;
   isMain?: boolean;
   latitude?: number;
   longitude?: number;

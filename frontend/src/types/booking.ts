@@ -11,6 +11,8 @@ export interface Branch {
   address: string | null;
   phone: string | null;
   description: string | null;
+  banner: string | null;
+  bannerAlt: string | null;
   isMain: boolean;
   latitude: number | null;
   longitude: number | null;

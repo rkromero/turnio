@@ -127,8 +127,8 @@ const BookingPage: React.FC = () => {
         setBooking(prev => ({
           ...prev,
           business: branchesResponse.data.business,
-          branches: branches,
-          selectedBranch: branches.length === 1 ? mainBranch : null // Auto-seleccionar si hay solo una
+          branches: branches as Branch[],
+          selectedBranch: branches.length === 1 ? (mainBranch as Branch) : null // Auto-seleccionar si hay solo una
         }));
         
         // Si hay solo una sucursal, cargar servicios automáticamente
@@ -654,41 +654,59 @@ const BookingPage: React.FC = () => {
                       <div
                         key={branch.id}
                         onClick={() => handleBranchSelect(branch)}
-                        className="p-4 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-blue-300 border-gray-200 bg-white"
+                        className="rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-blue-300 border-gray-200 bg-white overflow-hidden"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-gray-900 text-base md:text-lg">{branch.name}</h3>
-                              {branch.isMain && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                                  Principal
-                                </span>
+                        {/* Banner de la sucursal */}
+                        {branch.banner && (
+                          <div className="h-32 md:h-40 bg-gray-100 overflow-hidden">
+                            <img
+                              src={branch.banner}
+                              alt={branch.bannerAlt || `Imagen de ${branch.name}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Si falla la carga de la imagen, ocultar el contenedor
+                                e.currentTarget.parentElement!.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Contenido de la sucursal */}
+                        <div className="p-4 md:p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-900 text-base md:text-lg">{branch.name}</h3>
+                                {branch.isMain && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                                    Principal
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {branch.address && (
+                                <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
+                                  <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+                                  <span>{branch.address}</span>
+                                </div>
+                              )}
+                              
+                              {branch.phone && (
+                                <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
+                                  <Phone className="w-4 h-4 mr-1 flex-shrink-0" />
+                                  <span>{branch.phone}</span>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center text-gray-500 text-sm mt-2">
+                                <User className="w-4 h-4 mr-1" />
+                                <span>{branch.professionalCount} profesionales disponibles</span>
+                              </div>
+                              
+                              {branch.description && (
+                                <p className="text-gray-600 text-sm mt-2">{branch.description}</p>
                               )}
                             </div>
-                            
-                            {branch.address && (
-                              <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
-                                <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span>{branch.address}</span>
-                              </div>
-                            )}
-                            
-                            {branch.phone && (
-                              <div className="flex items-center text-gray-600 text-sm md:text-base mt-1">
-                                <Phone className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span>{branch.phone}</span>
-                              </div>
-                            )}
-                            
-                            <div className="flex items-center text-gray-500 text-sm mt-2">
-                              <User className="w-4 h-4 mr-1" />
-                              <span>{branch.professionalCount} profesionales disponibles</span>
-                            </div>
-                            
-                            {branch.description && (
-                              <p className="text-gray-600 text-sm mt-2">{branch.description}</p>
-                            )}
                           </div>
                         </div>
                       </div>
