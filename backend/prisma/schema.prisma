@@ -51,6 +51,8 @@ model Branch {
   address     String?
   phone       String?
   description String?
+  banner      String?  // URL de la imagen de banner/foto de la sucursal
+  bannerAlt   String?  // Texto alternativo para la imagen (accesibilidad)
   isActive    Boolean  @default(true)
   isMain      Boolean  @default(false) // Sucursal principal
   latitude    Float?   // Para geolocalización
