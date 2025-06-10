@@ -681,6 +681,65 @@ async function startServer() {
       }
     });
 
+    // Debug endpoint para obtener datos del negocio
+    app.get('/api/debug/business-data/:slug', async (req, res) => {
+      try {
+        const { slug } = req.params;
+        const { prisma } = require('./config/database');
+        
+        const business = await prisma.business.findUnique({
+          where: { slug },
+          include: {
+            services: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                duration: true,
+                isActive: true
+              }
+            },
+            users: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+                isActive: true,
+                branchId: true
+              }
+            }
+          }
+        });
+        
+        if (!business) {
+          return res.status(404).json({
+            success: false,
+            message: 'Business not found'
+          });
+        }
+        
+        res.json({
+          success: true,
+          data: {
+            business: {
+              id: business.id,
+              name: business.name,
+              slug: business.slug
+            },
+            services: business.services,
+            users: business.users
+          }
+        });
+      } catch (error) {
+        console.error('🔧 DEBUG - Error getting business data:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Debug endpoint failed',
+          error: error.message
+        });
+      }
+    });
+
     // Ruta para reservas públicas (sin autenticación)
     app.post('/api/public/:businessSlug/book', async (req, res) => {
       try {
