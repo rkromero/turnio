@@ -802,6 +802,34 @@ async function startServer() {
         
         results.push(`STEP 3: SUCCESS - Found professional: ${professional.name}`);
         
+        // PASO 3b: Determinar branchId
+        console.log('🔧 STEP 3b - Determining branchId');
+        results.push('STEP 3b: Determining branchId');
+        
+        let branchId = professional.branchId;
+        if (!branchId) {
+          // Si el profesional no tiene sucursal específica, usar la principal
+          const mainBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isMain: true }
+          });
+          branchId = mainBranch?.id;
+        }
+        
+        if (!branchId) {
+          // Si no hay sucursal principal, usar cualquier sucursal activa
+          const anyBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isActive: true }
+          });
+          branchId = anyBranch?.id;
+        }
+        
+        if (!branchId) {
+          results.push('STEP 3b: FAILED - No branch found');
+          return res.json({ success: false, steps: results, error: 'No branch found' });
+        }
+        
+        results.push(`STEP 3b: SUCCESS - Using branchId: ${branchId}`);
+        
         // PASO 4: Crear o encontrar cliente
         console.log('🔧 STEP 4 - Looking for/creating client');
         results.push('STEP 4: Looking for/creating client');
@@ -847,6 +875,7 @@ async function startServer() {
         const appointment = await prisma.appointment.create({
           data: {
             businessId: business.id,
+            branchId: branchId, // ← AGREGAR EL BRANCH ID FALTANTE
             clientId: client.id,
             serviceId,
             userId: professional.id,
@@ -935,6 +964,28 @@ async function startServer() {
           return res.status(400).json({ success: false, message: 'Profesional no disponible' });
         }
         
+        // 3b. Determinar branchId - usar el del profesional o la sucursal principal
+        let branchId = professional.branchId;
+        if (!branchId) {
+          // Si el profesional no tiene sucursal específica, usar la principal
+          const mainBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isMain: true }
+          });
+          branchId = mainBranch?.id;
+        }
+        
+        if (!branchId) {
+          // Si no hay sucursal principal, usar cualquier sucursal activa
+          const anyBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isActive: true }
+          });
+          branchId = anyBranch?.id;
+        }
+        
+        if (!branchId) {
+          return res.status(500).json({ success: false, message: 'No se encontró sucursal disponible' });
+        }
+        
         // 4. Crear cliente (siempre nuevo para evitar problemas)
         const client = await prisma.client.create({
           data: {
@@ -952,6 +1003,7 @@ async function startServer() {
         const appointment = await prisma.appointment.create({
           data: {
             businessId: business.id,
+            branchId: branchId, // ← ESTE ERA EL CAMPO FALTANTE
             clientId: client.id,
             serviceId,
             userId: professional.id,
@@ -1172,6 +1224,31 @@ async function startServer() {
           }
         }
 
+        // Determinar branchId - usar el del profesional o la sucursal principal
+        let branchId = assignedProfessional.branchId;
+        if (!branchId) {
+          // Si el profesional no tiene sucursal específica, usar la principal
+          const mainBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isMain: true }
+          });
+          branchId = mainBranch?.id;
+        }
+        
+        if (!branchId) {
+          // Si no hay sucursal principal, usar cualquier sucursal activa
+          const anyBranch = await prisma.branch.findFirst({
+            where: { businessId: business.id, isActive: true }
+          });
+          branchId = anyBranch?.id;
+        }
+        
+        if (!branchId) {
+          return res.status(500).json({
+            success: false,
+            message: 'No se encontró sucursal disponible'
+          });
+        }
+
         // Crear el turno
         const startDateTime = new Date(startTime);
         const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
@@ -1179,6 +1256,7 @@ async function startServer() {
         const appointment = await prisma.appointment.create({
           data: {
             businessId: business.id,
+            branchId: branchId, // ← AGREGAR EL BRANCH ID FALTANTE
             clientId: client.id,
             serviceId,
             userId: assignedProfessional.id,
