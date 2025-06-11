@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Building2, MapPin, Phone, Globe, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Building2, MapPin, Phone, Globe, Clock, Upload, Image as ImageIcon } from 'lucide-react';
 import type { Branch, CreateBranchData } from '../../types/branch';
+import { uploadService } from '../../services/uploadService';
 
 interface BranchModalProps {
   branch?: Branch | null;
@@ -25,6 +26,10 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (branch) {
@@ -41,8 +46,74 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
         longitude: branch.longitude,
         timezone: branch.timezone || 'America/Argentina/Buenos_Aires'
       });
+      
+      // Si hay una imagen existente, mostrarla como preview
+      if (branch.banner) {
+        setImagePreview(branch.banner);
+      }
     }
   }, [branch]);
+
+  // Función para manejar la selección de archivo
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validar archivo usando el servicio
+      const validation = uploadService.validateImageFile(file);
+      if (!validation.isValid) {
+        setErrors(prev => ({ ...prev, banner: validation.error || 'Archivo inválido' }));
+        return;
+      }
+
+      setImageFile(file);
+      
+      // Crear preview usando el servicio
+      try {
+        const preview = await uploadService.getImagePreview(file);
+        setImagePreview(preview);
+        
+        // Limpiar errores
+        if (errors.banner) {
+          setErrors(prev => ({ ...prev, banner: '' }));
+        }
+      } catch (error) {
+        console.error('Error generando preview:', error);
+        setErrors(prev => ({ ...prev, banner: 'Error procesando la imagen' }));
+      }
+    }
+  };
+
+  // Función para subir imagen usando el servicio
+  const uploadImage = async (file: File): Promise<string> => {
+    setUploadingImage(true);
+    
+    try {
+      // Simular delay de subida para mejor UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Usar el servicio de upload
+      const imageUrl = await uploadService.uploadImage(file);
+      return imageUrl;
+    } catch (error) {
+      console.error('Error subiendo imagen:', error);
+      throw error;
+    }
+  };
+
+  // Función para abrir el selector de archivos
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Función para eliminar la imagen
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setFormData(prev => ({ ...prev, banner: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -82,10 +153,34 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
 
     try {
       setLoading(true);
-      await onSave(formData);
+      
+      const finalFormData = { ...formData };
+      
+      // Si hay una imagen nueva para subir
+      if (imageFile) {
+        try {
+          const imageUrl = await uploadImage(imageFile);
+          finalFormData.banner = imageUrl;
+        } catch (error: unknown) {
+          console.error('Error subiendo imagen:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Error desconocido al subir la imagen';
+          setErrors({ banner: `Error al subir la imagen: ${errorMessage}. Intenta de nuevo.` });
+          return;
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+      
+      await onSave(finalFormData);
     } catch (error: unknown) {
       console.error('Error guardando sucursal:', error);
-      const errorMessage = (error as any).response?.data?.message || 'Error al guardar la sucursal';
+      const errorMessage = error instanceof Error && 'response' in error && 
+                          typeof error.response === 'object' && error.response !== null && 
+                          'data' in error.response && 
+                          typeof error.response.data === 'object' && error.response.data !== null &&
+                          'message' in error.response.data
+                          ? String(error.response.data.message)
+                          : 'Error al guardar la sucursal';
       setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
@@ -268,23 +363,75 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Imagen de la sucursal</h3>
             
-            {/* URL del banner */}
+            {/* Input de archivo oculto */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            {/* Área de subida de imagen */}
             <div>
-              <label htmlFor="banner" className="block text-sm font-medium text-gray-700 mb-1">
-                URL de la imagen
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <ImageIcon className="inline w-4 h-4 mr-1" />
+                Imagen del banner
               </label>
-              <input
-                type="url"
-                id="banner"
-                name="banner"
-                value={formData.banner}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="https://ejemplo.com/imagen-sucursal.jpg"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                URL de la imagen que se mostrará como banner de la sucursal. Recomendado: 800x400px
-              </p>
+              
+              {/* Vista previa o área de subida */}
+              {imagePreview ? (
+                <div className="space-y-3">
+                  <div className="relative border border-gray-300 rounded-lg overflow-hidden">
+                    <img
+                      src={imagePreview}
+                      alt={formData.bannerAlt || 'Vista previa del banner'}
+                      className="w-full h-32 object-cover"
+                    />
+                    {uploadingImage && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div className="text-white text-sm">Subiendo imagen...</div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleUploadClick}
+                      className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Cambiar imagen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="px-3 py-2 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={handleUploadClick}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors hover:border-purple-400 hover:bg-purple-50 ${
+                    errors.banner ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600 mb-1">
+                    Haz clic para subir una imagen
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    PNG, JPG, GIF hasta 5MB. Recomendado: 800x400px
+                  </p>
+                </div>
+              )}
+              
+              {errors.banner && (
+                <p className="text-red-500 text-sm mt-1">{errors.banner}</p>
+              )}
             </div>
 
             {/* Texto alternativo */}
@@ -305,28 +452,6 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
                 Descripción de la imagen para personas con discapacidad visual
               </p>
             </div>
-
-            {/* Vista previa del banner */}
-            {formData.banner && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vista previa</label>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <img
-                    src={formData.banner}
-                    alt={formData.bannerAlt || 'Vista previa del banner'}
-                    className="w-full h-32 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (nextElement) nextElement.style.display = 'block';
-                    }}
-                  />
-                  <div className="hidden p-4 text-center text-gray-500 bg-gray-50">
-                    Error al cargar la imagen. Verifica que la URL sea correcta.
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Coordenadas GPS */}

@@ -105,21 +105,28 @@ const updateBranchValidation = [
     .matches(/^[a-z0-9-]+$/)
     .withMessage('El identificador debe contener solo letras minúsculas, números y guiones'),
   body('address')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 500 })
     .withMessage('La dirección no puede exceder 500 caracteres'),
   body('phone')
-    .optional()
-    .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
-    .withMessage('Número de teléfono inválido'),
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Si está vacío, null o undefined, permitir
+      if (!value || value.trim() === '') return true;
+      // Si tiene contenido, validar formato
+      if (!/^[\+]?[\d\s\-\(\)]{10,20}$/.test(value.trim())) {
+        throw new Error('Número de teléfono inválido');
+      }
+      return true;
+    }),
   body('description')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 1000 })
     .withMessage('La descripción no puede exceder 1000 caracteres'),
   body('banner')
-    .optional()
+    .optional({ checkFalsy: true })
     .custom((value) => {
       // Permitir campo vacío, null o undefined
       if (!value || value.trim() === '') return true;
@@ -130,7 +137,7 @@ const updateBranchValidation = [
       return true;
     }),
   body('bannerAlt')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 200 })
     .withMessage('El texto alternativo no puede exceder 200 caracteres'),
@@ -143,15 +150,31 @@ const updateBranchValidation = [
     .isBoolean()
     .withMessage('isActive debe ser un boolean'),
   body('latitude')
-    .optional()
-    .isFloat({ min: -90, max: 90 })
-    .withMessage('Latitud debe estar entre -90 y 90'),
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Si está vacío, null o undefined, permitir
+      if (!value || value === '') return true;
+      // Si tiene contenido, validar rango
+      const num = parseFloat(value);
+      if (isNaN(num) || num < -90 || num > 90) {
+        throw new Error('Latitud debe estar entre -90 y 90');
+      }
+      return true;
+    }),
   body('longitude')
-    .optional()
-    .isFloat({ min: -180, max: 180 })
-    .withMessage('Longitud debe estar entre -180 y 180'),
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Si está vacío, null o undefined, permitir
+      if (!value || value === '') return true;
+      // Si tiene contenido, validar rango
+      const num = parseFloat(value);
+      if (isNaN(num) || num < -180 || num > 180) {
+        throw new Error('Longitud debe estar entre -180 y 180');
+      }
+      return true;
+    }),
   body('timezone')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage('Timezone debe ser un string válido')
 ];

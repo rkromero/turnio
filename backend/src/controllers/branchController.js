@@ -235,21 +235,23 @@ const createBranch = async (req, res) => {
 
 // Actualizar sucursal
 const updateBranch = async (req, res) => {
-  try {
-    console.log('🔧 UPDATE BRANCH - Starting update process');
-    console.log('🔧 UPDATE BRANCH - Request body:', JSON.stringify(req.body, null, 2));
-    console.log('🔧 UPDATE BRANCH - Branch ID:', req.params.branchId);
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('🔧 UPDATE BRANCH - Validation errors:', errors.array());
-      return res.status(400).json({
-        success: false,
-        message: 'Datos inválidos',
-        errors: errors.array()
-      });
-    }
+  console.log('=== INICIO updateBranch ===');
+  console.log('Request body completo:', JSON.stringify(req.body, null, 2));
+  console.log('Branch ID:', req.params.branchId);
+  console.log('Headers:', req.headers['content-type']);
+  
+  // Verificar errores de validación
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log('❌ ERRORES DE VALIDACIÓN:', errors.array());
+    return res.status(400).json({
+      success: false,
+      message: 'Datos de entrada inválidos',
+      errors: errors.array()
+    });
+  }
 
+  try {
     const businessId = req.businessId;
     const { branchId } = req.params;
     const { 
