@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { subscriptionService, type Plan } from '../services/subscriptionService';
 import { 
   Smartphone, 
   Clock, 
@@ -13,15 +14,37 @@ import {
   ChevronUp,
   Calendar,
   Settings,
-  CreditCard
+  CreditCard,
+  Zap
 } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
+
+  // Cargar planes desde la API
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const response = await subscriptionService.getPlans();
+        setPlans(response.data.plans);
+      } catch (error) {
+        console.error('Error cargando planes:', error);
+        // Fallback a planes estáticos si falla la API
+        setPlans([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPlans();
+  }, []);
 
   const benefits = [
     {
@@ -67,59 +90,16 @@ const LandingPage: React.FC = () => {
     }
   ];
 
-  const plans = [
-    {
-      name: "Básico",
-      ideal: "Profesionales individuales",
-      price: "$4.900",
-      period: "/mes",
-      features: [
-        "1 usuario",
-        "Hasta 100 turnos/mes",
-        "Recordatorios automáticos",
-        "Calendario básico",
-        "Soporte por email"
-      ],
-      cta: "Contratar Básico",
-      popular: false,
-      color: "border-gray-200"
-    },
-    {
-      name: "Pro",
-      ideal: "Equipos chicos o consultorios",
-      price: "$9.900",
-      period: "/mes",
-      features: [
-        "3 usuarios",
-        "Turnos ilimitados",
-        "Recordatorios automáticos",
-        "Calendario avanzado",
-        "Reportes básicos",
-        "Soporte prioritario"
-      ],
-      cta: "Contratar Pro",
-      popular: true,
-      color: "border-purple-500"
-    },
-    {
-      name: "Full",
-      ideal: "Empresas o clínicas",
-      price: "$14.900",
-      period: "/mes",
-      features: [
-        "10 usuarios",
-        "Turnos ilimitados",
-        "Recordatorios automáticos",
-        "Calendario completo",
-        "Reportes avanzados",
-        "Soporte prioritario 24/7",
-        "Integración con WhatsApp"
-      ],
-      cta: "Contratar Full",
-      popular: false,
-      color: "border-gray-200"
-    }
-  ];
+  // Función para formatear precio
+  const formatPrice = (price: number) => {
+    if (price === 0) return 'Gratis';
+    return `$${price.toLocaleString('es-AR')}`;
+  };
+
+  // Función para determinar si un plan es popular
+  const isPopularPlan = (planKey: string) => {
+    return planKey === 'PREMIUM'; // Plan Premium es el más popular
+  };
 
   const testimonials = [
     {
@@ -363,66 +343,129 @@ const LandingPage: React.FC = () => {
             <p className="text-xl text-gray-600 mb-8">
               Elegí el plan perfecto para tu negocio
             </p>
+            
+            {/* Toggle mensual/anual */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="bg-gray-100 p-1 rounded-lg flex">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                    billingCycle === 'monthly'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Mensual
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors relative ${
+                    billingCycle === 'yearly'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Anual
+                  <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                    -10%
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded-full inline-block font-medium">
-              ✨ Todos los planes incluyen prueba gratis de 7 días
+              <Zap className="w-4 h-4 inline mr-1" />
+              Plan gratuito disponible - Sin período de prueba necesario
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {plans.map((plan, index) => (
-              <div 
-                key={index} 
-                className={`relative border-2 ${plan.color} rounded-2xl p-8 ${
-                  plan.popular ? 'scale-105 shadow-xl' : 'shadow-lg'
-                } transition-transform hover:scale-105`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                      Más popular
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Cargando planes...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {plans.map((plan) => {
+                const currentPricing = plan.pricing[billingCycle];
+                const isPopular = isPopularPlan(plan.key);
+                const isFree = plan.key === 'FREE';
+                
+                return (
+                  <div 
+                    key={plan.key} 
+                    className={`relative border-2 rounded-2xl p-6 transition-transform hover:scale-105 ${
+                      isPopular 
+                        ? 'border-purple-500 scale-105 shadow-xl' 
+                        : 'border-gray-200 shadow-lg'
+                    } ${isFree ? 'bg-gradient-to-br from-green-50 to-emerald-50' : 'bg-white'}`}
+                  >
+                    {isPopular && (
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                          Más popular
+                        </div>
+                      </div>
+                    )}
+
+                    {isFree && (
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                          Gratis
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-center mb-6">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        {plan.name}
+                      </h3>
+                      <p className="text-gray-600 mb-4 text-sm">
+                        {plan.description}
+                      </p>
+                      <div className="flex items-baseline justify-center">
+                        <span className="text-4xl font-bold text-gray-900">
+                          {formatPrice(currentPricing.displayPrice)}
+                        </span>
+                        {!isFree && (
+                          <span className="text-gray-500 ml-1">
+                            /{billingCycle === 'monthly' ? 'mes' : 'mes'}
+                          </span>
+                        )}
+                      </div>
+                      {billingCycle === 'yearly' && !isFree && 'savings' in currentPricing && currentPricing.savings > 0 && (
+                        <p className="text-green-600 text-sm mt-2 font-medium">
+                          Ahorrás ${currentPricing.savings.toLocaleString('es-AR')} al año
+                        </p>
+                      )}
                     </div>
+
+                    <ul className="space-y-3 mb-8">
+                      {plan.features.map((feature, featureIndex) => (
+                        <li key={featureIndex} className="flex items-center text-sm">
+                          <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                          <span className="text-gray-700">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      to={`/register?plan=${plan.key}&billing=${billingCycle}`}
+                      className={`w-full py-3 px-6 rounded-lg font-semibold text-center transition-colors inline-block text-sm ${
+                        isPopular 
+                          ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                          : isFree
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
+                      }`}
+                    >
+                      {isFree ? 'Empezar gratis' : `Elegir ${plan.name}`}
+                    </Link>
                   </div>
-                )}
-
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    {plan.name}
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    {plan.ideal}
-                  </p>
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-500 ml-1">
-                      {plan.period}
-                    </span>
-                  </div>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center">
-                      <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to="/register"
-                  className={`w-full py-4 px-6 rounded-lg font-semibold text-center transition-colors inline-block ${
-                    plan.popular 
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                      : 'border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -577,6 +620,6 @@ const LandingPage: React.FC = () => {
       </footer>
     </div>
   );
-};
+  };
 
 export default LandingPage; 
