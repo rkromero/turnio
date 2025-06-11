@@ -663,6 +663,8 @@ const getAvailableProfessionals = async (req, res) => {
     const { businessSlug } = req.params;
     const { date, serviceId, branchId } = req.query;
 
+    console.log('🔍 getAvailableProfessionals - Parámetros:', { businessSlug, date, serviceId, branchId });
+
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
       where: { slug: businessSlug },
@@ -673,6 +675,7 @@ const getAvailableProfessionals = async (req, res) => {
         users: {
           where: { 
             isActive: true,
+            role: 'EMPLOYEE', // Solo empleados, no admins/dueños
             ...(branchId && { branchId: branchId })
           },
           include: {
@@ -711,6 +714,18 @@ const getAvailableProfessionals = async (req, res) => {
     }
 
     const professionals = business.users;
+    
+    console.log('✅ getAvailableProfessionals - Profesionales filtrados:', {
+      total: professionals.length,
+      professionals: professionals.map(u => ({ 
+        id: u.id, 
+        name: u.name, 
+        role: u.role, 
+        branchId: u.branchId,
+        branchName: u.branch?.name 
+      }))
+    });
+    
     let professionalsWithSlots = [];
     let totalSlotsCount = 0;
     let availableSlotsCount = 0;
@@ -935,6 +950,8 @@ const getAllProfessionals = async (req, res) => {
     const { businessSlug } = req.params;
     const { branchId } = req.query;
 
+    console.log('🔍 getAllProfessionals - Parámetros:', { businessSlug, branchId });
+
     // Buscar el negocio por slug
     const business = await prisma.business.findUnique({
       where: { slug: businessSlug },
@@ -942,6 +959,7 @@ const getAllProfessionals = async (req, res) => {
         users: {
           where: { 
             isActive: true,
+            role: 'EMPLOYEE', // Solo empleados, no admins/dueños
             ...(branchId && { branchId: branchId })
           },
           select: {
@@ -969,6 +987,17 @@ const getAllProfessionals = async (req, res) => {
         message: 'Negocio no encontrado'
       });
     }
+
+    console.log('✅ getAllProfessionals - Profesionales encontrados:', {
+      total: business.users.length,
+      professionals: business.users.map(u => ({ 
+        id: u.id, 
+        name: u.name, 
+        role: u.role, 
+        branchId: u.branchId,
+        branchName: u.branch?.name 
+      }))
+    });
 
     return res.json({
       success: true,
