@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { subscriptionService, type Plan } from '../services/subscriptionService';
 import type { RegisterForm } from '../types';
 import { BusinessType } from '../types';
 import Logo from '../components/Logo';
-import { Building2, Clock, Scissors, Heart, Stethoscope, Sparkles } from 'lucide-react';
+import { Building2, Clock, Scissors, Heart, Stethoscope, Sparkles, Check, Crown, Zap } from 'lucide-react';
 
 const Register: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState<RegisterForm>({
     businessName: '',
     email: '',
@@ -19,9 +21,47 @@ const Register: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Cargar planes y detectar plan preseleccionado
+  useEffect(() => {
+    const loadPlansAndDetectSelection = async () => {
+      try {
+        // Cargar planes
+        const response = await subscriptionService.getPlans();
+        setPlans(response.data.plans);
+
+        // Detectar plan preseleccionado desde URL
+        const planKey = searchParams.get('plan');
+        const billing = searchParams.get('billing') as 'monthly' | 'yearly';
+
+        if (planKey) {
+          const plan = response.data.plans.find(p => p.key === planKey);
+          if (plan) {
+            setSelectedPlan(plan);
+            setSelectedBilling(billing || 'monthly');
+          }
+        } else {
+          // Si no hay plan seleccionado, usar el gratuito por defecto
+          const freePlan = response.data.plans.find(p => p.key === 'FREE');
+          if (freePlan) {
+            setSelectedPlan(freePlan);
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando planes:', error);
+        // Si falla, usar plan gratuito por defecto
+        setSelectedPlan(null);
+      }
+    };
+
+    loadPlansAndDetectSelection();
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -59,7 +99,14 @@ const Register: React.FC = () => {
     setError('');
 
     try {
+      // 1. Registrar el negocio
       await register(formData);
+      
+      // TODO: Implementar creación de suscripción después del registro
+      // Necesitamos obtener el businessId del usuario registrado
+      
+      // 2. Por ahora, ir directamente al dashboard
+      // En el dashboard se puede manejar la suscripción
       navigate('/dashboard');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
@@ -245,17 +292,84 @@ const Register: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">
-                  🎉 Plan Gratuito incluye:
-                </h3>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Hasta 30 turnos por mes</li>
-                  <li>• Gestión de servicios ilimitados</li>
-                  <li>• Reservas online</li>
-                  <li>• Panel de administración</li>
-                </ul>
-              </div>
+              {/* Plan seleccionado */}
+              {selectedPlan && (
+                <div className={`border-2 rounded-lg p-6 ${
+                  selectedPlan.key === 'FREE' 
+                    ? 'bg-green-50 border-green-200' 
+                    : selectedPlan.key === 'PREMIUM'
+                    ? 'bg-purple-50 border-purple-200'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      {selectedPlan.key === 'FREE' && <Zap className="w-6 h-6 text-green-600" />}
+                      {selectedPlan.key === 'PREMIUM' && <Crown className="w-6 h-6 text-purple-600" />}
+                      <div>
+                        <h3 className={`text-lg font-semibold ${
+                          selectedPlan.key === 'FREE' ? 'text-green-800' : 
+                          selectedPlan.key === 'PREMIUM' ? 'text-purple-800' : 'text-blue-800'
+                        }`}>
+                          Plan {selectedPlan.name}
+                        </h3>
+                        <p className="text-sm text-gray-600">{selectedPlan.description}</p>
+                      </div>
+                    </div>
+                    
+                    {selectedPlan.key !== 'FREE' && (
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900">
+                          ${selectedPlan.pricing[selectedBilling].displayPrice.toLocaleString('es-AR')}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          /{selectedBilling === 'monthly' ? 'mes' : 'mes'}
+                        </div>
+                        {selectedBilling === 'yearly' && 'savings' in selectedPlan.pricing.yearly && (
+                          <div className="text-xs text-green-600 font-medium">
+                            Ahorrás ${selectedPlan.pricing.yearly.savings.toLocaleString('es-AR')} al año
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Incluye:</h4>
+                      <ul className="space-y-1">
+                        {selectedPlan.features.slice(0, Math.ceil(selectedPlan.features.length / 2)).map((feature, index) => (
+                          <li key={index} className="flex items-center text-sm text-gray-700">
+                            <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">&nbsp;</h4>
+                      <ul className="space-y-1">
+                        {selectedPlan.features.slice(Math.ceil(selectedPlan.features.length / 2)).map((feature, index) => (
+                          <li key={index} className="flex items-center text-sm text-gray-700">
+                            <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {plans.length > 1 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <Link 
+                        to="/#planes" 
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        ← Cambiar plan
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <button
@@ -268,8 +382,12 @@ const Register: React.FC = () => {
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Registrando negocio...
                     </div>
-                  ) : (
+                  ) : selectedPlan?.key === 'FREE' ? (
                     'Registrar Negocio Gratis'
+                  ) : selectedPlan ? (
+                    `Continuar con Plan ${selectedPlan.name}`
+                  ) : (
+                    'Registrar Negocio'
                   )}
                 </button>
               </div>
