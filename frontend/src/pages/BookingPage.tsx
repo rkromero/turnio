@@ -142,7 +142,18 @@ const BookingPage: React.FC = () => {
             }));
           }
           
-          await loadAllProfessionals();
+          // Cargar profesionales de la sucursal seleccionada
+          const professionalsResponse = await bookingService.getAllProfessionals(
+            businessSlug!,
+            mainBranch.id
+          );
+          
+          if (professionalsResponse.success) {
+            setBooking(prev => ({
+              ...prev,
+              professionals: professionalsResponse.data.professionals
+            }));
+          }
         }
       }
     } catch (error) {
@@ -338,7 +349,10 @@ const BookingPage: React.FC = () => {
     if (mode === 'service') {
       loadBusinessData();
     } else {
-      loadAllProfessionals();
+      // Solo cargar profesionales si ya hay una sucursal seleccionada
+      if (booking.selectedBranch) {
+        loadAllProfessionals();
+      }
     }
   };
 
