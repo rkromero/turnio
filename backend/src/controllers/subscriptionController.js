@@ -1,11 +1,93 @@
 const { PrismaClient } = require('@prisma/client');
-const { AVAILABLE_PLANS } = require('./planController');
 
 const prisma = new PrismaClient();
+
+// Definición de planes disponibles (copiado desde planController)
+const AVAILABLE_PLANS = {
+  FREE: {
+    name: 'Plan Gratuito',
+    description: 'Perfecto para empezar',
+    price: 0,
+    limits: {
+      appointments: 30,
+      services: 3,
+      users: 1
+    },
+    features: [
+      'Hasta 30 citas por mes',
+      'Hasta 3 servicios',
+      '1 usuario/empleado',
+      'Reservas públicas',
+      'Dashboard básico'
+    ]
+  },
+  BASIC: {
+    name: 'Plan Básico',
+    description: 'Ideal para profesionales individuales',
+    price: 4900,
+    limits: {
+      appointments: 100,
+      services: 10,
+      users: 3
+    },
+    features: [
+      'Hasta 100 citas por mes',
+      'Hasta 10 servicios',
+      'Hasta 3 usuarios/empleados',
+      'Reservas públicas',
+      'Dashboard completo',
+      'Recordatorios por email',
+      'Reportes básicos'
+    ]
+  },
+  PREMIUM: {
+    name: 'Plan Premium',
+    description: 'Para equipos y consultorios',
+    price: 9900,
+    limits: {
+      appointments: 500,
+      services: 25,
+      users: 10
+    },
+    features: [
+      'Hasta 500 citas por mes',
+      'Hasta 25 servicios',
+      'Hasta 10 usuarios/empleados',
+      'Reservas públicas',
+      'Dashboard avanzado',
+      'Recordatorios por email y SMS',
+      'Reportes avanzados',
+      'Personalización de marca'
+    ]
+  },
+  ENTERPRISE: {
+    name: 'Plan Empresa',
+    description: 'Para empresas y clínicas',
+    price: 14900,
+    limits: {
+      appointments: -1, // Ilimitado
+      services: -1,     // Ilimitado
+      users: -1         // Ilimitado
+    },
+    features: [
+      'Citas ilimitadas',
+      'Servicios ilimitados',
+      'Usuarios/empleados ilimitados',
+      'Reservas públicas',
+      'Dashboard avanzado',
+      'Recordatorios por email y SMS',
+      'Reportes completos',
+      'Personalización completa de marca',
+      'Soporte prioritario 24/7'
+    ]
+  }
+};
 
 // Obtener planes con precios mensuales y anuales
 const getPlansWithPricing = async (req, res) => {
   try {
+    console.log('📋 Obteniendo planes con precios...');
+    
     // Calcular precios anuales con 10% descuento
     const plansWithPricing = Object.entries(AVAILABLE_PLANS).map(([key, plan]) => {
       const monthlyPrice = plan.price;
@@ -32,6 +114,8 @@ const getPlansWithPricing = async (req, res) => {
         }
       };
     });
+
+    console.log(`✅ Devolviendo ${plansWithPricing.length} planes`);
 
     res.json({
       success: true,
