@@ -1,158 +1,164 @@
-const { prisma } = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Obtener métricas generales del dashboard
+// Obtener métricas del dashboard para reportes
 const getDashboardMetrics = async (req, res) => {
   try {
-    const businessId = req.businessId; // Viene del middleware de auth
-    const { period = '30' } = req.query; // días
-    
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(period));
+    const { user } = req;
+    const { period = 30 } = req.query;
 
-    // Obtener citas completadas del período con sus servicios
-    const completedAppointments = await prisma.appointment.findMany({
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    const businessId = user.businessId;
+    const periodDays = parseInt(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - periodDays);
+    const endDate = new Date();
+
+    console.log(`📊 Generando reportes para businessId: ${businessId}, período: ${periodDays} días`);
+
+    // 1. Obtener todas las citas del período
+    const appointments = await prisma.appointment.findMany({
       where: {
         businessId: businessId,
-        status: 'COMPLETED',
         startTime: {
           gte: startDate,
           lte: endDate
         }
       },
       include: {
-        service: true,
-        client: true
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true
+          }
+        }
       }
     });
 
-    // Calcular ingresos totales
-    const revenue = completedAppointments.reduce((sum, apt) => sum + apt.service.price, 0);
+    console.log(`📅 Encontradas ${appointments.length} citas en el período`);
 
-    // Citas por estado en el período
-    const appointmentsByStatus = await prisma.appointment.groupBy({
-      by: ['status'],
-      where: {
-        businessId: businessId,
-        startTime: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      _count: {
-        id: true
-      }
+    // 2. Calcular métricas básicas
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter(a => a.status === 'COMPLETED');
+    const revenue = completedAppointments.reduce((sum, appointment) => {
+      return sum + (appointment.service?.price || 0);
+    }, 0);
+
+    // 3. Clientes únicos
+    const uniqueClientEmails = new Set();
+    const uniqueClientPhones = new Set();
+    appointments.forEach(appointment => {
+      if (appointment.clientEmail) uniqueClientEmails.add(appointment.clientEmail);
+      if (appointment.clientPhone) uniqueClientPhones.add(appointment.clientPhone);
+    });
+    const uniqueClients = Math.max(uniqueClientEmails.size, uniqueClientPhones.size);
+
+    // 4. Citas por estado
+    const statusCounts = {};
+    appointments.forEach(appointment => {
+      statusCounts[appointment.status] = (statusCounts[appointment.status] || 0) + 1;
     });
 
-    // Servicios más populares
-    const popularServices = await prisma.appointment.groupBy({
-      by: ['serviceId'],
-      where: {
-        businessId: businessId,
-        startTime: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      _count: {
-        id: true
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 5
-    });
-
-    // Obtener nombres de servicios
-    const serviceNames = await prisma.service.findMany({
-      where: {
-        id: {
-          in: popularServices.map(s => s.serviceId)
-        }
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true
-      }
-    });
-
-    const servicesWithNames = popularServices.map(service => ({
-      ...service,
-      service: serviceNames.find(s => s.id === service.serviceId)
+    const appointmentsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count
     }));
 
-    // Ingresos diarios para el gráfico
-    const revenueByDay = {};
-    completedAppointments.forEach(apt => {
-      const day = apt.startTime.toISOString().split('T')[0];
-      if (!revenueByDay[day]) {
-        revenueByDay[day] = 0;
-      }
-      revenueByDay[day] += apt.service.price;
-    });
-
-    // Horarios más demandados (basado en hora de inicio)
-    const allAppointments = await prisma.appointment.findMany({
-      where: {
-        businessId: businessId,
-        startTime: {
-          gte: startDate,
-          lte: endDate
+    // 5. Servicios populares
+    const serviceCounts = {};
+    appointments.forEach(appointment => {
+      if (appointment.service) {
+        const serviceId = appointment.service.id;
+        if (!serviceCounts[serviceId]) {
+          serviceCounts[serviceId] = {
+            serviceId,
+            service: appointment.service,
+            count: 0
+          };
         }
-      },
-      select: {
-        startTime: true
+        serviceCounts[serviceId].count++;
       }
     });
 
-    const hourlyStats = {};
-    allAppointments.forEach(apt => {
-      const hour = new Date(apt.startTime).getHours();
-      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
-      hourlyStats[hourKey] = (hourlyStats[hourKey] || 0) + 1;
+    const popularServices = Object.values(serviceCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map(service => ({
+        serviceId: service.serviceId,
+        _count: { id: service.count },
+        service: service.service
+      }));
+
+    // 6. Ingresos diarios
+    const dailyRevenue = [];
+    for (let i = periodDays - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateString = date.toISOString().split('T')[0];
+      
+      const dayAppointments = appointments.filter(appointment => {
+        const appointmentDate = appointment.startTime.toISOString().split('T')[0];
+        return appointmentDate === dateString && appointment.status === 'COMPLETED';
+      });
+      
+      const dayRevenue = dayAppointments.reduce((sum, appointment) => {
+        return sum + (appointment.service?.price || 0);
+      }, 0);
+      
+      dailyRevenue.push({
+        date: dateString,
+        amount: dayRevenue
+      });
+    }
+
+    // 7. Estadísticas por hora
+    const hourlyCounts = {};
+    appointments.forEach(appointment => {
+      const hour = appointment.startTime.getHours();
+      const hourString = `${hour.toString().padStart(2, '0')}:00`;
+      hourlyCounts[hourString] = (hourlyCounts[hourString] || 0) + 1;
     });
 
-    // Total de clientes únicos
-    const uniqueClients = await prisma.appointment.findMany({
-      where: {
-        businessId: businessId,
-        startTime: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      select: {
-        clientId: true
-      },
-      distinct: ['clientId']
+    const hourlyStats = Object.entries(hourlyCounts)
+      .map(([hour, count]) => ({ hour, count }))
+      .sort((a, b) => a.hour.localeCompare(b.hour));
+
+    const metrics = {
+      period: periodDays,
+      revenue,
+      totalAppointments,
+      uniqueClients,
+      appointmentsByStatus,
+      popularServices,
+      dailyRevenue,
+      hourlyStats
+    };
+
+    console.log(`✅ Métricas calculadas:`, {
+      revenue,
+      totalAppointments,
+      uniqueClients,
+      statusCount: appointmentsByStatus.length,
+      popularServicesCount: popularServices.length,
+      dailyRevenueCount: dailyRevenue.length,
+      hourlyStatsCount: hourlyStats.length
     });
 
     res.json({
-      period: parseInt(period),
-      revenue: revenue,
-      totalAppointments: completedAppointments.length,
-      uniqueClients: uniqueClients.length,
-      appointmentsByStatus: appointmentsByStatus.map(status => ({
-        status: status.status,
-        count: status._count.id
-      })),
-      popularServices: servicesWithNames,
-      dailyRevenue: Object.entries(revenueByDay).map(([date, amount]) => ({
-        date,
-        amount
-      })).sort((a, b) => a.date.localeCompare(b.date)),
-      hourlyStats: Object.entries(hourlyStats).map(([hour, count]) => ({
-        hour,
-        count
-      })).sort((a, b) => a.hour.localeCompare(b.hour))
+      success: true,
+      data: metrics
     });
 
   } catch (error) {
-    console.error('Error al obtener métricas del dashboard:', error);
-    res.status(500).json({ 
+    console.error('❌ Error obteniendo métricas del dashboard:', error);
+    res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });
@@ -162,71 +168,57 @@ const getDashboardMetrics = async (req, res) => {
 // Obtener reporte de ingresos
 const getRevenueReport = async (req, res) => {
   try {
-    const businessId = req.businessId;
+    const { user } = req;
     const { startDate, endDate, groupBy = 'day' } = req.query;
-    
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    const businessId = user.businessId;
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    const completedAppointments = await prisma.appointment.findMany({
+    const appointments = await prisma.appointment.findMany({
       where: {
         businessId: businessId,
-        status: 'COMPLETED',
         startTime: {
           gte: start,
           lte: end
-        }
+        },
+        status: 'COMPLETED'
       },
       include: {
-        service: true
-      },
-      orderBy: {
-        startTime: 'asc'
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true
+          }
+        }
       }
     });
 
-    // Agrupar por período
-    const grouped = {};
-    completedAppointments.forEach(apt => {
-      let key;
-      const date = new Date(apt.startTime);
-      
-      switch(groupBy) {
-        case 'week':
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          key = weekStart.toISOString().split('T')[0];
-          break;
-        case 'month':
-          key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-          break;
-        case 'day':
-        default:
-          key = date.toISOString().split('T')[0];
-          break;
-      }
-      
-      if (!grouped[key]) {
-        grouped[key] = { revenue: 0, appointments: 0 };
-      }
-      grouped[key].revenue += apt.service.price;
-      grouped[key].appointments += 1;
-    });
-
-    const totalRevenue = completedAppointments.reduce((sum, apt) => sum + apt.service.price, 0);
+    const totalRevenue = appointments.reduce((sum, appointment) => {
+      return sum + (appointment.service?.price || 0);
+    }, 0);
 
     res.json({
-      totalRevenue,
-      totalAppointments: completedAppointments.length,
-      data: Object.entries(grouped).map(([period, data]) => ({
-        period,
-        ...data
-      })).sort((a, b) => a.period.localeCompare(b.period))
+      success: true,
+      data: {
+        totalRevenue,
+        appointmentCount: appointments.length,
+        averageTicket: appointments.length > 0 ? totalRevenue / appointments.length : 0,
+        period: { startDate, endDate }
+      }
     });
 
   } catch (error) {
-    console.error('Error al obtener reporte de ingresos:', error);
-    res.status(500).json({ 
+    console.error('❌ Error obteniendo reporte de ingresos:', error);
+    res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });
@@ -236,9 +228,17 @@ const getRevenueReport = async (req, res) => {
 // Obtener reporte de servicios
 const getServicesReport = async (req, res) => {
   try {
-    const businessId = req.businessId;
+    const { user } = req;
     const { startDate, endDate } = req.query;
-    
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    const businessId = user.businessId;
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -251,48 +251,49 @@ const getServicesReport = async (req, res) => {
         }
       },
       include: {
-        service: true
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true
+          }
+        }
       }
     });
 
-    // Agrupar por servicio
     const serviceStats = {};
-    appointments.forEach(apt => {
-      const serviceId = apt.serviceId;
-      if (!serviceStats[serviceId]) {
-        serviceStats[serviceId] = {
-          service: apt.service,
-          totalAppointments: 0,
-          completedAppointments: 0,
-          cancelledAppointments: 0,
-          noShowAppointments: 0,
-          totalRevenue: 0
-        };
-      }
-      
-      serviceStats[serviceId].totalAppointments += 1;
-      
-      switch(apt.status) {
-        case 'COMPLETED':
-          serviceStats[serviceId].completedAppointments += 1;
-          serviceStats[serviceId].totalRevenue += apt.service.price;
-          break;
-        case 'CANCELLED':
-          serviceStats[serviceId].cancelledAppointments += 1;
-          break;
-        case 'NO_SHOW':
-          serviceStats[serviceId].noShowAppointments += 1;
-          break;
+    appointments.forEach(appointment => {
+      if (appointment.service) {
+        const serviceId = appointment.service.id;
+        if (!serviceStats[serviceId]) {
+          serviceStats[serviceId] = {
+            service: appointment.service,
+            totalBookings: 0,
+            completedBookings: 0,
+            revenue: 0
+          };
+        }
+        serviceStats[serviceId].totalBookings++;
+        if (appointment.status === 'COMPLETED') {
+          serviceStats[serviceId].completedBookings++;
+          serviceStats[serviceId].revenue += appointment.service.price;
+        }
       }
     });
+
+    const servicesData = Object.values(serviceStats);
 
     res.json({
-      data: Object.values(serviceStats).sort((a, b) => b.totalRevenue - a.totalRevenue)
+      success: true,
+      data: {
+        services: servicesData,
+        period: { startDate, endDate }
+      }
     });
 
   } catch (error) {
-    console.error('Error al obtener reporte de servicios:', error);
-    res.status(500).json({ 
+    console.error('❌ Error obteniendo reporte de servicios:', error);
+    res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });
@@ -302,9 +303,17 @@ const getServicesReport = async (req, res) => {
 // Obtener reporte de clientes
 const getClientsReport = async (req, res) => {
   try {
-    const businessId = req.businessId;
+    const { user } = req;
     const { startDate, endDate } = req.query;
-    
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    const businessId = user.businessId;
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -315,55 +324,55 @@ const getClientsReport = async (req, res) => {
           gte: start,
           lte: end
         }
-      },
-      include: {
-        client: true,
-        service: true
       }
     });
 
-    // Agrupar por cliente
     const clientStats = {};
-    appointments.forEach(apt => {
-      const clientId = apt.clientId;
-      if (!clientStats[clientId]) {
-        clientStats[clientId] = {
-          client: apt.client,
-          totalAppointments: 0,
-          completedAppointments: 0,
-          cancelledAppointments: 0,
-          noShowAppointments: 0,
-          totalSpent: 0,
-          lastVisit: null
+    appointments.forEach(appointment => {
+      const clientKey = appointment.clientEmail || appointment.clientPhone || 'anonymous';
+      if (!clientStats[clientKey]) {
+        clientStats[clientKey] = {
+          clientName: appointment.clientName,
+          clientEmail: appointment.clientEmail,
+          clientPhone: appointment.clientPhone,
+          totalBookings: 0,
+          completedBookings: 0,
+          cancelledBookings: 0,
+          noShowBookings: 0
         };
       }
-      
-      clientStats[clientId].totalAppointments += 1;
-      
-      switch(apt.status) {
+      clientStats[clientKey].totalBookings++;
+      switch (appointment.status) {
         case 'COMPLETED':
-          clientStats[clientId].completedAppointments += 1;
-          clientStats[clientId].totalSpent += apt.service.price;
-          if (!clientStats[clientId].lastVisit || new Date(apt.startTime) > new Date(clientStats[clientId].lastVisit)) {
-            clientStats[clientId].lastVisit = apt.startTime;
-          }
+          clientStats[clientKey].completedBookings++;
           break;
         case 'CANCELLED':
-          clientStats[clientId].cancelledAppointments += 1;
+          clientStats[clientKey].cancelledBookings++;
           break;
         case 'NO_SHOW':
-          clientStats[clientId].noShowAppointments += 1;
+          clientStats[clientKey].noShowBookings++;
           break;
       }
     });
 
+    const clientsData = Object.values(clientStats);
+    const uniqueClients = clientsData.length;
+    const returningClients = clientsData.filter(client => client.totalBookings > 1).length;
+
     res.json({
-      data: Object.values(clientStats).sort((a, b) => b.totalSpent - a.totalSpent)
+      success: true,
+      data: {
+        uniqueClients,
+        returningClients,
+        clientRetentionRate: uniqueClients > 0 ? (returningClients / uniqueClients) * 100 : 0,
+        clients: clientsData.sort((a, b) => b.totalBookings - a.totalBookings),
+        period: { startDate, endDate }
+      }
     });
 
   } catch (error) {
-    console.error('Error al obtener reporte de clientes:', error);
-    res.status(500).json({ 
+    console.error('❌ Error obteniendo reporte de clientes:', error);
+    res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });

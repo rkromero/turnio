@@ -8,7 +8,7 @@ const {
   getClientsReport 
 } = require('../controllers/reportController');
 
-// Aplicar autenticación a todas las rutas
+// Todas las rutas requieren autenticación
 router.use(authenticateToken);
 
 // GET /api/reports/dashboard - Métricas generales del dashboard
