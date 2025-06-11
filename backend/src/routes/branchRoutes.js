@@ -44,9 +44,11 @@ const createBranchValidation = [
     .custom((value) => {
       // Permitir campo vacío, null o undefined
       if (!value || value.trim() === '') return true;
-      // Validar URL solo si tiene contenido
+      // Permitir data URIs para imágenes (base64)
+      if (value.startsWith('data:image/')) return true;
+      // Validar URL solo si tiene contenido y no es data URI
       if (!value.match(/^https?:\/\/.+/)) {
-        throw new Error('La URL del banner debe ser válida');
+        throw new Error('La URL del banner debe ser válida o un data URI de imagen');
       }
       return true;
     }),
@@ -130,9 +132,11 @@ const updateBranchValidation = [
     .custom((value) => {
       // Permitir campo vacío, null o undefined
       if (!value || value.trim() === '') return true;
-      // Validar URL solo si tiene contenido
+      // Permitir data URIs para imágenes (base64)
+      if (value.startsWith('data:image/')) return true;
+      // Validar URL solo si tiene contenido y no es data URI
       if (!value.match(/^https?:\/\/.+/)) {
-        throw new Error('La URL del banner debe ser válida');
+        throw new Error('La URL del banner debe ser válida o un data URI de imagen');
       }
       return true;
     }),

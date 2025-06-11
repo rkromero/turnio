@@ -83,22 +83,7 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
     }
   };
 
-  // Función para subir imagen usando el servicio
-  const uploadImage = async (file: File): Promise<string> => {
-    setUploadingImage(true);
-    
-    try {
-      // Simular delay de subida para mejor UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Usar el servicio de upload
-      const imageUrl = await uploadService.uploadImage(file);
-      return imageUrl;
-    } catch (error) {
-      console.error('Error subiendo imagen:', error);
-      throw error;
-    }
-  };
+
 
   // Función para abrir el selector de archivos
   const handleUploadClick = () => {
@@ -159,8 +144,17 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
       // Si hay una imagen nueva para subir
       if (imageFile) {
         try {
-          const imageUrl = await uploadImage(imageFile);
-          finalFormData.banner = imageUrl;
+          setUploadingImage(true);
+          
+          // Simular delay de subida para mejor UX
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Convertir imagen a base64 para enviar al backend
+          const imageBase64 = await uploadService.uploadImage(imageFile);
+          finalFormData.banner = imageBase64;
+          
+          console.log('✅ Imagen procesada exitosamente');
+          
         } catch (error: unknown) {
           console.error('Error subiendo imagen:', error);
           const errorMessage = error instanceof Error ? error.message : 'Error desconocido al subir la imagen';
@@ -169,6 +163,11 @@ const BranchModal: React.FC<BranchModalProps> = ({ branch, onSave, onClose }) =>
         } finally {
           setUploadingImage(false);
         }
+      }
+      
+      // Si el usuario eliminó la imagen (banner está vacío pero había una antes)
+      if (branch?.banner && formData.banner === '') {
+        finalFormData.banner = '';
       }
       
       await onSave(finalFormData);
