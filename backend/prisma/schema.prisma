@@ -38,6 +38,8 @@ model Business {
   appointments Appointment[]
   holidays     Holiday[]
   reviews      Review[]
+  subscription Subscription?
+  planChanges  PlanChange[]
 
   @@map("businesses")
 }
@@ -342,4 +344,105 @@ enum ClientEventType {
   NO_SHOW        // No se presentó
   CANCELLED_LATE // Canceló tarde (< 24h)
   CANCELLED_GOOD // Canceló con tiempo (> 24h)
+}
+
+// Sistema de Suscripciones
+model Subscription {
+  id                String              @id @default(cuid())
+  businessId        String              @unique
+  planType          PlanType
+  status            SubscriptionStatus  @default(ACTIVE)
+  billingCycle      BillingCycle        @default(MONTHLY)
+  priceAmount       Float               // Precio pagado (para histórico)
+  currency          String              @default("ARS")
+  
+  // Fechas importantes
+  startDate         DateTime
+  endDate           DateTime?           // null = indefinida
+  nextBillingDate   DateTime?
+  cancelledAt       DateTime?
+  
+  // MercadoPago Integration
+  mercadoPagoSubscriptionId String?    @unique
+  mercadoPagoCustomerId     String?
+  
+  // Metadatos
+  metadata          Json?               // Info adicional flexible
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relaciones
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  payments          Payment[]
+
+  @@map("subscriptions")
+}
+
+// Historial de Pagos
+model Payment {
+  id                    String        @id @default(cuid())
+  subscriptionId        String
+  amount                Float
+  currency              String        @default("ARS")
+  status                PaymentStatus @default(PENDING)
+  billingCycle          BillingCycle
+  
+  // MercadoPago
+  mercadoPagoPaymentId  String?       @unique
+  mercadoPagoOrderId    String?
+  preferenceId          String?       @unique
+  
+  // Fechas
+  paidAt                DateTime?
+  dueDate               DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  // Metadatos del pago
+  paymentMethod         String?       // "credit_card", "debit_card", etc.
+  installments          Int?          // Cuotas si aplica
+  failureReason         String?       // Razón de falla si no se completó
+  
+  // Relaciones
+  subscription          Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// Histórico de cambios de plan
+model PlanChange {
+  id               String    @id @default(cuid())
+  businessId       String
+  fromPlan         PlanType
+  toPlan           PlanType
+  changeReason     String?   // "upgrade", "downgrade", "payment_failed", etc.
+  effectiveDate    DateTime
+  createdAt        DateTime  @default(now())
+  
+  // Relaciones
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("plan_changes")
+}
+
+// Enums para suscripciones
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  SUSPENDED
+  EXPIRED
+  PAYMENT_FAILED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  REFUNDED
 }
