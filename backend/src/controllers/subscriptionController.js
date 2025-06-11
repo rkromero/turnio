@@ -88,6 +88,17 @@ const getPlansWithPricing = async (req, res) => {
   try {
     console.log('📋 Obteniendo planes con precios...');
     
+    // Verificar que AVAILABLE_PLANS esté definido
+    if (!AVAILABLE_PLANS) {
+      console.error('❌ AVAILABLE_PLANS no está definido');
+      return res.status(500).json({
+        success: false,
+        message: 'Planes no disponibles'
+      });
+    }
+
+    console.log('📋 AVAILABLE_PLANS keys:', Object.keys(AVAILABLE_PLANS));
+    
     // Calcular precios anuales con 10% descuento
     const plansWithPricing = Object.entries(AVAILABLE_PLANS).map(([key, plan]) => {
       const monthlyPrice = plan.price;
@@ -129,7 +140,8 @@ const getPlansWithPricing = async (req, res) => {
     console.error('❌ Error obteniendo planes con precios:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error.message
     });
   }
 };

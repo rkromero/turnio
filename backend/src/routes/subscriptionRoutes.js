@@ -10,6 +10,10 @@ const {
 } = require('../controllers/subscriptionController');
 
 // Rutas públicas (sin autenticación)
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Subscription routes working!' });
+});
+
 router.get('/plans', getPlansWithPricing);
 
 // Rutas protegidas (requieren autenticación)
