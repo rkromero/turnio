@@ -121,8 +121,14 @@ const Register: React.FC = () => {
       console.log('🔍 ¿Es plan gratuito?', selectedPlan?.key === 'FREE');
       
       if (selectedPlan && selectedPlan.key !== 'FREE') {
-        console.log('🔄 Creando suscripción para plan:', selectedPlan.key);
+        console.log('🔄 Plan seleccionado:', selectedPlan.key);
+        console.log('⚠️ TEMPORAL: Saltando creación de suscripción por error 500');
+        console.log('🔄 Redirigiendo directamente al dashboard...');
         
+        // TEMPORAL: Saltar la creación de suscripción hasta resolver el error 500
+        // TODO: Restaurar la lógica de suscripción una vez resuelto el problema
+        
+        /*
         // Crear la suscripción
         const subscriptionResponse = await subscriptionService.createSubscription({
           businessId: businessId,
@@ -146,6 +152,7 @@ const Register: React.FC = () => {
           window.location.href = paymentResponse.data.initPoint;
           return; // No continuar con la navegación normal
         }
+        */
       }
       
       // 5. Si es plan gratuito o no requiere pago, ir al dashboard
