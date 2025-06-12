@@ -46,6 +46,49 @@ router.get('/plans', getPlansWithPricing);
 // TEMPORAL: Crear suscripción sin autenticación para debug
 router.post('/create-temp', createSubscription);
 
+// Test endpoint para verificar conexión a BD
+router.get('/test-db', async (req, res) => {
+  try {
+    console.log('🧪 Testing database connection...');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    // Test simple query
+    const businessCount = await prisma.business.count();
+    console.log('✅ Business count:', businessCount);
+    
+    // Test if subscription table exists
+    try {
+      const subscriptionCount = await prisma.subscription.count();
+      console.log('✅ Subscription table exists, count:', subscriptionCount);
+    } catch (subError) {
+      console.error('❌ Subscription table error:', subError.message);
+      return res.json({
+        success: false,
+        message: 'Subscription table not found',
+        error: subError.message,
+        businessCount
+      });
+    }
+    
+    await prisma.$disconnect();
+    
+    res.json({
+      success: true,
+      message: 'Database connection OK',
+      businessCount,
+      subscriptionCount: await prisma.subscription.count()
+    });
+  } catch (error) {
+    console.error('❌ Database test error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
+
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
 
