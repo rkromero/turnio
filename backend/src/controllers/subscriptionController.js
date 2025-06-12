@@ -156,27 +156,38 @@ const createSubscription = async (req, res) => {
     console.log('🔍 req.path:', req.path);
     
     const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
+    console.log('🔍 Datos extraídos:', { businessId, planType, billingCycle });
 
     // Verificar que el plan sea válido
+    console.log('🔍 Verificando plan válido...');
+    console.log('🔍 AVAILABLE_PLANS keys:', Object.keys(AVAILABLE_PLANS));
+    console.log('🔍 planType recibido:', planType);
+    
     if (!AVAILABLE_PLANS[planType]) {
+      console.log('❌ Plan no válido:', planType);
       return res.status(400).json({
         success: false,
         message: 'Plan no válido'
       });
     }
+    console.log('✅ Plan válido confirmado');
 
     // Verificar que el negocio existe
+    console.log('🔍 Buscando negocio con ID:', businessId);
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       include: { subscription: true }
     });
+    console.log('🔍 Negocio encontrado:', business ? 'SÍ' : 'NO');
 
     if (!business) {
+      console.log('❌ Negocio no encontrado con ID:', businessId);
       return res.status(404).json({
         success: false,
         message: 'Negocio no encontrado'
       });
     }
+    console.log('✅ Negocio encontrado:', business.name);
 
     // Verificar si ya tiene suscripción activa
     if (business.subscription && business.subscription.status === 'ACTIVE') {
@@ -207,6 +218,16 @@ const createSubscription = async (req, res) => {
     }
 
     // Crear suscripción
+    console.log('🔍 Creando suscripción con datos:', {
+      businessId,
+      planType,
+      billingCycle,
+      priceAmount,
+      startDate,
+      nextBillingDate,
+      status: planType === 'FREE' ? 'ACTIVE' : 'PENDING'
+    });
+    
     const subscription = await prisma.subscription.create({
       data: {
         businessId,
@@ -218,6 +239,7 @@ const createSubscription = async (req, res) => {
         status: planType === 'FREE' ? 'ACTIVE' : 'PENDING' // FREE es activa inmediatamente
       }
     });
+    console.log('✅ Suscripción creada exitosamente:', subscription.id);
 
     // Actualizar el plan del negocio
     await prisma.business.update({
