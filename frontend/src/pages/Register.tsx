@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { subscriptionService, type Plan } from '../services/subscriptionService';
+import { authService } from '../services/api';
 import type { RegisterForm } from '../types';
 import { BusinessType } from '../types';
 import Logo from '../components/Logo';
@@ -102,15 +103,48 @@ const Register: React.FC = () => {
       // 1. Registrar el negocio
       await register(formData);
       
-      // TODO: Implementar creación de suscripción después del registro
-      // Necesitamos obtener el businessId del usuario registrado
+      // 2. Obtener el perfil actualizado para tener el businessId
+      const profile = await authService.getProfile();
+      const businessId = profile.business.id;
       
-      // 2. Por ahora, ir directamente al dashboard
-      // En el dashboard se puede manejar la suscripción
+      // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      if (selectedPlan && selectedPlan.key !== 'FREE') {
+        console.log('🔄 Creando suscripción para plan:', selectedPlan.key);
+        
+        // Crear la suscripción
+        const subscriptionResponse = await subscriptionService.createSubscription({
+          businessId: businessId,
+          planType: selectedPlan.key,
+          billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
+        });
+
+        console.log('✅ Suscripción creada:', subscriptionResponse);
+
+        // Si requiere pago, crear el pago con MercadoPago
+        if (subscriptionResponse.data.requiresPayment) {
+          console.log('💳 Creando pago con MercadoPago...');
+          
+          const paymentResponse = await subscriptionService.createPayment({
+            subscriptionId: subscriptionResponse.data.subscription.id
+          });
+
+          console.log('✅ Pago creado:', paymentResponse);
+
+          // Redirigir a MercadoPago para completar el pago
+          window.location.href = paymentResponse.data.initPoint;
+          return; // No continuar con la navegación normal
+        }
+      }
+      
+      // 4. Si es plan gratuito o no requiere pago, ir al dashboard
+      console.log('✅ Registro completado, redirigiendo al dashboard');
       navigate('/dashboard');
     } catch (err: unknown) {
+      console.error('❌ Error en registro:', err);
       const errorMessage = err instanceof Error && 'response' in err 
         ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Error al registrar el negocio'
+        : err instanceof Error 
+        ? err.message
         : 'Error al registrar el negocio';
       setError(errorMessage);
     } finally {
