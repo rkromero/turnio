@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { subscriptionService, type Plan } from '../services/subscriptionService';
-import { authService } from '../services/api';
 import type { RegisterForm } from '../types';
 import { BusinessType } from '../types';
 import Logo from '../components/Logo';
@@ -26,7 +25,7 @@ const Register: React.FC = () => {
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [plans, setPlans] = useState<Plan[]>([]);
 
-  const { register } = useAuth();
+  const { register, business } = useAuth();
   const navigate = useNavigate();
 
   // Cargar planes y detectar plan preseleccionado
@@ -104,17 +103,21 @@ const Register: React.FC = () => {
       console.log('🔍 Datos del formulario a enviar:', formData);
       await register(formData);
       
-      // 2. Obtener el perfil actualizado para tener el businessId
-      const profile = await authService.getProfile();
-      const businessId = profile.business.id;
+      // 2. Esperar un momento para que el contexto se actualice
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      // 3. Usar el businessId del contexto (que ya se actualizó con el register)
+      if (!business?.id) {
+        throw new Error('No se pudo obtener el ID del negocio después del registro');
+      }
+      
+      // 4. Si hay un plan seleccionado que no sea gratuito, crear suscripción
       if (selectedPlan && selectedPlan.key !== 'FREE') {
         console.log('🔄 Creando suscripción para plan:', selectedPlan.key);
         
         // Crear la suscripción
         const subscriptionResponse = await subscriptionService.createSubscription({
-          businessId: businessId,
+          businessId: business.id,
           planType: selectedPlan.key,
           billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
         });
