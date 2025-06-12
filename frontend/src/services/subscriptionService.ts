@@ -80,16 +80,36 @@ class SubscriptionService {
   // Obtener planes disponibles
   async getPlans(): Promise<PlansResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/plans`);
-      const data = await response.json();
+      console.log('🔍 Llamando a getPlans...');
+      const url = `${this.baseUrl}/subscriptions/plans`;
+      console.log('🔍 URL:', url);
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Error obteniendo planes');
+      const response = await fetch(url);
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // Obtener el texto de la respuesta primero
+      const responseText = await response.text();
+      console.log('🔍 Response text (first 500 chars):', responseText.substring(0, 500));
+      
+      // Intentar parsear como JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Error parseando JSON:', parseError);
+        console.error('❌ Response text:', responseText);
+        throw new Error(`Respuesta no es JSON válido. Status: ${response.status}. Respuesta: ${responseText.substring(0, 200)}`);
       }
       
+      if (!response.ok) {
+        throw new Error(data.message || `Error HTTP ${response.status}: ${responseText.substring(0, 200)}`);
+      }
+      
+      console.log('✅ Planes obtenidos correctamente:', data);
       return data;
     } catch (error) {
-      console.error('Error en getPlans:', error);
+      console.error('❌ Error en getPlans:', error);
       throw error;
     }
   }
