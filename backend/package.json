@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "npm run db:setup && node src/index.js",
+    "start": "npm run db:setup && npm run db:generate && node src/index.js",
     "build": "echo 'No build needed for Node.js'",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy && prisma generate",
