@@ -101,6 +101,7 @@ const Register: React.FC = () => {
 
     try {
       // 1. Registrar el negocio
+      console.log('🔍 Datos del formulario a enviar:', formData);
       await register(formData);
       
       // 2. Obtener el perfil actualizado para tener el businessId
@@ -146,11 +147,18 @@ const Register: React.FC = () => {
       let errorMessage = 'Error al registrar el negocio';
       
       if (err && typeof err === 'object' && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string; error?: string; details?: unknown } } };
+        const axiosError = err as { response?: { data?: { message?: string; error?: string; errors?: string[]; details?: unknown } } };
         console.error('❌ Error response:', axiosError.response?.data);
-        errorMessage = axiosError.response?.data?.message || 
-                      axiosError.response?.data?.error || 
-                      'Error al registrar el negocio';
+        
+        // Mostrar errores específicos si están disponibles
+        if (axiosError.response?.data?.errors && Array.isArray(axiosError.response.data.errors)) {
+          console.error('❌ Errores específicos:', axiosError.response.data.errors);
+          errorMessage = `Error de validación: ${axiosError.response.data.errors.join(', ')}`;
+        } else {
+          errorMessage = axiosError.response?.data?.message || 
+                        axiosError.response?.data?.error || 
+                        'Error al registrar el negocio';
+        }
       } else if (err instanceof Error) {
         errorMessage = err.message;
       }

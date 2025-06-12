@@ -5,13 +5,16 @@ const { validationResult } = require('express-validator');
 // Registro de nuevo negocio
 const registerBusiness = async (req, res) => {
   try {
+    console.log('🔍 Datos recibidos en registro:', req.body);
+    
     // Validar datos de entrada
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('❌ Errores de validación:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: errors.array()
+        errors: errors.array().map(err => err.msg)
       });
     }
 
