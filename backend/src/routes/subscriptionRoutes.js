@@ -43,6 +43,9 @@ router.get('/test-plans', (req, res) => {
 
 router.get('/plans', getPlansWithPricing);
 
+// TEMPORAL: Crear suscripción sin autenticación para debug
+router.post('/create-temp', createSubscription);
+
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
 

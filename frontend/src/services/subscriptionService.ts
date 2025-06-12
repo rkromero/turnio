@@ -117,7 +117,7 @@ class SubscriptionService {
   // Crear suscripción
   async createSubscription(request: CreateSubscriptionRequest): Promise<CreateSubscriptionResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/create`, {
+      const response = await fetch(`${this.baseUrl}/subscriptions/create-temp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

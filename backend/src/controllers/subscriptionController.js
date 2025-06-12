@@ -153,6 +153,7 @@ const createSubscription = async (req, res) => {
     console.log('🔍 req.body:', req.body);
     console.log('🔍 req.user:', req.user);
     console.log('🔍 req.cookies:', req.cookies);
+    console.log('🔍 req.path:', req.path);
     
     const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
 
