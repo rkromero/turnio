@@ -4,6 +4,8 @@ import type {
   AuthResponse, 
   RegisterForm, 
   LoginForm,
+  User,
+  Business,
   Appointment,
   AppointmentForm,
   Service,
@@ -50,13 +52,15 @@ api.interceptors.response.use(
 // Servicios de autenticación
 export const authService = {
   register: async (data: RegisterForm): Promise<AuthResponse> => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
-    return response.data.data!;
+    const response = await api.post<ApiResponse<{user: User, business: Business}>>('/auth/register', data);
+    const { user, business } = response.data.data!;
+    return { user, business };
   },
 
   login: async (data: LoginForm): Promise<AuthResponse> => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', data);
-    return response.data.data!;
+    const response = await api.post<ApiResponse<{user: User, business: Business}>>('/auth/login', data);
+    const { user, business } = response.data.data!;
+    return { user, business };
   },
 
   logout: async (): Promise<void> => {
@@ -64,8 +68,9 @@ export const authService = {
   },
 
   getProfile: async (): Promise<AuthResponse> => {
-    const response = await api.get<ApiResponse<AuthResponse>>('/auth/profile');
-    return response.data.data!;
+    const response = await api.get<ApiResponse<{user: User, business: Business}>>('/auth/profile');
+    const { user, business } = response.data.data!;
+    return { user, business };
   },
 };
 
