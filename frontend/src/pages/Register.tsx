@@ -101,23 +101,36 @@ const Register: React.FC = () => {
     try {
       // 1. Registrar el negocio
       console.log('🔍 Datos del formulario a enviar:', formData);
-      await register(formData);
+      const registerResponse = await register(formData);
+      console.log('✅ Registro exitoso:', registerResponse);
       
-      // 2. Esperar un momento para que el contexto se actualice
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 2. Esperar a que el contexto se actualice con reintentos
+      let businessId: string | null = null;
+      let attempts = 0;
+      const maxAttempts = 10;
       
-      // 3. Usar el businessId del contexto (que ya se actualizó con el register)
-      if (!business?.id) {
-        throw new Error('No se pudo obtener el ID del negocio después del registro');
+      while (!businessId && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (business?.id) {
+          businessId = business.id;
+          console.log('✅ BusinessId obtenido del contexto:', businessId);
+        } else {
+          attempts++;
+          console.log(`🔄 Esperando contexto... intento ${attempts}/${maxAttempts}`);
+        }
       }
       
-      // 4. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      if (!businessId) {
+        throw new Error('No se pudo obtener el ID del negocio después del registro. Intenta recargar la página.');
+      }
+      
+      // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
       if (selectedPlan && selectedPlan.key !== 'FREE') {
         console.log('🔄 Creando suscripción para plan:', selectedPlan.key);
         
         // Crear la suscripción
         const subscriptionResponse = await subscriptionService.createSubscription({
-          businessId: business.id,
+          businessId: businessId,
           planType: selectedPlan.key,
           billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
         });
