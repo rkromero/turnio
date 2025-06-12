@@ -4,7 +4,12 @@ const { prisma } = require('../config/database');
 // Middleware para verificar token JWT
 const authenticateToken = async (req, res, next) => {
   try {
+    console.log('🔍 authenticateToken - Iniciando...');
+    console.log('🔍 req.cookies:', req.cookies);
+    console.log('🔍 req.headers.authorization:', req.headers.authorization);
+    
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    console.log('🔍 token extraído:', token ? 'SÍ' : 'NO');
 
     if (!token) {
       return res.status(401).json({

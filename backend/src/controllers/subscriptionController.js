@@ -149,6 +149,11 @@ const getPlansWithPricing = async (req, res) => {
 // Crear suscripción (después del registro)
 const createSubscription = async (req, res) => {
   try {
+    console.log('🔍 createSubscription - Iniciando...');
+    console.log('🔍 req.body:', req.body);
+    console.log('🔍 req.user:', req.user);
+    console.log('🔍 req.cookies:', req.cookies);
+    
     const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
 
     // Verificar que el plan sea válido
