@@ -306,10 +306,13 @@ const Register: React.FC = () => {
                     name="phone"
                     type="tel"
                     className="input-field"
-                    placeholder="+54 9 11 1234-5678"
+                    placeholder="Ej: 11-1234-5678 o +54 9 11 1234-5678"
                     value={formData.phone}
                     onChange={handleChange}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Mínimo 8 caracteres. Puedes usar números, espacios, guiones y paréntesis
+                  </p>
                 </div>
 
                 <div>

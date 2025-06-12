@@ -20,8 +20,8 @@ const registerValidation = [
     .withMessage('La contraseña debe tener al menos 6 caracteres'),
   body('phone')
     .optional()
-    .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
-    .withMessage('Número de teléfono inválido'),
+    .matches(/^[\+]?[\d\s\-\(\)]{8,20}$/)
+    .withMessage('El teléfono debe tener entre 8 y 20 caracteres y solo contener números, espacios, guiones y paréntesis'),
   body('businessType')
     .optional()
     .isIn(['GENERAL', 'BARBERSHOP', 'HAIR_SALON', 'BEAUTY_CENTER', 'MEDICAL_CENTER', 'MASSAGE_SPA'])
