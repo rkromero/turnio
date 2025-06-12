@@ -46,9 +46,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (data: RegisterForm) => {
-    const { user, business } = await authService.register(data);
+    console.log('🔍 Iniciando registro en contexto...');
+    const result = await authService.register(data);
+    console.log('🔍 Resultado del authService.register:', result);
+    
+    if (!result || !result.user || !result.business) {
+      console.error('❌ Datos incompletos del registro:', result);
+      throw new Error('Datos incompletos del registro');
+    }
+    
+    const { user, business } = result;
+    console.log('🔍 Actualizando contexto con user:', user);
+    console.log('🔍 Actualizando contexto con business:', business);
+    
     setUser(user);
     setBusiness(business);
+    
+    console.log('✅ Contexto actualizado exitosamente');
+    return result;
   };
 
   const logout = async () => {

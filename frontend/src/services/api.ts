@@ -53,7 +53,17 @@ api.interceptors.response.use(
 export const authService = {
   register: async (data: RegisterForm): Promise<AuthResponse> => {
     const response = await api.post<ApiResponse<{user: User, business: Business}>>('/auth/register', data);
-    const { user, business } = response.data.data!;
+    console.log('🔍 Response completa del registro:', response.data);
+    console.log('🔍 response.data.data:', response.data.data);
+    
+    if (!response.data.data) {
+      throw new Error('No se recibieron datos del servidor');
+    }
+    
+    const { user, business } = response.data.data;
+    console.log('🔍 User extraído:', user);
+    console.log('🔍 Business extraído:', business);
+    
     return { user, business };
   },
 

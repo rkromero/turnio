@@ -191,7 +191,7 @@ export interface AuthContextType {
   business: Business | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterForm) => Promise<void>;
+  register: (data: RegisterForm) => Promise<AuthResponse>;
   logout: () => void;
 }
 
