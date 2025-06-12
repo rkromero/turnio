@@ -117,17 +117,12 @@ class SubscriptionService {
   // Crear suscripción
   async createSubscription(request: CreateSubscriptionRequest): Promise<CreateSubscriptionResponse> {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/subscriptions/create`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // Incluir cookies automáticamente
         body: JSON.stringify(request)
       });
 
@@ -147,17 +142,12 @@ class SubscriptionService {
   // Crear pago con MercadoPago
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/mercadopago/create-payment`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // Incluir cookies automáticamente
         body: JSON.stringify(request)
       });
 
@@ -177,15 +167,8 @@ class SubscriptionService {
   // Verificar estado de pago
   async checkPaymentStatus(paymentId: string) {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/mercadopago/payment-status/${paymentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include' // Incluir cookies automáticamente
       });
 
       const data = await response.json();
@@ -204,15 +187,8 @@ class SubscriptionService {
   // Obtener suscripción actual
   async getCurrentSubscription() {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/subscriptions/current`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include' // Incluir cookies automáticamente
       });
 
       const data = await response.json();
@@ -231,17 +207,12 @@ class SubscriptionService {
   // Cancelar suscripción
   async cancelSubscription(reason?: string) {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/subscriptions/cancel`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // Incluir cookies automáticamente
         body: JSON.stringify({ reason })
       });
 
@@ -261,15 +232,8 @@ class SubscriptionService {
   // Obtener historial de pagos
   async getPaymentHistory(page = 1, limit = 10) {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${this.baseUrl}/subscriptions/payments?page=${page}&limit=${limit}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include' // Incluir cookies automáticamente
       });
 
       const data = await response.json();
