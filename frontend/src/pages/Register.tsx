@@ -112,7 +112,11 @@ const Register: React.FC = () => {
       const businessId = registerResponse.business.id;
       console.log('✅ BusinessId obtenido directamente del registro:', businessId);
       
-      // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      // 3. Pequeña pausa para asegurar que la cookie de autenticación esté disponible
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('✅ Pausa completada, token debería estar disponible');
+      
+      // 4. Si hay un plan seleccionado que no sea gratuito, crear suscripción
       console.log('🔍 Plan seleccionado:', selectedPlan);
       console.log('🔍 ¿Es plan gratuito?', selectedPlan?.key === 'FREE');
       
@@ -144,7 +148,7 @@ const Register: React.FC = () => {
         }
       }
       
-      // 4. Si es plan gratuito o no requiere pago, ir al dashboard
+      // 5. Si es plan gratuito o no requiere pago, ir al dashboard
       console.log('✅ Registro completado, redirigiendo al dashboard');
       console.log('🔍 Motivo: Plan gratuito o no requiere pago');
       navigate('/dashboard');
