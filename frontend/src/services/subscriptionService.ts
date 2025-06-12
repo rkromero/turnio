@@ -75,7 +75,7 @@ interface CreatePaymentResponse {
 }
 
 class SubscriptionService {
-  private baseUrl = '/api';
+  private baseUrl = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app/api';
 
   // Obtener planes disponibles
   async getPlans(): Promise<PlansResponse> {
