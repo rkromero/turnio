@@ -43,9 +43,6 @@ router.get('/test-plans', (req, res) => {
 
 router.get('/plans', getPlansWithPricing);
 
-// TEMPORAL: Crear suscripción sin autenticación para debug
-router.post('/create-temp', createSubscription);
-
 // Test endpoint para verificar conexión a BD
 router.get('/test-db', async (req, res) => {
   try {
@@ -88,6 +85,9 @@ router.get('/test-db', async (req, res) => {
     });
   }
 });
+
+// TEMPORAL: Crear suscripción sin autenticación para debug
+router.post('/create-temp', createSubscription);
 
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
