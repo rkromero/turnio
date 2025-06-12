@@ -125,6 +125,9 @@ const Register: React.FC = () => {
       }
       
       // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      console.log('🔍 Plan seleccionado:', selectedPlan);
+      console.log('🔍 ¿Es plan gratuito?', selectedPlan?.key === 'FREE');
+      
       if (selectedPlan && selectedPlan.key !== 'FREE') {
         console.log('🔄 Creando suscripción para plan:', selectedPlan.key);
         
@@ -155,6 +158,7 @@ const Register: React.FC = () => {
       
       // 4. Si es plan gratuito o no requiere pago, ir al dashboard
       console.log('✅ Registro completado, redirigiendo al dashboard');
+      console.log('🔍 Motivo: Plan gratuito o no requiere pago');
       navigate('/dashboard');
     } catch (err: unknown) {
       console.error('❌ Error en registro:', err);
