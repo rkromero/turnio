@@ -141,11 +141,20 @@ const Register: React.FC = () => {
       navigate('/dashboard');
     } catch (err: unknown) {
       console.error('❌ Error en registro:', err);
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Error al registrar el negocio'
-        : err instanceof Error 
-        ? err.message
-        : 'Error al registrar el negocio';
+      
+      // Extraer información detallada del error
+      let errorMessage = 'Error al registrar el negocio';
+      
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string; error?: string; details?: unknown } } };
+        console.error('❌ Error response:', axiosError.response?.data);
+        errorMessage = axiosError.response?.data?.message || 
+                      axiosError.response?.data?.error || 
+                      'Error al registrar el negocio';
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
