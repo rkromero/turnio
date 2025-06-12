@@ -25,7 +25,7 @@ const Register: React.FC = () => {
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [plans, setPlans] = useState<Plan[]>([]);
 
-  const { register, business } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   // Cargar planes y detectar plan preseleccionado
@@ -104,25 +104,13 @@ const Register: React.FC = () => {
       const registerResponse = await register(formData);
       console.log('✅ Registro exitoso:', registerResponse);
       
-      // 2. Esperar a que el contexto se actualice con reintentos
-      let businessId: string | null = null;
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      while (!businessId && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        if (business?.id) {
-          businessId = business.id;
-          console.log('✅ BusinessId obtenido del contexto:', businessId);
-        } else {
-          attempts++;
-          console.log(`🔄 Esperando contexto... intento ${attempts}/${maxAttempts}`);
-        }
+      // 2. Usar directamente los datos del registro (no esperar contexto)
+      if (!registerResponse?.business?.id) {
+        throw new Error('No se recibió el ID del negocio en la respuesta del registro');
       }
       
-      if (!businessId) {
-        throw new Error('No se pudo obtener el ID del negocio después del registro. Intenta recargar la página.');
-      }
+      const businessId = registerResponse.business.id;
+      console.log('✅ BusinessId obtenido directamente del registro:', businessId);
       
       // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
       console.log('🔍 Plan seleccionado:', selectedPlan);
