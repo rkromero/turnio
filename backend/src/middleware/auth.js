@@ -81,23 +81,23 @@ const authenticateToken = async (req, res, next) => {
     // Verificar estado de la suscripción
     if (user.business?.subscription) {
       const subscription = user.business.subscription;
-      
       // Si la suscripción no es gratuita y está en estado fallido o vencido
       if (subscription.planType !== 'FREE' && 
          (subscription.status === 'PAYMENT_FAILED' || subscription.status === 'EXPIRED')) {
-        
-        // Permitir acceso a endpoints relacionados con pagos
+        // Permitir acceso explícito a POST /api/mercadopago/create-payment
+        if (
+          req.method === 'POST' &&
+          req.originalUrl === '/api/mercadopago/create-payment'
+        ) {
+          return next();
+        }
+        // Permitir acceso a otros endpoints de pago
         const paymentEndpoints = [
           'mercadopago/create-payment',
           'mercadopago/payment-status',
           'subscriptions/current',
           'mercadopago/webhook'
         ];
-        
-        // Log para depuración
-        console.log('🔍 Verificando acceso a ruta:', req.path);
-        console.log('🔍 Es ruta de pago:', paymentEndpoints.some(endpoint => req.path.includes(endpoint)));
-        
         if (!paymentEndpoints.some(endpoint => req.path.includes(endpoint))) {
           return res.status(403).json({
             success: false,
