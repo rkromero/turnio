@@ -1,5 +1,8 @@
 const { prisma } = require('../config/database');
 
+// Log para depuración del token de MercadoPago
+console.log('Access Token MercadoPago:', process.env.MERCADOPAGO_ACCESS_TOKEN);
+
 // MercadoPago SDK v2
 const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
 
