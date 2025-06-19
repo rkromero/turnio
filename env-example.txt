@@ -1,0 +1,26 @@
+# Configuración de Base de Datos
+DATABASE_URL="postgresql://usuario:contraseña@host:puerto/nombre_base_datos"
+
+# Configuración de JWT
+JWT_SECRET="tu_jwt_secret_super_seguro"
+
+# Configuración de MercadoPago
+MERCADOPAGO_ACCESS_TOKEN="TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+MERCADOPAGO_PUBLIC_KEY="TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# URLs del Frontend y Backend
+FRONTEND_URL="https://tu-frontend-url.com"
+BACKEND_URL="https://tu-backend-url.com"
+
+# Configuración de Railway (si usas Railway)
+RAILWAY_TOKEN="tu_railway_token"
+RAILWAY_PROJECT_ID="tu_project_id"
+
+# Configuración de Email (opcional)
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="tu_email@gmail.com"
+SMTP_PASS="tu_password_de_aplicacion"
+
+# Configuración de CORS
+CORS_ORIGIN="https://tu-frontend-url.com" 

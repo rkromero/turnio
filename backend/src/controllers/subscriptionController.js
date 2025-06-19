@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database');
+const SubscriptionValidationService = require('../services/subscriptionValidationService');
 
 // Definición de planes disponibles (copiado desde planController)
 const AVAILABLE_PLANS = {
@@ -483,10 +484,34 @@ const getPaymentHistory = async (req, res) => {
   }
 };
 
+// Endpoint para ejecutar validaciones de suscripción (solo admin)
+const runSubscriptionValidations = async (req, res) => {
+  try {
+    console.log('🔍 Ejecutando validaciones de suscripción...');
+    
+    const results = await SubscriptionValidationService.runAllValidations();
+    
+    res.json({
+      success: true,
+      message: 'Validaciones ejecutadas correctamente',
+      data: results
+    });
+    
+  } catch (error) {
+    console.error('❌ Error ejecutando validaciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error ejecutando validaciones',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getPlansWithPricing,
   createSubscription,
   getCurrentSubscription,
   cancelSubscription,
-  getPaymentHistory
+  getPaymentHistory,
+  runSubscriptionValidations
 }; 

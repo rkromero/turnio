@@ -81,28 +81,49 @@ const authenticateToken = async (req, res, next) => {
     // Verificar estado de la suscripción
     if (user.business?.subscription) {
       const subscription = user.business.subscription;
-      // Si la suscripción no es gratuita y está en estado fallido o vencido
-      if (subscription.planType !== 'FREE' && 
-         (subscription.status === 'PAYMENT_FAILED' || subscription.status === 'EXPIRED')) {
+      
+      // Verificar si la suscripción ha vencido por fecha
+      const now = new Date();
+      const isExpiredByDate = subscription.nextBillingDate && subscription.nextBillingDate < now;
+      
+      // Verificar si la suscripción está en estado problemático
+      const isProblematicStatus = subscription.status === 'PAYMENT_FAILED' || 
+                                 subscription.status === 'EXPIRED' || 
+                                 subscription.status === 'SUSPENDED';
+      
+      // Si la suscripción no es gratuita y tiene problemas
+      if (subscription.planType !== 'FREE' && (isProblematicStatus || isExpiredByDate)) {
+        
         // Permitir acceso a endpoints de pago y suscripción
         const allowedEndpoints = [
           '/api/mercadopago/create-payment',
           '/api/mercadopago/payment-status',
           '/api/subscriptions/current',
           '/api/mercadopago/webhook',
-          '/api/auth/profile'
+          '/api/auth/profile',
+          '/api/subscriptions/plans'
         ];
         
         // Log para depuración
         console.log('🔍 Ruta actual:', req.originalUrl);
-        console.log('🔍 Rutas permitidas:', allowedEndpoints);
+        console.log('🔍 Estado suscripción:', subscription.status);
+        console.log('🔍 Fecha próximo cobro:', subscription.nextBillingDate);
+        console.log('🔍 Vencida por fecha:', isExpiredByDate);
         
         if (!allowedEndpoints.includes(req.originalUrl)) {
+          let message = 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.';
+          
+          if (isExpiredByDate) {
+            message = `Tu suscripción venció el ${subscription.nextBillingDate.toLocaleDateString()}. Por favor, renueva tu pago para continuar.`;
+          }
+          
           return res.status(403).json({
             success: false,
-            message: 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.',
+            message: message,
             subscriptionStatus: subscription.status,
-            requiresPayment: true
+            requiresPayment: true,
+            nextBillingDate: subscription.nextBillingDate,
+            isExpiredByDate: isExpiredByDate
           });
         }
       }
