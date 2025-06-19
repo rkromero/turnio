@@ -112,7 +112,8 @@ const registerBusiness = async (req, res) => {
           name: result.user.name,
           email: result.user.email,
           role: result.user.role
-        }
+        },
+        token: token
       }
     });
 
