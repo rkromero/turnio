@@ -28,6 +28,7 @@ interface Plan {
 interface PlansResponse {
   success: boolean;
   data: {
+    currentPlan: string;
     plans: Plan[];
     currency: string;
   };

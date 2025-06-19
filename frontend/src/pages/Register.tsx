@@ -122,37 +122,37 @@ const Register: React.FC = () => {
       
       if (selectedPlan && selectedPlan.key !== 'FREE') {
         console.log('🔄 Plan seleccionado:', selectedPlan.key);
-        console.log('⚠️ TEMPORAL: Saltando creación de suscripción por error 500');
-        console.log('🔄 Redirigiendo directamente al dashboard...');
         
-        // TEMPORAL: Saltar la creación de suscripción hasta resolver el error 500
-        // TODO: Restaurar la lógica de suscripción una vez resuelto el problema
-        
-        /*
-        // Crear la suscripción
-        const subscriptionResponse = await subscriptionService.createSubscription({
-          businessId: businessId,
-          planType: selectedPlan.key,
-          billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
-        });
-
-        console.log('✅ Suscripción creada:', subscriptionResponse);
-
-        // Si requiere pago, crear el pago con MercadoPago
-        if (subscriptionResponse.data.requiresPayment) {
-          console.log('💳 Creando pago con MercadoPago...');
-          
-          const paymentResponse = await subscriptionService.createPayment({
-            subscriptionId: subscriptionResponse.data.subscription.id
+        try {
+          // Crear la suscripción
+          const subscriptionResponse = await subscriptionService.createSubscription({
+            businessId: businessId,
+            planType: selectedPlan.key,
+            billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
           });
 
-          console.log('✅ Pago creado:', paymentResponse);
+          console.log('✅ Suscripción creada:', subscriptionResponse);
 
-          // Redirigir a MercadoPago para completar el pago
-          window.location.href = paymentResponse.data.initPoint;
-          return; // No continuar con la navegación normal
+          // Si requiere pago, crear el pago con MercadoPago
+          if (subscriptionResponse.data.requiresPayment) {
+            console.log('💳 Creando pago con MercadoPago...');
+            
+            const paymentResponse = await subscriptionService.createPayment({
+              subscriptionId: subscriptionResponse.data.subscription.id
+            });
+
+            console.log('✅ Pago creado:', paymentResponse);
+
+            // Redirigir a MercadoPago para completar el pago
+            window.location.href = paymentResponse.data.initPoint;
+            return; // No continuar con la navegación normal
+          }
+        } catch (error) {
+          console.error('❌ Error en el proceso de suscripción:', error);
+          setError('Error al procesar la suscripción. Por favor, intenta nuevamente.');
+          setIsLoading(false);
+          return;
         }
-        */
       }
       
       // 5. Si es plan gratuito o no requiere pago, ir al dashboard

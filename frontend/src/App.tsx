@@ -7,6 +7,10 @@ import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 import DashboardRouter from './components/DashboardRouter';
 import BookingPage from './pages/BookingPage';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
+import PaymentPending from './pages/PaymentPending';
+import PlanSelection from './pages/PlanSelection';
 
 // Componente para rutas protegidas
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,6 +68,21 @@ function AppRoutes() {
       
       {/* Ruta para reservas públicas */}
       <Route path="/book/:businessSlug" element={<BookingPage />} />
+      
+      {/* Rutas de pago (públicas) */}
+      <Route path="/subscription/success" element={<PaymentSuccess />} />
+      <Route path="/subscription/failure" element={<PaymentFailure />} />
+      <Route path="/subscription/pending" element={<PaymentPending />} />
+      
+      {/* Ruta para selección de planes (protegida) */}
+      <Route 
+        path="/plans" 
+        element={
+          <ProtectedRoute>
+            <PlanSelection />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Rutas protegidas del dashboard */}
       <Route 
