@@ -60,6 +60,13 @@ async function testAPISystem() {
     console.log('🎯 Business ID:', businessId);
     console.log('🔐 Token obtenido:', token ? 'SÍ' : 'NO');
 
+    // Función auxiliar para incluir headers comunes
+    const getHeaders = (token) => ({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'Cookie': `token=${token}`
+    });
+
     // PASO 4: Crear suscripción de prueba
     console.log('\n💳 PASO 4: Creando suscripción de prueba...');
     const subscriptionData = {
@@ -70,11 +77,7 @@ async function testAPISystem() {
 
     const subscriptionResponse = await fetch(`${API_BASE_URL}/subscriptions/create-temp`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'Cookie': `token=${token}`
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(subscriptionData)
     });
 
@@ -99,10 +102,7 @@ async function testAPISystem() {
 
     const paymentResponse = await fetch(`${API_BASE_URL}/mercadopago/create-payment`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(paymentData)
     });
 
@@ -120,9 +120,7 @@ async function testAPISystem() {
     // PASO 6: Verificar perfil del usuario
     console.log('\n👤 PASO 6: Verificando perfil del usuario...');
     const profileResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`
-      }
+      headers: getHeaders(token)
     });
 
     if (profileResponse.ok) {
@@ -137,9 +135,7 @@ async function testAPISystem() {
     // PASO 7: Probar endpoint de suscripción actual
     console.log('\n📊 PASO 7: Verificando suscripción actual...');
     const currentSubscriptionResponse = await fetch(`${API_BASE_URL}/subscriptions/current`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`
-      }
+      headers: getHeaders(token)
     });
 
     if (currentSubscriptionResponse.ok) {

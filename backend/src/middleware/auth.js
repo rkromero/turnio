@@ -84,21 +84,20 @@ const authenticateToken = async (req, res, next) => {
       // Si la suscripción no es gratuita y está en estado fallido o vencido
       if (subscription.planType !== 'FREE' && 
          (subscription.status === 'PAYMENT_FAILED' || subscription.status === 'EXPIRED')) {
-        // Permitir acceso explícito a POST /api/mercadopago/create-payment
-        if (
-          req.method === 'POST' &&
-          req.originalUrl === '/api/mercadopago/create-payment'
-        ) {
-          return next();
-        }
-        // Permitir acceso a otros endpoints de pago
-        const paymentEndpoints = [
-          'mercadopago/create-payment',
-          'mercadopago/payment-status',
-          'subscriptions/current',
-          'mercadopago/webhook'
+        // Permitir acceso a endpoints de pago y suscripción
+        const allowedEndpoints = [
+          '/api/mercadopago/create-payment',
+          '/api/mercadopago/payment-status',
+          '/api/subscriptions/current',
+          '/api/mercadopago/webhook',
+          '/api/auth/profile'
         ];
-        if (!paymentEndpoints.some(endpoint => req.path.includes(endpoint))) {
+        
+        // Log para depuración
+        console.log('🔍 Ruta actual:', req.originalUrl);
+        console.log('🔍 Rutas permitidas:', allowedEndpoints);
+        
+        if (!allowedEndpoints.includes(req.originalUrl)) {
           return res.status(403).json({
             success: false,
             message: 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.',
