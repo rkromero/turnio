@@ -1,13 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import PricingTable from '../components/PricingTable';
 import { subscriptionService } from '../services/subscriptionService';
 import { useToast } from '../hooks/useToast';
 import { type PlanTier } from '../types/plans';
 
+interface Plan {
+  key: string;
+  name: string;
+  description: string;
+  pricing: {
+    monthly: {
+      price: number;
+      displayPrice: number;
+      cycle: string;
+    };
+    yearly: {
+      price: number;
+      displayPrice: number;
+      totalPrice: number;
+      savings: number;
+      savingsPercentage: number;
+      cycle: string;
+    };
+  };
+  limits: {
+    appointments: number;
+    services: number;
+    users: number;
+  };
+  features: string[];
+  isCurrent?: boolean;
+}
+
 const PlanSelection: React.FC = () => {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [currentPlan, setCurrentPlan] = useState<PlanTier | undefined>();
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -15,7 +43,7 @@ const PlanSelection: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
   
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   useEffect(() => {
     loadPlans();
@@ -27,9 +55,9 @@ const PlanSelection: React.FC = () => {
       const response = await subscriptionService.getPlans();
       setPlans(response.data.plans);
       setCurrentPlan(response.data.currentPlan as PlanTier);
-    } catch (error) {
-      console.error('Error cargando planes:', error);
-      showToast('Error cargando planes', 'error');
+    } catch (err) {
+      console.error('Error cargando planes:', err);
+      error('Error cargando planes');
     } finally {
       setLoading(false);
     }
@@ -55,7 +83,7 @@ const PlanSelection: React.FC = () => {
 
       if (!subscriptionResponse.data.requiresPayment) {
         // Si no requiere pago, activar directamente
-        showToast('Plan activado correctamente', 'success');
+        success('Plan activado correctamente');
         navigate('/dashboard');
         return;
       }
@@ -72,9 +100,9 @@ const PlanSelection: React.FC = () => {
 
       window.location.href = initPoint;
 
-    } catch (error) {
-      console.error('Error procesando plan:', error);
-      showToast('Error procesando el plan seleccionado', 'error');
+    } catch (err) {
+      console.error('Error procesando plan:', err);
+      error('Error procesando el plan seleccionado');
     } finally {
       setProcessingPayment(false);
     }
@@ -83,11 +111,11 @@ const PlanSelection: React.FC = () => {
   const activateFreePlan = async () => {
     try {
       // Lógica para activar plan gratuito
-      showToast('Plan gratuito activado', 'success');
+      success('Plan gratuito activado');
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Error activando plan gratuito:', error);
-      showToast('Error activando plan gratuito', 'error');
+    } catch (err) {
+      console.error('Error activando plan gratuito:', err);
+      error('Error activando plan gratuito');
     }
   };
 
