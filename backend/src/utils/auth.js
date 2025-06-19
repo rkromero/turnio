@@ -43,9 +43,15 @@ const setTokenCookie = (res, token) => {
   const cookieOptions = {
     httpOnly: true, // No accesible desde JavaScript del cliente
     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-    sameSite: 'strict', // Protección CSRF
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Necesario para cross-domain cookies
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en milisegundos
+    path: '/',
   };
+
+  // Si se define un dominio explícito para la cookie, lo agregamos
+  if (process.env.COOKIE_DOMAIN) {
+    cookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
 
   res.cookie('token', token, cookieOptions);
 };
