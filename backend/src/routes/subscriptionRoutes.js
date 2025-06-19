@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const {
   getPlansWithPricing,
-  createTempSubscription,
+  createSubscription,
   getCurrentSubscription,
   cancelSubscription,
   getPaymentHistory,
@@ -93,7 +93,7 @@ router.get('/test-db', async (req, res) => {
 });
 
 // Rutas protegidas
-router.post('/create-temp', authenticateToken, createTempSubscription);
+router.post('/create-temp', authenticateToken, createSubscription);
 router.get('/current', authenticateToken, getCurrentSubscription);
 router.get('/:subscriptionId', authenticateToken, getCurrentSubscription);
 router.post('/cancel', authenticateToken, cancelSubscription);
