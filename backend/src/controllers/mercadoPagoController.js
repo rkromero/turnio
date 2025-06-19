@@ -67,17 +67,26 @@ const createAutomaticSubscription = async (req, res) => {
         frequency: subscription.billingCycle === 'YEARLY' ? 12 : 1, // 12 meses para anual, 1 mes para mensual
         frequency_type: "months",
         transaction_amount: subscription.priceAmount,
-        currency_id: "ARS"
+        currency_id: "ARS",
+        free_trial: {
+          frequency: 1,
+          frequency_type: "months",
+          first_time_activation: true
+        }
       },
       back_url: `${process.env.FRONTEND_URL}/subscription/success?payment=${payment.id}`,
       external_reference: payment.id,
       notification_url: `${process.env.BACKEND_URL}/api/mercadopago/subscription-webhook`,
+      payer: {
+        email: user.email
+      },
       metadata: {
         subscription_id: subscription.id,
         business_id: subscription.businessId,
         payment_id: payment.id,
         plan_type: subscription.planType,
-        billing_cycle: subscription.billingCycle
+        billing_cycle: subscription.billingCycle,
+        user_email: user.email
       }
     };
 
