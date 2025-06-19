@@ -6,14 +6,17 @@ const {
   handleWebhook,
   checkPaymentStatus
 } = require('../controllers/mercadoPagoController');
+const { createAutomaticSubscription, handleSubscriptionWebhook } = require('../controllers/subscriptionAutoController');
 
-// Webhook público (sin autenticación) - MercadoPago llama a este endpoint
+// Rutas públicas (webhooks)
 router.post('/webhook', handleWebhook);
+router.post('/subscription-webhook', handleSubscriptionWebhook);
 
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
 
 router.post('/create-payment', createSubscriptionPayment);
+router.post('/create-automatic-subscription', createAutomaticSubscription);
 router.get('/payment-status/:paymentId', checkPaymentStatus);
 
 module.exports = router; 
