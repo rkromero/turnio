@@ -272,29 +272,64 @@ const checkExpiredSubscriptions = async () => {
       try {
         console.log(`🔄 Procesando renovación para: ${subscription.business.name} (${subscription.planType})`);
         
-        // Crear nuevo pago para la renovación
-        const payment = await prisma.payment.create({
-          data: {
-            subscriptionId: subscription.id,
-            amount: subscription.priceAmount,
-            billingCycle: subscription.billingCycle,
-            status: 'PENDING',
-            dueDate: now
-          }
-        });
-
         // Si tiene suscripción automática de MercadoPago, procesar automáticamente
         if (subscription.mercadoPagoSubscriptionId) {
           console.log(`💳 Procesando pago automático para suscripción: ${subscription.mercadoPagoSubscriptionId}`);
           
-          // Aquí se procesaría el pago automático con MercadoPago
-          // Por ahora, marcamos como pendiente para procesamiento manual
-          await prisma.subscription.update({
-            where: { id: subscription.id },
-            data: { status: 'PAYMENT_FAILED' }
-          });
-          
-          console.log(`⚠️  Suscripción marcada como PAYMENT_FAILED para procesamiento manual`);
+          try {
+            // Procesar el pago automático con MercadoPago
+            const subClient = new Subscription(mpClient);
+            const paymentResponse = await subClient.get({ id: subscription.mercadoPagoSubscriptionId });
+
+            if (paymentResponse.status === 'authorized') {
+              // Crear nuevo pago y actualizar suscripción
+              await prisma.payment.create({
+                data: {
+                  subscriptionId: subscription.id,
+                  amount: subscription.priceAmount,
+                  status: 'APPROVED',
+                  billingCycle: subscription.billingCycle,
+                  paidAt: new Date(),
+                  mercadoPagoPaymentId: paymentResponse.last_payment?.id,
+                  mercadoPagoOrderId: subscription.mercadoPagoSubscriptionId
+                }
+              });
+
+              // Calcular próxima fecha de cobro
+              const nextBillingDate = new Date();
+              if (subscription.billingCycle === 'MONTHLY') {
+                nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+              } else {
+                nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+              }
+
+              // Actualizar suscripción como activa
+              await prisma.subscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: 'ACTIVE',
+                  nextBillingDate
+                }
+              });
+
+              console.log(`✅ Pago automático procesado exitosamente para ${subscription.business.name}`);
+            } else {
+              // Si el pago no está autorizado, marcar como fallido
+              await prisma.subscription.update({
+                where: { id: subscription.id },
+                data: { status: 'PAYMENT_FAILED' }
+              });
+              
+              console.log(`⚠️ Pago automático no autorizado para ${subscription.business.name}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error procesando pago automático para ${subscription.business.name}:`, error);
+            // En caso de error, marcar como fallido
+            await prisma.subscription.update({
+              where: { id: subscription.id },
+              data: { status: 'PAYMENT_FAILED' }
+            });
+          }
         } else {
           // Sin suscripción automática, marcar como pendiente de pago
           await prisma.subscription.update({
@@ -302,7 +337,7 @@ const checkExpiredSubscriptions = async () => {
             data: { status: 'PAYMENT_FAILED' }
           });
           
-          console.log(`⚠️  Suscripción sin pago automático marcada como PAYMENT_FAILED`);
+          console.log(`⚠️ Suscripción sin pago automático marcada como PAYMENT_FAILED`);
         }
         
       } catch (error) {

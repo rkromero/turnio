@@ -14,33 +14,45 @@ const authenticateToken = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Token de acceso requerido'
+        message: 'No se proporcionó token de autenticación'
       });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Buscar el usuario en la base de datos
+    // Buscar usuario y su negocio con suscripción
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       include: {
         business: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            planType: true,
-            maxAppointments: true
+          include: {
+            subscription: true
           }
         }
       }
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Usuario no válido o inactivo'
+        message: 'Usuario no encontrado'
       });
+    }
+
+    // Verificar estado de la suscripción
+    if (user.business?.subscription) {
+      const subscription = user.business.subscription;
+      
+      // Si la suscripción no es gratuita y está en estado fallido o vencido
+      if (subscription.planType !== 'FREE' && 
+         (subscription.status === 'PAYMENT_FAILED' || subscription.status === 'EXPIRED')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.',
+          subscriptionStatus: subscription.status,
+          requiresPayment: true
+        });
+      }
     }
 
     req.user = user;
@@ -50,7 +62,7 @@ const authenticateToken = async (req, res, next) => {
     console.error('Error en autenticación:', error);
     return res.status(401).json({
       success: false,
-      message: 'Token inválido'
+      message: 'Token inválido o expirado'
     });
   }
 };
