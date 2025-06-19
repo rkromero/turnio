@@ -174,7 +174,7 @@ router.post('/debug-create', async (req, res) => {
         priceAmount,
         startDate,
         nextBillingDate,
-        status: planType === 'FREE' ? 'ACTIVE' : 'PENDING'
+        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
       }
     });
 

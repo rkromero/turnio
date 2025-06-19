@@ -234,7 +234,7 @@ const createSubscription = async (req, res) => {
       priceAmount,
       startDate,
       nextBillingDate,
-      status: planType === 'FREE' ? 'ACTIVE' : 'PENDING'
+      status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
     });
     
     const subscription = await prisma.subscription.create({
@@ -245,7 +245,7 @@ const createSubscription = async (req, res) => {
         priceAmount,
         startDate,
         nextBillingDate,
-        status: planType === 'FREE' ? 'ACTIVE' : 'PENDING' // FREE es activa inmediatamente
+        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED' // FREE es activa inmediatamente, pagos requieren pago
       }
     });
     console.log('✅ Suscripción creada exitosamente:', subscription.id);
