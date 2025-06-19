@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const {
-  getPlans,
+  getPlansWithPricing,
   createTempSubscription,
   getCurrentSubscription,
   cancelSubscription,
@@ -47,7 +47,7 @@ router.get('/test-plans', (req, res) => {
   }
 });
 
-router.get('/plans', getPlans);
+router.get('/plans', getPlansWithPricing);
 
 // Test endpoint para verificar conexión a BD
 router.get('/test-db', async (req, res) => {
