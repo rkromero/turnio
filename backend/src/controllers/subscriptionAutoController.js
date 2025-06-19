@@ -7,11 +7,13 @@ console.log('Access Token MercadoPago:', process.env.MERCADOPAGO_ACCESS_TOKEN);
 const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
 
 // Instanciar cliente de MercadoPago
+console.log('🔑 Inicializando MercadoPago con token:', process.env.MERCADOPAGO_ACCESS_TOKEN);
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 // Crear suscripción automática con MercadoPago (cobro recurrente)
 const createAutomaticSubscription = async (req, res) => {
   try {
+    console.log('🔑 Token MercadoPago al crear suscripción:', process.env.MERCADOPAGO_ACCESS_TOKEN);
     const { subscriptionId } = req.body;
     const { user } = req;
 
