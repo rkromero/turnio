@@ -66,12 +66,18 @@ const PlanChangeTest: React.FC = () => {
   };
 
   const handleChangePlan = async () => {
+    console.log('🔍 Debug - handleChangePlan llamado');
+    console.log('🔍 Debug - subscription:', subscription);
+    console.log('🔍 Debug - selectedPlan:', selectedPlan);
+    
     if (!subscription || !selectedPlan) {
+      console.log('❌ Debug - Validación falló: subscription o selectedPlan vacío');
       error('Selecciona un plan para cambiar');
       return;
     }
 
     if (selectedPlan === subscription.planType) {
+      console.log('❌ Debug - Mismo plan seleccionado');
       error('Ya tienes este plan activo');
       return;
     }
@@ -79,6 +85,7 @@ const PlanChangeTest: React.FC = () => {
     try {
       setChanging(true);
       console.log(`🔄 Cambiando plan: ${subscription.planType} → ${selectedPlan}`);
+      console.log(`🔄 Subscription ID: ${subscription.id}`);
       
       const result = await subscriptionService.changePlan(subscription.id, selectedPlan);
       console.log('✅ Resultado del cambio:', result);
@@ -89,7 +96,8 @@ const PlanChangeTest: React.FC = () => {
       await loadSubscription();
       
     } catch (err: any) {
-      console.error('Error cambiando plan:', err);
+      console.error('❌ Error cambiando plan:', err);
+      console.error('❌ Error response:', err.response?.data);
       error(err.response?.data?.message || 'Error cambiando plan');
     } finally {
       setChanging(false);
@@ -234,7 +242,10 @@ const PlanChangeTest: React.FC = () => {
           </div>
 
           <button
-            onClick={handleChangePlan}
+            onClick={() => {
+              console.log('🔍 Debug - Botón Cambiar Plan clickeado');
+              handleChangePlan();
+            }}
             disabled={!selectedPlan || changing}
             className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
