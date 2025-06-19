@@ -187,6 +187,17 @@ const createSubscription = async (req, res) => {
     }
     console.log('✅ Negocio encontrado:', business.name);
 
+    // Verificar permisos solo si hay usuario autenticado
+    if (req.user) {
+      if (req.user.businessId !== businessId) {
+        console.log('❌ Usuario no tiene permisos para este negocio');
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para este negocio'
+        });
+      }
+    }
+
     // Verificar si ya tiene suscripción activa
     if (business.subscription && business.subscription.status === 'ACTIVE') {
       return res.status(400).json({
@@ -262,7 +273,8 @@ const createSubscription = async (req, res) => {
     console.error('❌ Error creando suscripción:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
