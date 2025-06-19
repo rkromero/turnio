@@ -206,6 +206,27 @@ router.post('/debug-create', async (req, res) => {
   }
 });
 
+// TEMPORAL: Endpoint de debug para probar createSubscription directamente
+router.post('/debug-create-subscription', async (req, res) => {
+  try {
+    console.log('🔍 DEBUG: Probando createSubscription directamente...');
+    console.log('🔍 DEBUG: req.body:', req.body);
+    
+    // Llamar al controlador createSubscription directamente
+    const { createSubscription } = require('../controllers/subscriptionController');
+    await createSubscription(req, res);
+    
+  } catch (error) {
+    console.error('❌ DEBUG: Error en debug-create-subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en debug-create-subscription',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
 
