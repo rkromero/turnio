@@ -87,7 +87,149 @@ router.get('/test-db', async (req, res) => {
 });
 
 // TEMPORAL: Crear suscripción sin autenticación para debug
-router.post('/create-temp', createSubscription);
+router.post('/create-temp', async (req, res) => {
+  try {
+    console.log('🔍 create-temp: Iniciando...');
+    console.log('🔍 create-temp: req.body:', req.body);
+    
+    const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
+    console.log('🔍 create-temp: Datos extraídos:', { businessId, planType, billingCycle });
+
+    // Verificar que el plan sea válido
+    const AVAILABLE_PLANS = {
+      FREE: {
+        name: 'Plan Gratuito',
+        description: 'Perfecto para empezar',
+        price: 0,
+        limits: { appointments: 30, services: 3, users: 1 }
+      },
+      BASIC: {
+        name: 'Plan Básico',
+        description: 'Ideal para profesionales individuales',
+        price: 4900,
+        limits: { appointments: 100, services: 10, users: 3 }
+      },
+      PREMIUM: {
+        name: 'Plan Premium',
+        description: 'Para equipos y consultorios',
+        price: 9900,
+        limits: { appointments: 500, services: 25, users: 10 }
+      },
+      ENTERPRISE: {
+        name: 'Plan Empresa',
+        description: 'Para empresas y clínicas',
+        price: 14900,
+        limits: { appointments: -1, services: -1, users: -1 }
+      }
+    };
+
+    if (!AVAILABLE_PLANS[planType]) {
+      console.log('❌ create-temp: Plan no válido:', planType);
+      return res.status(400).json({
+        success: false,
+        message: 'Plan no válido'
+      });
+    }
+    console.log('✅ create-temp: Plan válido confirmado');
+
+    // Verificar que el negocio existe
+    const { prisma } = require('../config/database');
+    console.log('🔍 create-temp: Buscando negocio con ID:', businessId);
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: { subscription: true }
+    });
+    console.log('🔍 create-temp: Negocio encontrado:', business ? 'SÍ' : 'NO');
+
+    if (!business) {
+      console.log('❌ create-temp: Negocio no encontrado con ID:', businessId);
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+    console.log('✅ create-temp: Negocio encontrado:', business.name);
+
+    // Verificar si ya tiene suscripción activa
+    if (business.subscription && business.subscription.status === 'ACTIVE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya tienes una suscripción activa'
+      });
+    }
+
+    const plan = AVAILABLE_PLANS[planType];
+    let priceAmount = plan.price;
+    
+    // Aplicar descuento anual
+    if (billingCycle === 'YEARLY' && priceAmount > 0) {
+      priceAmount = Math.round(priceAmount * 12 * 0.9); // 10% descuento
+    }
+
+    const startDate = new Date();
+    let nextBillingDate = null;
+    
+    if (priceAmount > 0) {
+      nextBillingDate = new Date(startDate);
+      if (billingCycle === 'MONTHLY') {
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      } else {
+        nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+      }
+    }
+
+    // Crear suscripción
+    console.log('🔍 create-temp: Creando suscripción con datos:', {
+      businessId,
+      planType,
+      billingCycle,
+      priceAmount,
+      startDate,
+      nextBillingDate,
+      status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+    });
+    
+    const subscription = await prisma.subscription.create({
+      data: {
+        businessId,
+        planType,
+        billingCycle,
+        priceAmount,
+        startDate,
+        nextBillingDate,
+        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+      }
+    });
+    console.log('✅ create-temp: Suscripción creada exitosamente:', subscription.id);
+
+    // Actualizar el plan del negocio
+    await prisma.business.update({
+      where: { id: businessId },
+      data: {
+        planType,
+        maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
+      }
+    });
+
+    console.log(`✅ create-temp: Suscripción creada: ${planType} (${billingCycle}) para negocio ${business.name}`);
+
+    res.json({
+      success: true,
+      data: {
+        subscription,
+        requiresPayment: priceAmount > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ create-temp: Error creando suscripción:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 // TEMPORAL: Endpoint de debug para crear suscripción
 router.post('/debug-create', async (req, res) => {
