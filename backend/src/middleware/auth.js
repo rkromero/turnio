@@ -1,7 +1,48 @@
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/database');
 
-// Middleware para verificar token JWT
+// Middleware para verificar token JWT sin verificación de suscripción
+const authenticateTokenOnly = async (req, res, next) => {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No se proporcionó token de autenticación'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Buscar usuario y su negocio
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: {
+        business: true
+      }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    req.user = user;
+    req.businessId = user.businessId;
+    next();
+  } catch (error) {
+    console.error('Error en autenticación:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Token inválido o expirado'
+    });
+  }
+};
+
+// Middleware para verificar token JWT con verificación de suscripción
 const authenticateToken = async (req, res, next) => {
   try {
     // Log para depuración
@@ -106,6 +147,7 @@ const requireBusinessAccess = (req, res, next) => {
 
 module.exports = {
   authenticateToken,
+  authenticateTokenOnly,
   requireAdmin,
   requireBusinessAccess,
 }; 
