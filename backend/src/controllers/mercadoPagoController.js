@@ -1,14 +1,10 @@
 const { prisma } = require('../config/database');
 
-// Configuración de MercadoPago
-const mercadopago = require('mercadopago');
+// MercadoPago SDK v2
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
-// Configurar con las credenciales (se configurará desde variables de entorno)
-if (process.env.MERCADOPAGO_ACCESS_TOKEN) {
-  mercadopago.configure({
-    access_token: process.env.MERCADOPAGO_ACCESS_TOKEN,
-  });
-}
+// Instanciar cliente de MercadoPago
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 // Crear preferencia de pago para suscripción
 const createSubscriptionPayment = async (req, res) => {
@@ -80,9 +76,9 @@ const createSubscriptionPayment = async (req, res) => {
       },
       payment_methods: {
         excluded_payment_types: [
-          { id: "ticket" } // Excluir pagos en efectivo
+          { id: "ticket" }
         ],
-        installments: subscription.billingCycle === 'YEARLY' ? 12 : 6 // Permitir cuotas
+        installments: subscription.billingCycle === 'YEARLY' ? 12 : 6
       },
       back_urls: {
         success: `${process.env.FRONTEND_URL}/subscription/success?payment=${payment.id}`,
@@ -90,7 +86,7 @@ const createSubscriptionPayment = async (req, res) => {
         pending: `${process.env.FRONTEND_URL}/subscription/pending?payment=${payment.id}`
       },
       auto_return: "approved",
-      external_reference: payment.id, // Nuestro ID interno
+      external_reference: payment.id,
       notification_url: `${process.env.BACKEND_URL}/api/mercadopago/webhook`,
       metadata: {
         subscription_id: subscription.id,
@@ -108,28 +104,29 @@ const createSubscriptionPayment = async (req, res) => {
       businessName: subscription.business.name
     });
 
-    // Crear la preferencia en MercadoPago
-    const response = await mercadopago.preferences.create(preference);
+    // Crear la preferencia en MercadoPago (SDK v2)
+    const prefClient = new Preference(mpClient);
+    const response = await prefClient.create({ body: preference });
 
     // Actualizar el pago con el ID de preferencia
     await prisma.payment.update({
       where: { id: payment.id },
       data: {
-        preferenceId: response.body.id,
-        mercadoPagoOrderId: response.body.id
+        preferenceId: response.id,
+        mercadoPagoOrderId: response.id
       }
     });
 
-    console.log('✅ Preferencia creada exitosamente:', response.body.id);
+    console.log('✅ Preferencia creada exitosamente:', response.id);
 
     // Responder con los datos necesarios para el frontend
     res.json({
       success: true,
       data: {
-        preferenceId: response.body.id,
+        preferenceId: response.id,
         publicKey: process.env.MERCADOPAGO_PUBLIC_KEY,
-        initPoint: response.body.init_point,
-        sandboxInitPoint: response.body.sandbox_init_point,
+        initPoint: response.init_point,
+        sandboxInitPoint: response.sandbox_init_point,
         paymentId: payment.id,
         subscription: {
           id: subscription.id,
@@ -162,10 +159,10 @@ const handleWebhook = async (req, res) => {
 
     if (type === 'payment') {
       const paymentId = data.id;
-      
-      // Obtener información del pago desde MercadoPago
-      const paymentInfo = await mercadopago.payment.findById(paymentId);
-      const paymentData = paymentInfo.body;
+      // Obtener información del pago desde MercadoPago (SDK v2)
+      const paymentClient = new Payment(mpClient);
+      const paymentInfo = await paymentClient.get({ id: paymentId });
+      const paymentData = paymentInfo;
 
       console.log('💳 Información del pago recibida:', {
         id: paymentData.id,
@@ -198,95 +195,30 @@ const handleWebhook = async (req, res) => {
         case 'cancelled':
           newStatus = 'REJECTED';
           break;
-        case 'refunded':
-          newStatus = 'REFUNDED';
-          break;
-        case 'pending':
-        case 'in_process':
-        case 'in_mediation':
+        default:
           newStatus = 'PENDING';
-          break;
       }
 
-      // Actualizar el pago
-      const updatedPayment = await prisma.payment.update({
+      await prisma.payment.update({
         where: { id: payment.id },
-        data: {
-          status: newStatus,
-          mercadoPagoPaymentId: paymentData.id.toString(),
-          paidAt: newStatus === 'APPROVED' ? new Date() : null,
-          paymentMethod: paymentData.payment_method_id,
-          installments: paymentData.installments,
-          failureReason: newStatus === 'REJECTED' ? paymentData.status_detail : null
-        }
+        data: { status: newStatus }
       });
 
-      // Si el pago fue aprobado, activar la suscripción
+      // Si el pago fue aprobado, actualizar el plan del negocio
       if (newStatus === 'APPROVED') {
-        console.log('✅ Pago aprobado, activando suscripción...');
-        
-        await prisma.subscription.update({
-          where: { id: payment.subscription.id },
-          data: {
-            status: 'ACTIVE',
-            mercadoPagoPaymentId: paymentData.id.toString()
-          }
-        });
-
-        // Registrar el cambio de plan si es necesario
-        if (payment.subscription.business.planType !== payment.subscription.planType) {
-          await prisma.planChange.create({
-            data: {
-              businessId: payment.subscription.businessId,
-              fromPlan: payment.subscription.business.planType,
-              toPlan: payment.subscription.planType,
-              changeReason: 'payment_approved',
-              effectiveDate: new Date()
-            }
-          });
-
-          // Actualizar el plan del negocio
-          const planLimits = {
-            'FREE': { appointments: 30 },
-            'BASIC': { appointments: 100 },
-            'PREMIUM': { appointments: 500 },
-            'ENTERPRISE': { appointments: 999999 }
-          };
-
-          await prisma.business.update({
-            where: { id: payment.subscription.businessId },
-            data: {
-              planType: payment.subscription.planType,
-              maxAppointments: planLimits[payment.subscription.planType]?.appointments || 30
-            }
-          });
-        }
-
-        console.log(`🎉 Suscripción activada: ${payment.subscription.planType} para ${payment.subscription.business.name}`);
-      } else if (newStatus === 'REJECTED') {
-        console.log('❌ Pago rechazado, marcando suscripción como fallida...');
-        
-        await prisma.subscription.update({
-          where: { id: payment.subscription.id },
-          data: {
-            status: 'PAYMENT_FAILED'
-          }
+        await prisma.business.update({
+          where: { id: payment.subscription.businessId },
+          data: { planType: payment.subscription.planType }
         });
       }
 
-      console.log(`📊 Pago actualizado: ${payment.id} -> ${newStatus}`);
+      res.json({ received: true });
+    } else {
+      res.json({ received: true });
     }
-
-    // Responder OK a MercadoPago
-    res.status(200).json({ success: true });
-
   } catch (error) {
-    console.error('❌ Error procesando webhook de MercadoPago:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error processing webhook',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('❌ Error en webhook de MercadoPago:', error);
+    res.status(500).json({ success: false, message: 'Error en webhook' });
   }
 };
 
