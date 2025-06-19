@@ -78,7 +78,16 @@ export const authService = {
   },
 
   getProfile: async (): Promise<AuthResponse> => {
-    const response = await api.get<ApiResponse<{user: User, business: Business}>>('/auth/profile');
+    // Obtener el token de la cookie
+    const cookies = document.cookie.split(';');
+    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+    const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+
+    const response = await api.get<ApiResponse<{user: User, business: Business}>>('/auth/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const { user, business } = response.data.data!;
     return { user, business };
   },

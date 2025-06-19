@@ -143,10 +143,16 @@ class SubscriptionService {
   // Crear pago con MercadoPago
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
     try {
+      // Obtener el token de la cookie
+      const cookies = document.cookie.split(';');
+      const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+
       const response = await fetch(`${this.baseUrl}/mercadopago/create-payment`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include', // Incluir cookies automáticamente
         body: JSON.stringify(request)
