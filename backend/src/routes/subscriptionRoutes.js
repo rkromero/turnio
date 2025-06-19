@@ -152,10 +152,8 @@ router.post('/create-temp', async (req, res) => {
 
     // Verificar si ya tiene suscripción activa
     if (business.subscription && business.subscription.status === 'ACTIVE') {
-      return res.status(400).json({
-        success: false,
-        message: 'Ya tienes una suscripción activa'
-      });
+      console.log('🔍 create-temp: Negocio ya tiene suscripción activa, permitiendo actualización');
+      // Permitir actualización en lugar de rechazar
     }
 
     const plan = AVAILABLE_PLANS[planType];
@@ -178,19 +176,27 @@ router.post('/create-temp', async (req, res) => {
       }
     }
 
-    // Crear suscripción
-    console.log('🔍 create-temp: Creando suscripción con datos:', {
-      businessId,
-      planType,
-      billingCycle,
-      priceAmount,
-      startDate,
-      nextBillingDate,
-      status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-    });
-    
-    const subscription = await prisma.subscription.create({
-      data: {
+    let subscription;
+
+    // Si ya existe una suscripción, actualizarla
+    if (business.subscription) {
+      console.log('🔍 create-temp: Actualizando suscripción existente:', business.subscription.id);
+      
+      subscription = await prisma.subscription.update({
+        where: { id: business.subscription.id },
+        data: {
+          planType,
+          billingCycle,
+          priceAmount,
+          startDate,
+          nextBillingDate,
+          status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+        }
+      });
+      console.log('✅ create-temp: Suscripción actualizada exitosamente:', subscription.id);
+    } else {
+      // Crear nueva suscripción
+      console.log('🔍 create-temp: Creando nueva suscripción con datos:', {
         businessId,
         planType,
         billingCycle,
@@ -198,9 +204,21 @@ router.post('/create-temp', async (req, res) => {
         startDate,
         nextBillingDate,
         status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-      }
-    });
-    console.log('✅ create-temp: Suscripción creada exitosamente:', subscription.id);
+      });
+      
+      subscription = await prisma.subscription.create({
+        data: {
+          businessId,
+          planType,
+          billingCycle,
+          priceAmount,
+          startDate,
+          nextBillingDate,
+          status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+        }
+      });
+      console.log('✅ create-temp: Suscripción creada exitosamente:', subscription.id);
+    }
 
     // Actualizar el plan del negocio
     await prisma.business.update({
