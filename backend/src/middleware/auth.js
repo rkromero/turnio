@@ -4,12 +4,10 @@ const { prisma } = require('../config/database');
 // Middleware para verificar token JWT
 const authenticateToken = async (req, res, next) => {
   try {
-    console.log('🔍 authenticateToken - Iniciando...');
-    console.log('🔍 req.cookies:', req.cookies);
-    console.log('🔍 req.headers.authorization:', req.headers.authorization);
+    // Log para depuración
+    console.log('🔍 Ruta solicitada:', req.path);
     
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-    console.log('🔍 token extraído:', token ? 'SÍ' : 'NO');
 
     if (!token) {
       return res.status(401).json({
@@ -49,10 +47,15 @@ const authenticateToken = async (req, res, next) => {
         
         // Permitir acceso a endpoints relacionados con pagos
         const paymentEndpoints = [
-          '/api/mercadopago/create-payment',
-          '/api/mercadopago/payment-status',
-          '/api/subscriptions/current'
+          'mercadopago/create-payment',
+          'mercadopago/payment-status',
+          'subscriptions/current',
+          'mercadopago/webhook'
         ];
+        
+        // Log para depuración
+        console.log('🔍 Verificando acceso a ruta:', req.path);
+        console.log('🔍 Es ruta de pago:', paymentEndpoints.some(endpoint => req.path.includes(endpoint)));
         
         if (!paymentEndpoints.some(endpoint => req.path.includes(endpoint))) {
           return res.status(403).json({

@@ -352,8 +352,40 @@ const checkExpiredSubscriptions = async () => {
   }
 };
 
+const handlePaymentSuccess = async (subscriptionId, paymentId, mercadoPagoSubscriptionId) => {
+  try {
+    // Log para depuración
+    console.log('🔍 Procesando pago exitoso:', {
+      subscriptionId,
+      paymentId,
+      mercadoPagoSubscriptionId
+    });
+
+    // Actualizar la suscripción a ACTIVE
+    const updatedSubscription = await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: 'ACTIVE',
+        mercadoPagoSubscriptionId
+      }
+    });
+
+    // Log para depuración
+    console.log('✅ Suscripción actualizada:', {
+      id: updatedSubscription.id,
+      status: updatedSubscription.status
+    });
+
+    return updatedSubscription;
+  } catch (error) {
+    console.error('❌ Error al procesar pago exitoso:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createAutomaticSubscription,
   handleSubscriptionWebhook,
-  checkExpiredSubscriptions
+  checkExpiredSubscriptions,
+  handlePaymentSuccess
 }; 
