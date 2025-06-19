@@ -11,6 +11,7 @@ import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
 import Branches from '../pages/Branches';
 import Plans from '../pages/Plans';
+import PlanChangeTest from '../pages/PlanChangeTest';
 
 const DashboardRouter: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/plans" element={<Plans />} />
+        <Route path="/plan-test" element={<PlanChangeTest />} />
         
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

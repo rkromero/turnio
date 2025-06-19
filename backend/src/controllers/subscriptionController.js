@@ -1,5 +1,6 @@
 const { prisma } = require('../config/database');
 const SubscriptionValidationService = require('../services/subscriptionValidationService');
+const PlanChangeService = require('../services/planChangeService');
 
 // Definición de planes disponibles (copiado desde planController)
 const AVAILABLE_PLANS = {
@@ -507,11 +508,218 @@ const runSubscriptionValidations = async (req, res) => {
   }
 };
 
+// Endpoint para cambiar de plan
+const changeSubscriptionPlan = async (req, res) => {
+  try {
+    const { subscriptionId, newPlanType } = req.body;
+    const { user } = req;
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    if (!subscriptionId || !newPlanType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere subscriptionId y newPlanType'
+      });
+    }
+
+    console.log(`🔄 Usuario ${user.email} solicitando cambio de plan: ${subscriptionId} → ${newPlanType}`);
+
+    const result = await PlanChangeService.changeSubscriptionPlan(
+      subscriptionId, 
+      newPlanType, 
+      user.businessId
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        requiresPayment: result.requiresPayment,
+        paymentId: result.paymentId,
+        amount: result.amount,
+        changeType: result.changeType,
+        effectiveDate: result.effectiveDate
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error cambiando plan:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Endpoint para obtener historial de cambios de plan
+const getPlanChangeHistory = async (req, res) => {
+  try {
+    const { user } = req;
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    const history = await PlanChangeService.getPlanChangeHistory(user.businessId);
+
+    res.json({
+      success: true,
+      data: {
+        history: history
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo historial:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Endpoint para procesar pago de upgrade
+const processUpgradePayment = async (req, res) => {
+  try {
+    const { paymentId } = req.body;
+    const { user } = req;
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere paymentId'
+      });
+    }
+
+    console.log(`💳 Procesando pago de upgrade: ${paymentId}`);
+
+    const result = await PlanChangeService.processUpgradePayment(paymentId);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        fromPlan: result.fromPlan,
+        toPlan: result.toPlan,
+        newBillingDate: result.newBillingDate
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error procesando pago de upgrade:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Endpoint para procesar pago de downgrade
+const processDowngradePayment = async (req, res) => {
+  try {
+    const { paymentId } = req.body;
+    const { user } = req;
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere paymentId'
+      });
+    }
+
+    console.log(`💳 Procesando pago de downgrade: ${paymentId}`);
+
+    const result = await PlanChangeService.processDowngradePayment(paymentId);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        fromPlan: result.fromPlan,
+        toPlan: result.toPlan
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error procesando pago de downgrade:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Endpoint para procesar downgrades pendientes
+const processPendingDowngrades = async (req, res) => {
+  try {
+    const { user } = req;
+
+    if (!user || !user.businessId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado'
+      });
+    }
+
+    console.log('🔍 Procesando downgrades pendientes...');
+
+    const processedCount = await PlanChangeService.processPendingDowngrades();
+
+    res.json({
+      success: true,
+      message: `Procesados ${processedCount} downgrades pendientes`,
+      data: {
+        processedCount: processedCount
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error procesando downgrades pendientes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getPlansWithPricing,
   createSubscription,
   getCurrentSubscription,
   cancelSubscription,
   getPaymentHistory,
-  runSubscriptionValidations
+  runSubscriptionValidations,
+  changeSubscriptionPlan,
+  getPlanChangeHistory,
+  processUpgradePayment,
+  processDowngradePayment,
+  processPendingDowngrades
 }; 

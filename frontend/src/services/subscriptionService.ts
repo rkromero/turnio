@@ -187,6 +187,72 @@ class SubscriptionService {
       throw error;
     }
   }
+
+  // Cambiar plan de suscripción
+  async changePlan(subscriptionId: string, newPlanType: string) {
+    try {
+      console.log(`🔄 Cambiando plan: ${subscriptionId} → ${newPlanType}`);
+      const response = await this.api.post('/subscriptions/change-plan', {
+        subscriptionId,
+        newPlanType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error en changePlan:', error);
+      throw error;
+    }
+  }
+
+  // Procesar pago de upgrade
+  async processUpgradePayment(paymentId: string) {
+    try {
+      console.log(`💳 Procesando pago de upgrade: ${paymentId}`);
+      const response = await this.api.post('/subscriptions/process-upgrade-payment', {
+        paymentId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error en processUpgradePayment:', error);
+      throw error;
+    }
+  }
+
+  // Procesar pago de downgrade
+  async processDowngradePayment(paymentId: string) {
+    try {
+      console.log(`💳 Procesando pago de downgrade: ${paymentId}`);
+      const response = await this.api.post('/subscriptions/process-downgrade-payment', {
+        paymentId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error en processDowngradePayment:', error);
+      throw error;
+    }
+  }
+
+  // Procesar downgrades pendientes
+  async processPendingDowngrades() {
+    try {
+      console.log('🔍 Procesando downgrades pendientes...');
+      const response = await this.api.post('/subscriptions/process-pending-downgrades');
+      return response.data;
+    } catch (error) {
+      console.error('Error en processPendingDowngrades:', error);
+      throw error;
+    }
+  }
+
+  // Obtener historial de cambios de plan
+  async getPlanChangeHistory(businessId: string) {
+    try {
+      const response = await this.api.get(`/subscriptions/plan-change-history/${businessId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error en getPlanChangeHistory:', error);
+      throw error;
+    }
+  }
 }
 
 export const subscriptionService = new SubscriptionService();

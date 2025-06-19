@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database');
+const PlanChangeService = require('./planChangeService');
 
 class SubscriptionValidationService {
   
@@ -170,6 +171,22 @@ class SubscriptionValidationService {
     }
   }
 
+  // Procesar downgrades pendientes
+  static async processPendingDowngrades() {
+    try {
+      console.log('🔍 === PROCESANDO DOWNGRADES PENDIENTES ===');
+      
+      const downgradeCount = await PlanChangeService.processPendingDowngrades();
+      
+      console.log(`📊 Procesados ${downgradeCount} downgrades pendientes`);
+      return downgradeCount;
+      
+    } catch (error) {
+      console.error('❌ Error procesando downgrades pendientes:', error);
+      throw error;
+    }
+  }
+
   // Ejecutar todas las validaciones
   static async runAllValidations() {
     try {
@@ -178,16 +195,19 @@ class SubscriptionValidationService {
       const expiredCount = await this.validateExpiredSubscriptions();
       const upcomingCount = await this.checkUpcomingExpirations();
       const failedCount = await this.checkFailedPayments();
+      const downgradeCount = await this.processPendingDowngrades();
       
       console.log('\n📊 === RESUMEN DE VALIDACIONES ===');
       console.log(`✅ Suscripciones vencidas procesadas: ${expiredCount}`);
       console.log(`⚠️  Suscripciones próximas a vencer: ${upcomingCount}`);
       console.log(`❌ Pagos fallidos encontrados: ${failedCount}`);
+      console.log(`📉 Downgrades pendientes procesados: ${downgradeCount}`);
       
       return {
         expiredCount,
         upcomingCount,
-        failedCount
+        failedCount,
+        downgradeCount
       };
       
     } catch (error) {

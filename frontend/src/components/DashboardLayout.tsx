@@ -33,6 +33,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Sucursales', href: '/dashboard/branches', icon: '🏢' },
     { name: 'Reportes', href: '/dashboard/reports', icon: '📈' },
     { name: 'Configuraciones', href: '/dashboard/settings', icon: '🔧' },
+    { name: 'Prueba Plan', href: '/dashboard/plan-test', icon: '🧪' },
   ];
 
   // Determinar el título de la página actual
