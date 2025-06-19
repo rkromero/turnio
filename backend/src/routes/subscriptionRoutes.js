@@ -89,6 +89,123 @@ router.get('/test-db', async (req, res) => {
 // TEMPORAL: Crear suscripción sin autenticación para debug
 router.post('/create-temp', createSubscription);
 
+// TEMPORAL: Endpoint de debug para crear suscripción
+router.post('/debug-create', async (req, res) => {
+  try {
+    console.log('🔍 DEBUG: Iniciando debug-create...');
+    console.log('🔍 DEBUG: req.body:', req.body);
+    
+    const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
+    
+    // Verificar que tenemos los datos necesarios
+    if (!businessId || !planType) {
+      return res.status(400).json({
+        success: false,
+        message: 'businessId y planType son requeridos',
+        received: { businessId, planType, billingCycle }
+      });
+    }
+
+    // Verificar que el negocio existe
+    const { prisma } = require('../config/database');
+    const business = await prisma.business.findUnique({
+      where: { id: businessId }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado',
+        businessId
+      });
+    }
+
+    // Verificar que el plan es válido
+    const AVAILABLE_PLANS = {
+      FREE: { name: 'Plan Gratuito', price: 0 },
+      BASIC: { name: 'Plan Básico', price: 4900 },
+      PREMIUM: { name: 'Plan Premium', price: 9900 },
+      ENTERPRISE: { name: 'Plan Empresa', price: 14900 }
+    };
+
+    if (!AVAILABLE_PLANS[planType]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan no válido',
+        planType,
+        availablePlans: Object.keys(AVAILABLE_PLANS)
+      });
+    }
+
+    // Intentar crear la suscripción
+    const plan = AVAILABLE_PLANS[planType];
+    let priceAmount = plan.price;
+    
+    if (billingCycle === 'YEARLY' && priceAmount > 0) {
+      priceAmount = Math.round(priceAmount * 12 * 0.9);
+    }
+
+    const startDate = new Date();
+    let nextBillingDate = null;
+    
+    if (priceAmount > 0) {
+      nextBillingDate = new Date(startDate);
+      if (billingCycle === 'MONTHLY') {
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      } else {
+        nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+      }
+    }
+
+    console.log('🔍 DEBUG: Intentando crear suscripción con datos:', {
+      businessId,
+      planType,
+      billingCycle,
+      priceAmount,
+      startDate,
+      nextBillingDate
+    });
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        businessId,
+        planType,
+        billingCycle,
+        priceAmount,
+        startDate,
+        nextBillingDate,
+        status: planType === 'FREE' ? 'ACTIVE' : 'PENDING'
+      }
+    });
+
+    console.log('🔍 DEBUG: Suscripción creada exitosamente:', subscription.id);
+
+    // Actualizar el negocio
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { planType }
+    });
+
+    res.json({
+      success: true,
+      message: 'Suscripción creada en modo debug',
+      data: {
+        subscription,
+        requiresPayment: priceAmount > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ DEBUG: Error en debug-create:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en debug-create',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Rutas protegidas (requieren autenticación)
 router.use(authenticateToken);
 
