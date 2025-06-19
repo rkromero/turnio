@@ -10,8 +10,7 @@ import {
   UserCog,
   Building2,
   ChevronUp,
-  ChevronDown,
-  Gem
+  ChevronDown
 } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -66,12 +65,6 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
       name: 'Sucursales',
       href: '/dashboard/branches',
       icon: Building2,
-      exactMatch: false
-    },
-    {
-      name: 'Planes',
-      href: '/dashboard/plans',
-      icon: Gem,
       exactMatch: false
     },
     {
