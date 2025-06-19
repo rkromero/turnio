@@ -111,7 +111,7 @@ const createAutomaticSubscription = async (req, res) => {
       where: { id: subscription.id },
       data: {
         mercadoPagoSubscriptionId: response.id,
-        status: 'ACTIVE'
+        status: 'PENDING'
       }
     });
 
@@ -131,7 +131,7 @@ const createAutomaticSubscription = async (req, res) => {
           planType: subscription.planType,
           billingCycle: subscription.billingCycle,
           amount: subscription.priceAmount,
-          status: 'ACTIVE'
+          status: 'PENDING'
         }
       }
     });
