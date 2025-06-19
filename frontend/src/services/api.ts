@@ -36,6 +36,20 @@ const api = axios.create({
   },
 });
 
+// Interceptor para agregar el token en el header Authorization
+api.interceptors.request.use((config) => {
+  // Obtener el token de la cookie
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 // Interceptor para manejar errores globalmente
 api.interceptors.response.use(
   (response) => response,

@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 interface Plan {
   key: string;
   name: string;
@@ -77,38 +79,43 @@ interface CreatePaymentResponse {
 
 class SubscriptionService {
   private baseUrl = (import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app') + '/api';
+  private api = axios.create({
+    baseURL: this.baseUrl,
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  // Interceptor para agregar el token en el header Authorization
+  constructor() {
+    this.api.interceptors.request.use((config) => {
+      // Obtener el token de la cookie
+      const cookies = document.cookie.split(';');
+      const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      return config;
+    });
+  }
 
   // Obtener planes disponibles
   async getPlans(): Promise<PlansResponse> {
     try {
       console.log('🔍 Llamando a getPlans...');
-      const url = `${this.baseUrl}/subscriptions/plans`;
+      const url = '/subscriptions/plans';
       console.log('🔍 URL:', url);
       
-      const response = await fetch(url);
+      const response = await this.api.get(url);
       console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('🔍 Response headers:', response.headers);
+      console.log('🔍 Response data:', response.data);
       
-      // Obtener el texto de la respuesta primero
-      const responseText = await response.text();
-      console.log('🔍 Response text (first 500 chars):', responseText.substring(0, 500));
-      
-      // Intentar parsear como JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('❌ Error parseando JSON:', parseError);
-        console.error('❌ Response text:', responseText);
-        throw new Error(`Respuesta no es JSON válido. Status: ${response.status}. Respuesta: ${responseText.substring(0, 200)}`);
-      }
-      
-      if (!response.ok) {
-        throw new Error(data.message || `Error HTTP ${response.status}: ${responseText.substring(0, 200)}`);
-      }
-      
-      console.log('✅ Planes obtenidos correctamente:', data);
-      return data;
+      return response.data;
     } catch (error) {
       console.error('❌ Error en getPlans:', error);
       throw error;
@@ -118,22 +125,8 @@ class SubscriptionService {
   // Crear suscripción
   async createSubscription(request: CreateSubscriptionRequest): Promise<CreateSubscriptionResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/create-temp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include', // Incluir cookies automáticamente
-        body: JSON.stringify(request)
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error creando suscripción');
-      }
-      
-      return data;
+      const response = await this.api.post('/subscriptions/create-temp', request);
+      return response.data;
     } catch (error) {
       console.error('Error en createSubscription:', error);
       throw error;
@@ -143,28 +136,8 @@ class SubscriptionService {
   // Crear pago con MercadoPago
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
     try {
-      // Obtener el token de la cookie
-      const cookies = document.cookie.split(';');
-      const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-      const token = tokenCookie ? tokenCookie.split('=')[1] : null;
-
-      const response = await fetch(`${this.baseUrl}/mercadopago/create-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include', // Incluir cookies automáticamente
-        body: JSON.stringify(request)
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error creando pago');
-      }
-      
-      return data;
+      const response = await this.api.post('/mercadopago/create-payment', request);
+      return response.data;
     } catch (error) {
       console.error('Error en createPayment:', error);
       throw error;
@@ -174,17 +147,8 @@ class SubscriptionService {
   // Verificar estado de pago
   async checkPaymentStatus(paymentId: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/mercadopago/payment-status/${paymentId}`, {
-        credentials: 'include' // Incluir cookies automáticamente
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error verificando estado del pago');
-      }
-      
-      return data;
+      const response = await this.api.get(`/mercadopago/payment-status/${paymentId}`);
+      return response.data;
     } catch (error) {
       console.error('Error en checkPaymentStatus:', error);
       throw error;
@@ -194,17 +158,8 @@ class SubscriptionService {
   // Obtener suscripción actual
   async getCurrentSubscription() {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/current`, {
-        credentials: 'include' // Incluir cookies automáticamente
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error obteniendo suscripción actual');
-      }
-      
-      return data;
+      const response = await this.api.get('/subscriptions/current');
+      return response.data;
     } catch (error) {
       console.error('Error en getCurrentSubscription:', error);
       throw error;
@@ -214,22 +169,8 @@ class SubscriptionService {
   // Cancelar suscripción
   async cancelSubscription(reason?: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include', // Incluir cookies automáticamente
-        body: JSON.stringify({ reason })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error cancelando suscripción');
-      }
-      
-      return data;
+      const response = await this.api.post('/subscriptions/cancel', { reason });
+      return response.data;
     } catch (error) {
       console.error('Error en cancelSubscription:', error);
       throw error;
@@ -239,17 +180,8 @@ class SubscriptionService {
   // Obtener historial de pagos
   async getPaymentHistory(page = 1, limit = 10) {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/payments?page=${page}&limit=${limit}`, {
-        credentials: 'include' // Incluir cookies automáticamente
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Error obteniendo historial de pagos');
-      }
-      
-      return data;
+      const response = await this.api.get(`/subscriptions/payments?page=${page}&limit=${limit}`);
+      return response.data;
     } catch (error) {
       console.error('Error en getPaymentHistory:', error);
       throw error;
