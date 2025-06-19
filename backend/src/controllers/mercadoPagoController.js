@@ -212,25 +212,16 @@ const handleSubscriptionWebhook = async (req, res) => {
         }
       });
 
-      // Si el pago fue aprobado, actualizar la suscripción
+      // Si el pago fue aprobado, actualizar la suscripción y el plan del negocio
       if (newStatus === 'APPROVED') {
-        // Calcular la próxima fecha de cobro
-        const nextBillingDate = new Date();
-        if (payment.subscription.billingCycle === 'MONTHLY') {
-          nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-        } else {
-          nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
-        }
-
         await prisma.subscription.update({
           where: { id: payment.subscription.id },
-          data: {
-            status: 'ACTIVE',
-            nextBillingDate: nextBillingDate
-          }
+          data: { status: 'ACTIVE' }
         });
-
-        console.log(`✅ Pago automático procesado: ${payment.subscription.planType} para ${payment.subscription.business.name}`);
+        await prisma.business.update({
+          where: { id: payment.subscription.businessId },
+          data: { planType: payment.subscription.planType }
+        });
       }
 
       res.json({ received: true });
@@ -441,8 +432,12 @@ const handleWebhook = async (req, res) => {
         data: { status: newStatus }
       });
 
-      // Si el pago fue aprobado, actualizar el plan del negocio
+      // Si el pago fue aprobado, actualizar el plan del negocio y la suscripción
       if (newStatus === 'APPROVED') {
+        await prisma.subscription.update({
+          where: { id: payment.subscription.id },
+          data: { status: 'ACTIVE' }
+        });
         await prisma.business.update({
           where: { id: payment.subscription.businessId },
           data: { planType: payment.subscription.planType }
