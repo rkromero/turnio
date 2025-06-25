@@ -1,7 +1,7 @@
 const { prisma } = require('../config/database');
 const { hashPassword, comparePassword, generateToken, setTokenCookie, clearTokenCookie, generateBusinessSlug } = require('../utils/auth');
 const { validationResult } = require('express-validator');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Registro de nuevo negocio
 const registerBusiness = async (req, res) => {
