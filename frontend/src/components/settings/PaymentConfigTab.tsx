@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Link2, Check, X, Settings, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
+
 interface PaymentSettings {
   require_payment: boolean;
   payment_deadline_hours: number;
@@ -35,12 +37,12 @@ const PaymentConfigTab: React.FC = () => {
       
       // Cargar estado de conexión y configuración en paralelo
       const [statusResponse, settingsResponse] = await Promise.all([
-        fetch('/api/payments/mp/status', {
+        fetch(`${API_BASE_URL}/api/payments/mp/status`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }),
-        fetch('/api/payments/settings', {
+        fetch(`${API_BASE_URL}/api/payments/settings`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -69,7 +71,7 @@ const PaymentConfigTab: React.FC = () => {
     try {
       setConnecting(true);
       
-      const response = await fetch('/api/payments/mp/connect', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/mp/connect`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -97,7 +99,7 @@ const PaymentConfigTab: React.FC = () => {
     }
 
     try {
-      const response = await fetch('/api/payments/mp/disconnect', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/mp/disconnect`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -121,7 +123,7 @@ const PaymentConfigTab: React.FC = () => {
     try {
       setSavingSettings(true);
 
-      const response = await fetch('/api/payments/settings', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
