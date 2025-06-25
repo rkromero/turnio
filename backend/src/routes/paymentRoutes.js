@@ -2,7 +2,7 @@ const express = require('express');
 const { body, param } = require('express-validator');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 
 // Middleware de autenticación para todas las rutas excepto webhook
 router.use((req, res, next) => {
@@ -10,7 +10,8 @@ router.use((req, res, next) => {
   if (req.path === '/webhook') {
     return next();
   }
-  return authenticateToken(req, res, next);
+  // Usar autenticación sin verificación de suscripción para pagos
+  return authenticateTokenOnly(req, res, next);
 });
 
 // Rutas de configuración de MercadoPago

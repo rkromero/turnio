@@ -101,7 +101,11 @@ const authenticateToken = async (req, res, next) => {
           '/api/subscriptions/current',
           '/api/mercadopago/webhook',
           '/api/auth/profile',
-          '/api/subscriptions/plans'
+          '/api/subscriptions/plans',
+          '/api/payments/mp/connect',
+          '/api/payments/mp/status',
+          '/api/payments/mp/disconnect',
+          '/api/payments/settings'
         ];
         
         // Log para depuración
