@@ -1,14 +1,57 @@
 const { prisma } = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
+const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
+
+const prismaClient = new PrismaClient();
 
 // Log para depuración del token de MercadoPago
 console.log('Access Token MercadoPago:', process.env.MERCADOPAGO_ACCESS_TOKEN);
 
 // MercadoPago SDK v2
-const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
+const mpClient = new MercadoPagoConfig({
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+  options: {
+    timeout: 5000,
+    idempotencyKey: 'abc'
+  }
+});
 
 // Instanciar cliente de MercadoPago
 console.log('🔑 Inicializando MercadoPago con token:', process.env.MERCADOPAGO_ACCESS_TOKEN);
-const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+
+// Estados de suscripción mejorados
+const SUBSCRIPTION_STATES = {
+  ACTIVE: 'ACTIVE',
+  PAYMENT_FAILED: 'PAYMENT_FAILED',
+  SUSPENDED: 'SUSPENDED',
+  GRACE_PERIOD: 'GRACE_PERIOD',
+  CANCELLED: 'CANCELLED'
+};
+
+// Configuración de reintentos
+const RETRY_CONFIG = {
+  maxRetries: 3,           // Máximo 3 intentos
+  retryIntervals: [1, 3, 7], // Día 1, 3 y 7 después del fallo
+  gracePeriodDays: 10      // 10 días de período de gracia
+};
+
+// Función para calcular próxima fecha de cobro
+const calculateNextBillingDate = (currentDate, billingCycle) => {
+  const nextDate = new Date(currentDate);
+  if (billingCycle === 'MONTHLY') {
+    nextDate.setMonth(nextDate.getMonth() + 1);
+  } else {
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
+  }
+  return nextDate;
+};
+
+// Función para calcular fecha de reintento
+const calculateRetryDate = (currentDate, retryNumber) => {
+  const retryDate = new Date(currentDate);
+  retryDate.setDate(retryDate.getDate() + RETRY_CONFIG.retryIntervals[retryNumber - 1]);
+  return retryDate;
+};
 
 // Crear suscripción automática con MercadoPago (cobro recurrente)
 const createAutomaticSubscription = async (req, res) => {
@@ -146,6 +189,59 @@ const createAutomaticSubscription = async (req, res) => {
   }
 };
 
+// === SISTEMA MEJORADO DE MANEJO DE FALLOS ===
+
+// Función para manejar el período de gracia
+const handleGracePeriod = async (subscription) => {
+  try {
+    const now = new Date();
+    const gracePeriodEnd = subscription.gracePeriodEnd;
+    
+    if (now > gracePeriodEnd) {
+      // Se acabó el período de gracia - suspender servicio
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: SUBSCRIPTION_STATES.SUSPENDED,
+          suspendedAt: now
+        }
+      });
+      
+      console.log(`🚫 Servicio suspendido para: ${subscription.business.name}`);
+      
+      // Enviar notificación de suspensión
+      await sendSuspensionNotification(subscription);
+      
+    } else {
+      // Recordatorio durante período de gracia
+      const daysLeft = Math.ceil((gracePeriodEnd - now) / (1000 * 60 * 60 * 24));
+      
+      if ([7, 3, 1].includes(daysLeft)) {
+        await sendGracePeriodReminder(subscription, daysLeft);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error manejando período de gracia:', error);
+  }
+};
+
+// Funciones de notificación (placeholder - implementar con email/SMS)
+const sendGracePeriodNotification = async (subscription, gracePeriodEnd) => {
+  console.log(`📧 Enviando notificación de período de gracia a: ${subscription.business.name} hasta ${gracePeriodEnd.toLocaleDateString()}`);
+  // TODO: Implementar envío de email/SMS
+};
+
+const sendGracePeriodReminder = async (subscription, daysLeft) => {
+  console.log(`📧 Enviando recordatorio de período de gracia (${daysLeft} días restantes) a: ${subscription.business.name}`);
+  // TODO: Implementar envío de email/SMS
+};
+
+const sendSuspensionNotification = async (subscription) => {
+  console.log(`📧 Enviando notificación de suspensión a: ${subscription.business.name}`);
+  // TODO: Implementar envío de email/SMS
+};
+
 // Webhook para suscripciones automáticas
 const handleSubscriptionWebhook = async (req, res) => {
   try {
@@ -239,138 +335,207 @@ const handleSubscriptionWebhook = async (req, res) => {
   }
 };
 
-// Verificar suscripciones vencidas (para ejecutar con cron)
+// === SISTEMA MEJORADO DE MANEJO DE FALLOS ===
+
+// Función para manejar el período de gracia
+const handlePaymentFailure = async (subscription) => {
+  try {
+    console.log(`⚠️ Manejando fallo de pago para: ${subscription.business.name}`);
+    
+    const now = new Date();
+    const retryCount = subscription.retryCount || 0;
+    
+    if (retryCount < RETRY_CONFIG.maxRetries) {
+      // Programar siguiente intento
+      const nextRetryDate = calculateRetryDate(now, retryCount + 1);
+      
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: SUBSCRIPTION_STATES.PAYMENT_FAILED,
+          retryCount: retryCount + 1,
+          lastRetryDate: now,
+          nextRetryDate: nextRetryDate
+        }
+      });
+      
+      console.log(`🔄 Programado reintento ${retryCount + 1}/${RETRY_CONFIG.maxRetries} para: ${nextRetryDate.toLocaleDateString()}`);
+      
+      // Enviar notificación al cliente
+      await sendPaymentFailureNotification(subscription, retryCount + 1);
+      
+    } else {
+      // Se agotaron los reintentos - iniciar período de gracia
+      const gracePeriodEnd = new Date(now);
+      gracePeriodEnd.setDate(gracePeriodEnd.getDate() + RETRY_CONFIG.gracePeriodDays);
+      
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: SUBSCRIPTION_STATES.GRACE_PERIOD,
+          gracePeriodEnd: gracePeriodEnd,
+          retryCount: retryCount + 1
+        }
+      });
+      
+      console.log(`⏰ Iniciando período de gracia hasta: ${gracePeriodEnd.toLocaleDateString()}`);
+      
+      // Enviar notificación de período de gracia
+      await sendGracePeriodNotification(subscription, gracePeriodEnd);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error manejando fallo de pago:', error);
+  }
+};
+
+// Función para manejar el período de gracia
+const handleGracePeriodNotification = async (subscription, gracePeriodEnd) => {
+  console.log(`📧 Enviando notificación de período de gracia a: ${subscription.business.name} hasta ${gracePeriodEnd.toLocaleDateString()}`);
+  // TODO: Implementar envío de email/SMS
+};
+
+// Funciones de notificación (placeholder - implementar con email/SMS)
+const sendPaymentFailureNotification = async (subscription, retryNumber) => {
+  console.log(`📧 Enviando notificación de fallo de pago (intento ${retryNumber}) a: ${subscription.business.name}`);
+  // TODO: Implementar envío de email/SMS
+};
+
+// Verificar suscripciones vencidas (MEJORADO)
 const checkExpiredSubscriptions = async () => {
   try {
     console.log('🔍 Verificando suscripciones vencidas...');
     
     const now = new Date();
     
-    // Buscar suscripciones que deberían renovarse hoy
+    // 1. Buscar suscripciones que deberían renovarse hoy
     const expiredSubscriptions = await prisma.subscription.findMany({
       where: {
-        status: 'ACTIVE',
-        nextBillingDate: {
-          lte: now
-        },
-        planType: {
-          not: 'FREE'
-        }
+        status: SUBSCRIPTION_STATES.ACTIVE,
+        nextBillingDate: { lte: now },
+        planType: { not: 'FREE' }
       },
-      include: {
-        business: true,
-        payments: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
-      }
+      include: { business: true }
     });
 
-    console.log(`📊 Encontradas ${expiredSubscriptions.length} suscripciones para renovar`);
+    // 2. Buscar suscripciones para reintento
+    const retrySubscriptions = await prisma.subscription.findMany({
+      where: {
+        status: SUBSCRIPTION_STATES.PAYMENT_FAILED,
+        nextRetryDate: { lte: now },
+        retryCount: { lt: RETRY_CONFIG.maxRetries }
+      },
+      include: { business: true }
+    });
 
+    // 3. Buscar suscripciones en período de gracia
+    const gracePeriodSubscriptions = await prisma.subscription.findMany({
+      where: {
+        status: SUBSCRIPTION_STATES.GRACE_PERIOD
+      },
+      include: { business: true }
+    });
+
+    console.log(`📊 Suscripciones encontradas - Vencidas: ${expiredSubscriptions.length}, Reintentos: ${retrySubscriptions.length}, Período de gracia: ${gracePeriodSubscriptions.length}`);
+
+    // Procesar suscripciones vencidas
     for (const subscription of expiredSubscriptions) {
       try {
-        console.log(`🔄 Procesando renovación para: ${subscription.business.name} (${subscription.planType})`);
-        
-        // Si tiene suscripción automática de MercadoPago, procesar automáticamente
-        if (subscription.mercadoPagoSubscriptionId) {
-          console.log(`💳 Procesando pago automático para suscripción: ${subscription.mercadoPagoSubscriptionId}`);
-          
-          try {
-            // Procesar el pago automático con MercadoPago
-            const subClient = new Subscription(mpClient);
-            const paymentResponse = await subClient.get({ id: subscription.mercadoPagoSubscriptionId });
-
-            if (paymentResponse.status === 'authorized') {
-              // Crear nuevo pago y actualizar suscripción
-              await prisma.payment.create({
-                data: {
-                  subscriptionId: subscription.id,
-                  amount: subscription.priceAmount,
-                  status: 'APPROVED',
-                  billingCycle: subscription.billingCycle,
-                  paidAt: new Date(),
-                  mercadoPagoPaymentId: paymentResponse.last_payment?.id,
-                  mercadoPagoOrderId: subscription.mercadoPagoSubscriptionId
-                }
-              });
-
-              // Calcular próxima fecha de cobro
-              const nextBillingDate = new Date();
-              if (subscription.billingCycle === 'MONTHLY') {
-                nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-              } else {
-                nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
-              }
-
-              // Actualizar suscripción como activa
-              await prisma.subscription.update({
-                where: { id: subscription.id },
-                data: {
-                  status: 'ACTIVE',
-                  nextBillingDate
-                }
-              });
-
-              console.log(`✅ Pago automático procesado exitosamente para ${subscription.business.name}`);
-            } else {
-              // Si el pago no está autorizado, marcar como fallido
-              await prisma.subscription.update({
-                where: { id: subscription.id },
-                data: { status: 'PAYMENT_FAILED' }
-              });
-              
-              console.log(`⚠️ Pago automático no autorizado para ${subscription.business.name}`);
-            }
-          } catch (error) {
-            console.error(`❌ Error procesando pago automático para ${subscription.business.name}:`, error);
-            // En caso de error, marcar como fallido
-            await prisma.subscription.update({
-              where: { id: subscription.id },
-              data: { status: 'PAYMENT_FAILED' }
-            });
-          }
-        } else {
-          // Sin suscripción automática, marcar como pendiente de pago
-          await prisma.subscription.update({
-            where: { id: subscription.id },
-            data: { status: 'PAYMENT_FAILED' }
-          });
-          
-          console.log(`⚠️ Suscripción sin pago automático marcada como PAYMENT_FAILED`);
-        }
-        
+        console.log(`🔄 Procesando renovación para: ${subscription.business.name}`);
+        await processSubscriptionRenewal(subscription);
       } catch (error) {
-        console.error(`❌ Error procesando renovación para ${subscription.business.name}:`, error);
+        console.error(`❌ Error procesando renovación:`, error);
+        await handlePaymentFailure(subscription);
       }
     }
 
-    console.log('✅ Verificación de suscripciones vencidas completada');
+    // Procesar reintentos
+    for (const subscription of retrySubscriptions) {
+      try {
+        console.log(`🔁 Procesando reintento para: ${subscription.business.name}`);
+        await processSubscriptionRenewal(subscription);
+      } catch (error) {
+        console.error(`❌ Error en reintento:`, error);
+        await handlePaymentFailure(subscription);
+      }
+    }
+
+    // Procesar período de gracia
+    for (const subscription of gracePeriodSubscriptions) {
+      await handleGracePeriod(subscription);
+    }
+
+    console.log('✅ Verificación de suscripciones completada');
     
   } catch (error) {
-    console.error('❌ Error verificando suscripciones vencidas:', error);
+    console.error('❌ Error verificando suscripciones:', error);
+  }
+};
+
+// Función auxiliar para procesar renovación
+const processSubscriptionRenewal = async (subscription) => {
+  if (subscription.mercadoPagoSubscriptionId) {
+    console.log(`💳 Procesando pago automático para: ${subscription.mercadoPagoSubscriptionId}`);
+    
+    const subClient = new Subscription(mpClient);
+    const paymentResponse = await subClient.get({ id: subscription.mercadoPagoSubscriptionId });
+
+    if (paymentResponse.status === 'authorized') {
+      // Crear registro de pago exitoso
+      await prisma.payment.create({
+        data: {
+          subscriptionId: subscription.id,
+          amount: subscription.priceAmount,
+          status: 'APPROVED',
+          billingCycle: subscription.billingCycle,
+          paidAt: new Date(),
+          mercadoPagoPaymentId: paymentResponse.last_payment?.id,
+          mercadoPagoOrderId: subscription.mercadoPagoSubscriptionId
+        }
+      });
+
+      // Actualizar suscripción como activa
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: SUBSCRIPTION_STATES.ACTIVE,
+          nextBillingDate: calculateNextBillingDate(new Date(), subscription.billingCycle),
+          retryCount: 0,
+          lastRetryDate: null,
+          nextRetryDate: null
+        }
+      });
+
+      console.log(`✅ Pago automático exitoso para: ${subscription.business.name}`);
+    } else {
+      throw new Error(`Pago no autorizado: ${paymentResponse.status}`);
+    }
+  } else {
+    throw new Error('Sin suscripción automática configurada');
   }
 };
 
 const handlePaymentSuccess = async (subscriptionId, paymentId, mercadoPagoSubscriptionId) => {
   try {
-    // Log para depuración
     console.log('🔍 Procesando pago exitoso:', {
       subscriptionId,
       paymentId,
       mercadoPagoSubscriptionId
     });
 
-    // Actualizar la suscripción a ACTIVE
     const updatedSubscription = await prisma.subscription.update({
       where: { id: subscriptionId },
       data: {
-        status: 'ACTIVE',
-        mercadoPagoSubscriptionId
+        status: SUBSCRIPTION_STATES.ACTIVE,
+        mercadoPagoSubscriptionId,
+        retryCount: 0,
+        lastRetryDate: null,
+        nextRetryDate: null,
+        gracePeriodEnd: null,
+        suspendedAt: null
       }
     });
 
-    // Log para depuración
     console.log('✅ Suscripción actualizada:', {
       id: updatedSubscription.id,
       status: updatedSubscription.status
@@ -387,5 +552,7 @@ module.exports = {
   createAutomaticSubscription,
   handleSubscriptionWebhook,
   checkExpiredSubscriptions,
-  handlePaymentSuccess
+  handlePaymentSuccess,
+  SUBSCRIPTION_STATES,
+  RETRY_CONFIG
 }; 
