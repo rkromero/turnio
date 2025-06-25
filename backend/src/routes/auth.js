@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { registerBusiness, login, logout, getProfile } = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
+const authController = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -50,5 +51,8 @@ router.post('/login', loginValidation, login);
 // Rutas protegidas
 router.post('/logout', authenticateToken, logout);
 router.get('/profile', authenticateToken, getProfile);
+
+// Ruta para crear usuario de prueba (desarrollo)
+router.post('/create-test-user', authController.createTestUser);
 
 module.exports = router; 

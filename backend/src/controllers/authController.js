@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { hashPassword, comparePassword, generateToken, setTokenCookie, clearTokenCookie, generateBusinessSlug } = require('../utils/auth');
 const { validationResult } = require('express-validator');
+const bcrypt = require('bcrypt');
 
 // Registro de nuevo negocio
 const registerBusiness = async (req, res) => {
@@ -253,9 +254,152 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Crear usuario de prueba (solo para desarrollo)
+const createTestUser = async (req, res) => {
+  try {
+    const { businessName, email, password, phone, address, businessType, planType } = req.body;
+
+    // Verificar si ya existe
+    const existingBusiness = await prisma.business.findUnique({
+      where: { email }
+    });
+
+    if (existingBusiness) {
+      // Eliminar datos existentes
+      await prisma.user.deleteMany({
+        where: { business_id: existingBusiness.id }
+      });
+      
+      await prisma.subscription.deleteMany({
+        where: { business_id: existingBusiness.id }
+      });
+
+      await prisma.service.deleteMany({
+        where: { business_id: existingBusiness.id }
+      });
+
+      await prisma.business.delete({
+        where: { id: existingBusiness.id }
+      });
+    }
+
+    // Hashear contraseña
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Crear negocio
+    const business = await prisma.business.create({
+      data: {
+        business_name: businessName,
+        email,
+        phone,
+        address,
+        business_type: businessType,
+        subscription_status: 'ACTIVE',
+        plan_type: planType,
+        subscription_start: new Date(),
+        subscription_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
+        subscription_auto_renew: true,
+        mp_connected: false
+      }
+    });
+
+    // Crear usuario administrador
+    const user = await prisma.user.create({
+      data: {
+        name: 'Usuario Prueba',
+        email,
+        password: hashedPassword,
+        role: 'admin',
+        business_id: business.id,
+        is_active: true
+      }
+    });
+
+    // Crear suscripción activa
+    const subscription = await prisma.subscription.create({
+      data: {
+        business_id: business.id,
+        plan_type: planType,
+        status: 'ACTIVE',
+        start_date: new Date(),
+        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        auto_renew: true,
+        payment_method: 'credit_card',
+        amount: planType === 'PREMIUM' ? 29.99 : planType === 'BASIC' ? 19.99 : 0,
+        currency: 'USD',
+        mp_subscription_id: 'test_subscription_' + Date.now()
+      }
+    });
+
+    // Crear algunos servicios de ejemplo
+    await prisma.service.createMany({
+      data: [
+        {
+          business_id: business.id,
+          name: 'Corte de Cabello',
+          description: 'Corte moderno y profesional',
+          duration: 30,
+          price: 25.00,
+          is_active: true
+        },
+        {
+          business_id: business.id,
+          name: 'Tinte',
+          description: 'Coloración completa',
+          duration: 90,
+          price: 65.00,
+          is_active: true
+        },
+        {
+          business_id: business.id,
+          name: 'Manicura',
+          description: 'Cuidado de uñas',
+          duration: 45,
+          price: 20.00,
+          is_active: true
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: 'Usuario de prueba creado exitosamente',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      },
+      business: {
+        id: business.id,
+        business_name: business.business_name,
+        email: business.email,
+        plan_type: business.plan_type,
+        subscription_status: business.subscription_status
+      },
+      subscription: {
+        id: subscription.id,
+        plan_type: subscription.plan_type,
+        status: subscription.status,
+        start_date: subscription.start_date,
+        end_date: subscription.end_date
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando usuario de prueba:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   registerBusiness,
   login,
   logout,
   getProfile,
+  createTestUser
 }; 

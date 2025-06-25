@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Usuario de Prueba - TurnIO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            margin-bottom: 20px;
+        }
+        .credentials {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Crear Usuario de Prueba - TurnIO</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Información:</strong><br>
+            Esta herramienta creará un usuario de prueba con suscripción PREMIUM activa para resolver los problemas de autenticación 403.
+        </div>
+
+        <form id="createUserForm">
+            <div class="form-group">
+                <label for="businessName">Nombre del Negocio:</label>
+                <input type="text" id="businessName" value="Negocio de Prueba TurnIO" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="prueba@turnio.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" value="123456" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Teléfono:</label>
+                <input type="text" id="phone" value="+1234567890" required>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Dirección:</label>
+                <input type="text" id="address" value="Calle de Prueba 123" required>
+            </div>
+
+            <div class="form-group">
+                <label for="businessType">Tipo de Negocio:</label>
+                <select id="businessType" required>
+                    <option value="salon">Salón de Belleza</option>
+                    <option value="clinic">Clínica</option>
+                    <option value="spa">Spa</option>
+                    <option value="gym">Gimnasio</option>
+                    <option value="other">Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="planType">Plan:</label>
+                <select id="planType" required>
+                    <option value="PREMIUM">PREMIUM (Recomendado)</option>
+                    <option value="BASIC">BASIC</option>
+                    <option value="FREE">FREE</option>
+                </select>
+            </div>
+
+            <button type="submit" id="createBtn">🚀 Crear Usuario de Prueba</button>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://turnio-backend-production.up.railway.app';
+
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const createBtn = document.getElementById('createBtn');
+            const resultDiv = document.getElementById('result');
+            
+            createBtn.disabled = true;
+            createBtn.textContent = '⏳ Creando usuario...';
+            resultDiv.innerHTML = '';
+
+            try {
+                const formData = {
+                    businessName: document.getElementById('businessName').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    phone: document.getElementById('phone').value,
+                    address: document.getElementById('address').value,
+                    businessType: document.getElementById('businessType').value,
+                    planType: document.getElementById('planType').value
+                };
+
+                console.log('📤 Enviando datos:', formData);
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/create-test-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                console.log('📥 Respuesta:', data);
+
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+✅ USUARIO DE PRUEBA CREADO EXITOSAMENTE
+
+📧 Email: ${data.user.email}
+🔑 Password: ${formData.password}
+💼 Plan: ${data.subscription.plan_type} (Activo)
+🏢 Negocio: ${data.business.business_name}
+🆔 Business ID: ${data.business.id}
+🆔 User ID: ${data.user.id}
+
+🌐 Frontend: https://turnio-frontend-production.up.railway.app
+🚀 Puedes hacer login ahora con estas credenciales
+                        </div>
+                        
+                        <div class="credentials">
+                            <strong>🔐 Credenciales para Login:</strong><br>
+                            Email: <strong>${data.user.email}</strong><br>
+                            Password: <strong>${formData.password}</strong>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+❌ ERROR CREANDO USUARIO
+
+${data.message || 'Error desconocido'}
+
+Detalles:
+${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="result error">
+❌ ERROR DE CONEXIÓN
+
+${error.message}
+
+Verifica que el backend esté funcionando:
+${API_BASE_URL}/health
+                    </div>
+                `;
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = '🚀 Crear Usuario de Prueba';
+            }
+        });
+
+        // Verificar que el backend esté funcionando al cargar la página
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Backend funcionando:', data.message);
+                } else {
+                    console.warn('⚠️ Backend respondió con error:', data);
+                }
+            } catch (error) {
+                console.error('❌ Backend no responde:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="result error">
+⚠️ ADVERTENCIA: No se puede conectar al backend
+
+URL: ${API_BASE_URL}
+Error: ${error.message}
+
+Verifica que Railway esté funcionando correctamente.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html> 
