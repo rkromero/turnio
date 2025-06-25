@@ -67,4 +67,7 @@ router.put('/settings',
   paymentController.updatePaymentSettings
 );
 
+// Callback de OAuth de MercadoPago
+router.post('/mp/callback', paymentController.handleOAuthCallback);
+
 module.exports = router; 

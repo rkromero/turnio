@@ -10,6 +10,7 @@ import BookingPage from './pages/BookingPage';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailure from './pages/PaymentFailure';
 import PaymentPending from './pages/PaymentPending';
+import PaymentCallback from './pages/PaymentCallback';
 import PlanSelection from './pages/PlanSelection';
 
 // Componente para rutas protegidas
@@ -73,6 +74,16 @@ function AppRoutes() {
       <Route path="/subscription/success" element={<PaymentSuccess />} />
       <Route path="/subscription/failure" element={<PaymentFailure />} />
       <Route path="/subscription/pending" element={<PaymentPending />} />
+      
+      {/* Callback de MercadoPago (protegido) */}
+      <Route 
+        path="/dashboard/settings/payments/callback" 
+        element={
+          <ProtectedRoute>
+            <PaymentCallback />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Ruta para selección de planes (protegida) */}
       <Route 

@@ -25,7 +25,7 @@ class MercadoPagoService {
       redirect_uri: this.redirectUri
     });
 
-    // URL de autorización sin platform_id
+    // URL de autorización según documentación oficial
     return `https://auth.mercadopago.com.ar/authorization?${params.toString()}`;
   }
 
@@ -41,20 +41,22 @@ class MercadoPagoService {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
+          grant_type: 'authorization_code',
           client_id: this.clientId,
           client_secret: this.clientSecret,
           code: code,
-          grant_type: 'authorization_code',
           redirect_uri: this.redirectUri
         })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`MP OAuth Error: ${errorData.message || response.statusText}`);
+        const errorText = await response.text();
+        console.error('MP OAuth Error Response:', errorText);
+        throw new Error(`MP OAuth Error ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Tokens obtenidos exitosamente de MercadoPago');
       
       return {
         access_token: data.access_token,

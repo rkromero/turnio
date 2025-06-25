@@ -384,6 +384,62 @@ const getPaymentSettings = async (req, res) => {
   }
 };
 
+// Manejar callback de OAuth de MercadoPago
+const handleOAuthCallback = async (req, res) => {
+  try {
+    const { code, state } = req.body;
+    console.log('🔍 Callback OAuth recibido:', { code: code ? 'PRESENTE' : 'AUSENTE', state });
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Código de autorización no proporcionado'
+      });
+    }
+
+    // Extraer businessId del state
+    const businessId = state ? state.split('_')[1] : null;
+    if (!businessId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Estado de autorización inválido'
+      });
+    }
+
+    console.log('🔍 BusinessId extraído del state:', businessId);
+
+    // Intercambiar código por tokens
+    const credentials = await mercadoPagoService.exchangeCodeForTokens(code);
+    console.log('✅ Tokens obtenidos de MercadoPago');
+
+    // Guardar credenciales en la base de datos
+    const updatedBusiness = await mercadoPagoService.saveBusinessCredentials(businessId, credentials);
+    console.log('✅ Credenciales guardadas en base de datos');
+
+    res.json({
+      success: true,
+      message: 'MercadoPago conectado exitosamente',
+      data: {
+        connected: true,
+        business: {
+          id: updatedBusiness.id,
+          name: updatedBusiness.business_name,
+          mp_connected: updatedBusiness.mp_connected,
+          mp_connected_at: updatedBusiness.mp_connected_at
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en callback OAuth:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error procesando la autorización de MercadoPago',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   connectMercadoPago,
   mercadoPagoCallback,
@@ -394,5 +450,6 @@ module.exports = {
   getPaymentStatus,
   getPaymentHistory,
   updatePaymentSettings,
-  getPaymentSettings
+  getPaymentSettings,
+  handleOAuthCallback
 }; 
