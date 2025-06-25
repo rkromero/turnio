@@ -38,10 +38,15 @@ const api = axios.create({
 
 // Interceptor para agregar el token en el header Authorization
 api.interceptors.request.use((config) => {
-  // Obtener el token de la cookie
+  // Obtener el token de la cookie primero
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+  let token = tokenCookie ? tokenCookie.split('=')[1] : null;
+
+  // Si no hay token en cookie, usar localStorage como respaldo
+  if (!token) {
+    token = localStorage.getItem('token');
+  }
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -82,8 +87,15 @@ export const authService = {
   },
 
   login: async (data: LoginForm): Promise<AuthResponse> => {
-    const response = await api.post<ApiResponse<{user: User, business: Business}>>('/auth/login', data);
-    const { user, business } = response.data.data!;
+    const response = await api.post<ApiResponse<{user: User, business: Business, token?: string}>>('/auth/login', data);
+    const { user, business, token } = response.data.data!;
+    
+    // Guardar token en localStorage como respaldo si viene en la respuesta
+    if (token) {
+      localStorage.setItem('token', token);
+      console.log('🔑 Token guardado en localStorage:', token.substring(0, 20) + '...');
+    }
+    
     return { user, business };
   },
 

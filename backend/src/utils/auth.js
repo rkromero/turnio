@@ -43,7 +43,7 @@ const setTokenCookie = (res, token) => {
   const cookieOptions = {
     httpOnly: true, // No accesible desde JavaScript del cliente
     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Necesario para cross-domain cookies
+    sameSite: 'lax', // Cambiar a 'lax' para mejor compatibilidad
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en milisegundos
     path: '/',
   };
@@ -53,7 +53,11 @@ const setTokenCookie = (res, token) => {
     cookieOptions.domain = process.env.COOKIE_DOMAIN;
   }
 
+  console.log('🍪 Configurando cookie con opciones:', cookieOptions);
   res.cookie('token', token, cookieOptions);
+  
+  // También enviar el token en la respuesta para debug
+  console.log('🔑 Token generado:', token.substring(0, 20) + '...');
 };
 
 // Limpiar cookie de token

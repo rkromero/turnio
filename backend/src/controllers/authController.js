@@ -186,7 +186,8 @@ const login = async (req, res) => {
           email: user.email,
           role: user.role
         },
-        business: user.business
+        business: user.business,
+        token: token // Agregar token a la respuesta
       }
     });
 
