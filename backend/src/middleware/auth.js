@@ -78,22 +78,39 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Verificar estado de la suscripción
-    if (user.business?.subscription) {
-      const subscription = user.business.subscription;
-      
-      // Verificar si la suscripción ha vencido por fecha
+    // ✅ VERIFICAR ESTADO DE LA SUSCRIPCIÓN MEJORADO
+    const business = user.business;
+    const subscription = business?.subscription;
+
+    // Si no hay suscripción y el plan no es FREE, hay un problema
+    if (!subscription && business?.planType !== 'FREE') {
+      console.log('⚠️ Usuario sin suscripción en plan pagado:', business?.planType);
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes una suscripción activa. Por favor, contacta soporte.',
+        requiresPayment: true
+      });
+    }
+
+    // Si hay suscripción, verificar su estado
+    if (subscription) {
       const now = new Date();
-      const isExpiredByDate = subscription.nextBillingDate && subscription.nextBillingDate < now;
       
-      // Verificar si la suscripción está en estado problemático
+      // Para planes FREE, siempre permitir acceso (no tienen fecha de vencimiento)
+      if (subscription.planType === 'FREE') {
+        console.log('✅ Usuario con suscripción FREE activa');
+        req.user = user;
+        req.businessId = user.businessId;
+        return next();
+      }
+      
+      // Para planes pagados, verificar estado y fechas
+      const isExpiredByDate = subscription.nextBillingDate && subscription.nextBillingDate < now;
       const isProblematicStatus = subscription.status === 'PAYMENT_FAILED' || 
                                  subscription.status === 'EXPIRED' || 
                                  subscription.status === 'SUSPENDED';
       
-      // Si la suscripción no es gratuita y tiene problemas
-      if (subscription.planType !== 'FREE' && (isProblematicStatus || isExpiredByDate)) {
-        
+      if (isProblematicStatus || isExpiredByDate) {
         // Permitir acceso a endpoints de pago y suscripción
         const allowedEndpoints = [
           '/api/mercadopago/create-payment',
@@ -108,7 +125,6 @@ const authenticateToken = async (req, res, next) => {
           '/api/payments/settings'
         ];
         
-        // Log para depuración
         console.log('🔍 Ruta actual:', req.originalUrl);
         console.log('🔍 Estado suscripción:', subscription.status);
         console.log('🔍 Fecha próximo cobro:', subscription.nextBillingDate);
@@ -133,6 +149,7 @@ const authenticateToken = async (req, res, next) => {
       }
     }
 
+    // Si llegamos aquí, el usuario tiene acceso válido
     req.user = user;
     req.businessId = user.businessId;
     next();

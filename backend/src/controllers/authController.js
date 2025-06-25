@@ -47,7 +47,7 @@ const registerBusiness = async (req, res) => {
     // Hash de la contraseña
     const hashedPassword = await hashPassword(password);
 
-    // Crear negocio y usuario admin en una transacción
+    // Crear negocio, usuario admin y suscripción FREE en una transacción
     const result = await prisma.$transaction(async (tx) => {
       // Crear el negocio
       const business = await tx.business.create({
@@ -91,7 +91,22 @@ const registerBusiness = async (req, res) => {
         }
       });
 
-      return { business, user, mainBranch };
+      // ✅ CREAR SUSCRIPCIÓN FREE AUTOMÁTICAMENTE
+      const subscription = await tx.subscription.create({
+        data: {
+          businessId: business.id,
+          planType: 'FREE',
+          status: 'ACTIVE',
+          startDate: new Date(),
+          // Para plan FREE no hay fecha de vencimiento (null)
+          nextBillingDate: null,
+          priceAmount: 0,
+          billingCycle: 'MONTHLY',
+          autoRenew: false // Plan FREE no se auto-renueva
+        }
+      });
+
+      return { business, user, mainBranch, subscription };
     });
 
     // Generar token JWT
@@ -113,6 +128,11 @@ const registerBusiness = async (req, res) => {
           name: result.user.name,
           email: result.user.email,
           role: result.user.role
+        },
+        subscription: {
+          id: result.subscription.id,
+          planType: result.subscription.planType,
+          status: result.subscription.status
         },
         token: token
       }
