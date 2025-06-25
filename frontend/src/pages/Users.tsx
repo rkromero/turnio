@@ -16,9 +16,19 @@ import {
   Clock
 } from 'lucide-react';
 import { UserWithStats, UserFilters, UserStats, CreateUserForm } from '../types';
+
+interface PlanLimitDetails {
+  currentPlan: string;
+  currentUsers: number;
+  maxUsers: number;
+  nextPlan: string;
+  nextPlanUsers: number;
+  upgradeRequired: boolean;
+}
 import { userService } from '../services/userService';
 import { UserModal } from '../components/users/UserModal';
 import { UserStatsCard } from '../components/users/UserStatsCard';
+import PlanLimitModal from '../components/PlanLimitModal';
 import { toast } from 'react-hot-toast';
 
 const Users: React.FC = () => {
@@ -33,6 +43,8 @@ const Users: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithStats | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'stats'>('list');
+  const [showPlanLimitModal, setShowPlanLimitModal] = useState(false);
+  const [planLimitData, setPlanLimitData] = useState<PlanLimitDetails | null>(null);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -69,9 +81,25 @@ const Users: React.FC = () => {
       loadUsers();
       loadStats();
       setShowModal(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error creando usuario';
-      toast.error(message);
+    } catch (error: unknown) {
+      // Verificar si es un error de límite de plan
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: string; details?: PlanLimitDetails } } };
+        if (axiosError.response?.data?.error === 'PLAN_LIMIT_EXCEEDED') {
+          const details = axiosError.response.data.details;
+          if (details) {
+            setPlanLimitData(details);
+            setShowPlanLimitModal(true);
+            setShowModal(false);
+          }
+        } else {
+          const message = error instanceof Error ? error.message : 'Error creando usuario';
+          toast.error(message);
+        }
+      } else {
+        const message = error instanceof Error ? error.message : 'Error creando usuario';
+        toast.error(message);
+      }
       throw error;
     }
   };
@@ -445,6 +473,23 @@ const Users: React.FC = () => {
             setShowModal(false);
             setSelectedUser(null);
           }}
+        />
+      )}
+
+      {/* Plan Limit Modal */}
+      {showPlanLimitModal && planLimitData && (
+        <PlanLimitModal
+          isOpen={showPlanLimitModal}
+          onClose={() => {
+            setShowPlanLimitModal(false);
+            setPlanLimitData(null);
+          }}
+          currentPlan={planLimitData.currentPlan}
+          currentUsers={planLimitData.currentUsers}
+          maxUsers={planLimitData.maxUsers}
+          nextPlan={planLimitData.nextPlan}
+          nextPlanUsers={planLimitData.nextPlanUsers}
+          feature="users"
         />
       )}
     </div>

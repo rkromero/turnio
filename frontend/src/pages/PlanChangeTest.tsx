@@ -77,13 +77,14 @@ const PlanChangeTest: React.FC = () => {
     console.log('🔍 Debug - subscription:', subscription);
     console.log('🔍 Debug - selectedPlan:', selectedPlan);
     
-    if (!subscription || !selectedPlan) {
-      console.log('❌ Debug - Validación falló: subscription o selectedPlan vacío');
+    if (!selectedPlan) {
+      console.log('❌ Debug - Validación falló: selectedPlan vacío');
       error('Selecciona un plan para cambiar');
       return;
     }
 
-    if (selectedPlan === subscription.planType) {
+    // Si hay suscripción, verificar que no sea el mismo plan
+    if (subscription && selectedPlan === subscription.planType) {
       console.log('❌ Debug - Mismo plan seleccionado');
       error('Ya tienes este plan activo');
       return;
@@ -91,13 +92,25 @@ const PlanChangeTest: React.FC = () => {
 
     try {
       setChanging(true);
-      console.log(`🔄 Cambiando plan: ${subscription.planType} → ${selectedPlan}`);
-      console.log(`🔄 Subscription ID: ${subscription.id}`);
       
-      const result = await subscriptionService.changePlan(subscription.id, selectedPlan);
-      console.log('✅ Resultado del cambio:', result);
-      
-      success(result.message || 'Plan cambiado exitosamente');
+      if (subscription) {
+        // Usuario con suscripción existente
+        console.log(`🔄 Cambiando plan: ${subscription.planType} → ${selectedPlan}`);
+        console.log(`🔄 Subscription ID: ${subscription.id}`);
+        
+        const result = await subscriptionService.changePlan(subscription.id, selectedPlan);
+        console.log('✅ Resultado del cambio:', result);
+        
+        success(result.message || 'Plan cambiado exitosamente');
+      } else {
+        // Usuario sin suscripción (Plan Gratuito)
+        console.log(`🔄 Creando nueva suscripción: FREE → ${selectedPlan}`);
+        
+        const result = await subscriptionService.changePlan(null, selectedPlan);
+        console.log('✅ Resultado de la creación:', result);
+        
+        success(result.message || 'Suscripción creada exitosamente');
+      }
       
       // Recargar suscripción
       await loadSubscription();
@@ -194,7 +207,7 @@ const PlanChangeTest: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Estado Actual</h2>
         
-        {subscription && (
+        {subscription ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -222,6 +235,30 @@ const PlanChangeTest: React.FC = () => {
                 </pre>
               </div>
             )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Plan Actual</p>
+                <p className="text-lg font-semibold">Plan Gratuito (FREE)</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-medium">Activo</span>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-sm text-gray-600">Estado</p>
+              <p className="text-lg font-semibold">Sin suscripción de pago</p>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Estás en el Plan Gratuito.</strong> Puedes seleccionar un plan de pago para crear una suscripción.
+              </p>
+            </div>
           </div>
         )}
       </div>

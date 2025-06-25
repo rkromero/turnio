@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualizar Base de Datos - Sistema de Fallos de Pago</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .sql-box {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .step {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .copy-btn {
+            background: #4caf50;
+            font-size: 12px;
+            padding: 8px 16px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Actualizar Base de Datos</h1>
+            <p>Sistema Mejorado de Manejo de Fallos de Pago</p>
+        </div>
+
+        <div class="card">
+            <h2>📋 Instrucciones Paso a Paso</h2>
+            
+            <div class="step">
+                <strong>Paso 1:</strong> Ve a Railway Dashboard → Proyecto "gentle-beauty" → PostgreSQL Service → "Query"
+            </div>
+            
+            <div class="step">
+                <strong>Paso 2:</strong> Copia y pega el siguiente script SQL en el editor de consultas
+            </div>
+            
+            <div class="step">
+                <strong>Paso 3:</strong> Ejecuta el script haciendo clic en "Run Query"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🗄️ Script de Actualización</h2>
+            
+            <div class="warning">
+                <strong>⚠️ IMPORTANTE:</strong> Este script es seguro y no elimina datos existentes. Solo agrega nuevas columnas.
+            </div>
+
+            <button class="copy-btn" onclick="copySQL()">📋 Copiar Script</button>
+            
+            <div class="sql-box" id="sqlScript">-- =====================================================
+-- SISTEMA MEJORADO DE MANEJO DE FALLOS DE PAGO
+-- =====================================================
+
+-- 1. Agregar nuevas columnas para reintentos y período de gracia
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "retryCount" INTEGER DEFAULT 0;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "lastRetryDate" TIMESTAMP(3);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "nextRetryDate" TIMESTAMP(3);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "gracePeriodEnd" TIMESTAMP(3);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "suspendedAt" TIMESTAMP(3);
+
+-- 2. Crear índices para optimizar las consultas
+CREATE INDEX IF NOT EXISTS "idx_subscriptions_retry" ON subscriptions("status", "nextRetryDate") 
+WHERE "status" = 'PAYMENT_FAILED';
+
+CREATE INDEX IF NOT EXISTS "idx_subscriptions_grace" ON subscriptions("status", "gracePeriodEnd") 
+WHERE "status" = 'GRACE_PERIOD';
+
+CREATE INDEX IF NOT EXISTS "idx_subscriptions_billing" ON subscriptions("status", "nextBillingDate") 
+WHERE "status" = 'ACTIVE';
+
+-- 3. Verificar que las columnas se agregaron correctamente
+SELECT column_name, data_type, is_nullable, column_default 
+FROM information_schema.columns 
+WHERE table_name = 'subscriptions' 
+AND column_name IN ('retryCount', 'lastRetryDate', 'nextRetryDate', 'gracePeriodEnd', 'suspendedAt')
+ORDER BY column_name;</div>
+        </div>
+
+        <div class="card">
+            <h2>✅ Verificar Resultados</h2>
+            
+            <p>Después de ejecutar el script, deberías ver:</p>
+            
+            <div class="success">
+                <strong>✅ Resultado esperado:</strong>
+                <pre>column_name      | data_type                   | is_nullable | column_default
+gracePeriodEnd   | timestamp(3) without time zone | YES         | 
+lastRetryDate    | timestamp(3) without time zone | YES         | 
+nextRetryDate    | timestamp(3) without time zone | YES         | 
+retryCount       | integer                        | YES         | 0
+suspendedAt      | timestamp(3) without time zone | YES         |</pre>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎯 ¿Qué hace cada columna?</h2>
+            
+            <div style="margin: 15px 0;">
+                <strong>retryCount:</strong> Contador de intentos de cobro (máximo 3)
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>lastRetryDate:</strong> Fecha del último intento de cobro
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>nextRetryDate:</strong> Fecha programada para el próximo intento
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>gracePeriodEnd:</strong> Fecha de finalización del período de gracia
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>suspendedAt:</strong> Fecha cuando se suspendió el servicio
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🚀 Después de Actualizar</h2>
+            
+            <div class="success">
+                <strong>¡Sistema Activado!</strong> Tu sistema ahora tiene:
+                <ul>
+                    <li>🔄 <strong>3 reintentos automáticos</strong> (días 1, 3, 7)</li>
+                    <li>⏰ <strong>10 días de período de gracia</strong></li>
+                    <li>📧 <strong>Notificaciones automáticas</strong> en cada paso</li>
+                    <li>🎯 <strong>Recuperación inmediata</strong> al pagar</li>
+                </ul>
+            </div>
+            
+            <div class="step">
+                <strong>Próximo paso:</strong> El sistema comenzará a usar estas funciones automáticamente en el próximo ciclo de verificación (cada 6 horas).
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copySQL() {
+            const sqlScript = document.getElementById('sqlScript').textContent;
+            navigator.clipboard.writeText(sqlScript).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copiado!';
+                btn.style.background = '#4caf50';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#4caf50';
+                }, 2000);
+            }).catch(err => {
+                alert('Error copiando: ' + err);
+            });
+        }
+    </script>
+</body>
+</html> 

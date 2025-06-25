@@ -188,10 +188,10 @@ class SubscriptionService {
     }
   }
 
-  // Cambiar plan de suscripción
-  async changePlan(subscriptionId: string, newPlanType: string) {
+  // Cambiar plan de suscripción (maneja usuarios con y sin suscripción)
+  async changePlan(subscriptionId: string | null, newPlanType: string) {
     try {
-      console.log(`🔄 Cambiando plan: ${subscriptionId} → ${newPlanType}`);
+      console.log(`🔄 Cambiando plan: ${subscriptionId || 'sin suscripción'} → ${newPlanType}`);
       const response = await this.api.post('/subscriptions/change-plan', {
         subscriptionId,
         newPlanType

@@ -508,7 +508,7 @@ const runSubscriptionValidations = async (req, res) => {
   }
 };
 
-// Endpoint para cambiar de plan
+// Endpoint para cambiar de plan (maneja usuarios con y sin suscripción)
 const changeSubscriptionPlan = async (req, res) => {
   try {
     const { subscriptionId, newPlanType } = req.body;
@@ -521,14 +521,54 @@ const changeSubscriptionPlan = async (req, res) => {
       });
     }
 
-    if (!subscriptionId || !newPlanType) {
+    if (!newPlanType) {
       return res.status(400).json({
         success: false,
-        message: 'Se requiere subscriptionId y newPlanType'
+        message: 'Se requiere newPlanType'
       });
     }
 
-    console.log(`🔄 Usuario ${user.email} solicitando cambio de plan: ${subscriptionId} → ${newPlanType}`);
+    console.log(`🔄 Usuario ${user.email} solicitando cambio de plan a: ${newPlanType}`);
+
+    // Si no hay subscriptionId, es un usuario en plan gratuito que quiere crear suscripción
+    if (!subscriptionId) {
+      console.log('📝 Usuario sin suscripción, creando nueva suscripción...');
+      
+      // Verificar que el negocio existe y está en plan gratuito
+      const business = await prisma.business.findUnique({
+        where: { id: user.businessId },
+        include: { subscription: true }
+      });
+
+      if (!business) {
+        return res.status(404).json({
+          success: false,
+          message: 'Negocio no encontrado'
+        });
+      }
+
+      if (business.subscription) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya tienes una suscripción activa. Usa el endpoint de cambio de plan.'
+        });
+      }
+
+      // Crear nueva suscripción
+      const createResult = await createSubscription({
+        body: {
+          businessId: user.businessId,
+          planType: newPlanType,
+          billingCycle: 'MONTHLY'
+        },
+        user
+      }, res);
+
+      return; // createSubscription ya maneja la respuesta
+    }
+
+    // Usuario con suscripción existente
+    console.log(`🔄 Usuario con suscripción existente: ${subscriptionId} → ${newPlanType}`);
 
     const result = await PlanChangeService.changeSubscriptionPlan(
       subscriptionId, 

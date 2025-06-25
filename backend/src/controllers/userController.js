@@ -228,7 +228,16 @@ const createUser = async (req, res) => {
       console.log(`⚠️ Límite de usuarios alcanzado: ${activeUsersCount}/${userLimit}`);
       return res.status(400).json({
         success: false,
-        message: `Has alcanzado el límite de usuarios de tu plan ${business.planType} (${userLimit} usuarios). Considera actualizar tu plan.`
+        message: `No puedes crear más usuarios en el Plan ${business.planType}`,
+        error: 'PLAN_LIMIT_EXCEEDED',
+        details: {
+          currentPlan: business.planType,
+          currentUsers: activeUsersCount,
+          maxUsers: userLimit,
+          nextPlan: business.planType === 'FREE' ? 'BASIC' : 'PREMIUM',
+          nextPlanUsers: business.planType === 'FREE' ? 3 : 10,
+          upgradeRequired: true
+        }
       });
     }
 
