@@ -160,7 +160,17 @@ const createAppointment = async (req, res) => {
     if (appointmentLimit !== -1 && currentMonthAppointments >= appointmentLimit) {
       return res.status(400).json({
         success: false,
-        message: `Has alcanzado el límite de citas de tu plan ${business.planType} (${appointmentLimit} citas por mes). Considera actualizar tu plan.`
+        message: `No puedes crear más citas en el Plan ${business.planType}`,
+        error: 'PLAN_LIMIT_EXCEEDED',
+        details: {
+          currentPlan: business.planType,
+          currentAppointments: currentMonthAppointments,
+          maxAppointments: appointmentLimit,
+          nextPlan: business.planType === 'FREE' ? 'BASIC' : business.planType === 'BASIC' ? 'PREMIUM' : 'ENTERPRISE',
+          nextPlanAppointments: business.planType === 'FREE' ? 100 : business.planType === 'BASIC' ? 500 : -1,
+          upgradeRequired: true,
+          feature: 'appointments'
+        }
       });
     }
 

@@ -1,57 +1,84 @@
 import React from 'react';
-import { X, Crown, ArrowRight, Users, Zap } from 'lucide-react';
+import { X, Crown, ArrowRight, Users, Zap, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+export interface PlanLimitDetails {
+  currentPlan: string;
+  feature: string;
+  upgradeRequired: boolean;
+  nextPlan: string;
+  
+  // Para usuarios
+  currentUsers?: number;
+  maxUsers?: number;
+  nextPlanUsers?: number;
+  
+  // Para servicios
+  currentServices?: number;
+  maxServices?: number;
+  nextPlanServices?: number;
+  
+  // Para citas
+  currentAppointments?: number;
+  maxAppointments?: number;
+  nextPlanAppointments?: number;
+}
 
 interface PlanLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPlan: string;
-  currentUsers: number;
-  maxUsers: number;
-  nextPlan: string;
-  nextPlanUsers: number;
-  feature: 'users' | 'services' | 'appointments';
+  details: PlanLimitDetails;
 }
 
 const PlanLimitModal: React.FC<PlanLimitModalProps> = ({
   isOpen,
   onClose,
-  currentPlan,
-  currentUsers,
-  maxUsers,
-  nextPlan,
-  nextPlanUsers,
-  feature = 'users'
+  details
 }) => {
   const navigate = useNavigate();
 
   if (!isOpen) return null;
 
-  const featureConfig = {
-    users: {
-      icon: <Users className="w-8 h-8 text-purple-600" />,
-      title: 'No puedes crear más usuarios',
-      description: 'Has alcanzado el límite de usuarios de tu plan actual',
-      current: `${currentUsers}/${maxUsers} usuarios`,
-      next: `Hasta ${nextPlanUsers} usuarios`
-    },
-    services: {
-      icon: <Zap className="w-8 h-8 text-blue-600" />,
-      title: 'No puedes crear más servicios',
-      description: 'Has alcanzado el límite de servicios de tu plan actual',
-      current: `${currentUsers}/${maxUsers} servicios`,
-      next: `Hasta ${nextPlanUsers} servicios`
-    },
-    appointments: {
-      icon: <Crown className="w-8 h-8 text-amber-600" />,
-      title: 'No puedes crear más citas',
-      description: 'Has alcanzado el límite de citas de tu plan actual',
-      current: `${currentUsers}/${maxUsers} citas/mes`,
-      next: `Hasta ${nextPlanUsers} citas/mes`
+  const { feature, currentPlan, nextPlan } = details;
+
+  const getFeatureConfig = () => {
+    switch (feature) {
+      case 'users':
+        return {
+          icon: <Users className="w-8 h-8 text-purple-600" />,
+          title: 'No puedes crear más usuarios',
+          description: 'Has alcanzado el límite de usuarios de tu plan actual',
+          current: `${details.currentUsers}/${details.maxUsers} usuarios`,
+          next: details.nextPlanUsers === -1 ? 'Usuarios ilimitados' : `Hasta ${details.nextPlanUsers} usuarios`
+        };
+      case 'services':
+        return {
+          icon: <Zap className="w-8 h-8 text-blue-600" />,
+          title: 'No puedes crear más servicios',
+          description: 'Has alcanzado el límite de servicios de tu plan actual',
+          current: `${details.currentServices}/${details.maxServices} servicios`,
+          next: details.nextPlanServices === -1 ? 'Servicios ilimitados' : `Hasta ${details.nextPlanServices} servicios`
+        };
+      case 'appointments':
+        return {
+          icon: <Calendar className="w-8 h-8 text-amber-600" />,
+          title: 'No puedes crear más citas',
+          description: 'Has alcanzado el límite de citas de tu plan actual',
+          current: `${details.currentAppointments}/${details.maxAppointments} citas/mes`,
+          next: details.nextPlanAppointments === -1 ? 'Citas ilimitadas' : `Hasta ${details.nextPlanAppointments} citas/mes`
+        };
+      default:
+        return {
+          icon: <Crown className="w-8 h-8 text-gray-600" />,
+          title: 'Límite de plan alcanzado',
+          description: 'Has alcanzado el límite de tu plan actual',
+          current: 'Límite alcanzado',
+          next: 'Más funciones disponibles'
+        };
     }
   };
 
-  const config = featureConfig[feature];
+  const config = getFeatureConfig();
 
   const handleUpgrade = () => {
     navigate('/dashboard/settings?tab=plan');

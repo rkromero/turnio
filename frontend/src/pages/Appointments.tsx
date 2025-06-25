@@ -5,7 +5,9 @@ import AppointmentModal from '../components/AppointmentModal';
 import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import CalendarView from '../components/CalendarView';
+import PlanLimitModal, { PlanLimitDetails } from '../components/PlanLimitModal';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
+import { toast } from 'react-hot-toast';
 import { 
   Plus, 
   Calendar, 
@@ -46,6 +48,8 @@ const Appointments: React.FC = () => {
     status: '',
     serviceId: ''
   });
+  const [showPlanLimitModal, setShowPlanLimitModal] = useState(false);
+  const [planLimitData, setPlanLimitData] = useState<PlanLimitDetails | null>(null);
   const isMobile = useIsMobileSimple();
 
   useEffect(() => {
@@ -116,15 +120,36 @@ const Appointments: React.FC = () => {
       
       if (editingAppointment) {
         await appointmentService.updateAppointment(editingAppointment.id, data);
+        toast.success('Cita actualizada exitosamente');
       } else {
         await appointmentService.createAppointment(data);
+        toast.success('Cita creada exitosamente');
       }
       
       await loadData();
       setIsModalOpen(false);
       setEditingAppointment(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error guardando cita:', error);
+      
+      // Verificar si es un error de límite de plan
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: string; details?: PlanLimitDetails } } };
+        if (axiosError.response?.data?.error === 'PLAN_LIMIT_EXCEEDED') {
+          const details = axiosError.response.data.details;
+          if (details) {
+            setPlanLimitData(details);
+            setShowPlanLimitModal(true);
+            setIsModalOpen(false);
+          }
+        } else {
+          const message = error instanceof Error ? error.message : 'Error guardando cita';
+          toast.error(message);
+        }
+      } else {
+        const message = error instanceof Error ? error.message : 'Error guardando cita';
+        toast.error(message);
+      }
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -766,6 +791,21 @@ const Appointments: React.FC = () => {
           appointment={editingAppointment}
           services={services}
           isLoading={isSubmitting}
+        />
+      )}
+
+      {/* Plan Limit Modal */}
+      {showPlanLimitModal && planLimitData && (
+        <PlanLimitModal
+          isOpen={showPlanLimitModal}
+          onClose={() => {
+            setShowPlanLimitModal(false);
+            setPlanLimitData(null);
+          }}
+          details={{
+            ...planLimitData,
+            feature: 'appointments'
+          }}
         />
       )}
     </>

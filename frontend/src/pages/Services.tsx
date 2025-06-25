@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { serviceService } from '../services/api';
 import type { Service, ServiceForm } from '../types';
 import ServiceModal from '../components/ServiceModal';
+import PlanLimitModal, { PlanLimitDetails } from '../components/PlanLimitModal';
+import { toast } from 'react-hot-toast';
 
 const Services: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
@@ -10,6 +12,8 @@ const Services: React.FC = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  const [showPlanLimitModal, setShowPlanLimitModal] = useState(false);
+  const [planLimitData, setPlanLimitData] = useState<PlanLimitDetails | null>(null);
 
   useEffect(() => {
     loadServices();
@@ -43,15 +47,36 @@ const Services: React.FC = () => {
       
       if (editingService) {
         await serviceService.updateService(editingService.id, data);
+        toast.success('Servicio actualizado exitosamente');
       } else {
         await serviceService.createService(data);
+        toast.success('Servicio creado exitosamente');
       }
       
       await loadServices();
       setIsModalOpen(false);
       setEditingService(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error guardando servicio:', error);
+      
+      // Verificar si es un error de límite de plan
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: string; details?: PlanLimitDetails } } };
+        if (axiosError.response?.data?.error === 'PLAN_LIMIT_EXCEEDED') {
+          const details = axiosError.response.data.details;
+          if (details) {
+            setPlanLimitData(details);
+            setShowPlanLimitModal(true);
+            setIsModalOpen(false);
+          }
+        } else {
+          const message = error instanceof Error ? error.message : 'Error guardando servicio';
+          toast.error(message);
+        }
+      } else {
+        const message = error instanceof Error ? error.message : 'Error guardando servicio';
+        toast.error(message);
+      }
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -246,6 +271,21 @@ const Services: React.FC = () => {
         service={editingService}
         isLoading={isSubmitting}
       />
+
+      {/* Plan Limit Modal */}
+      {showPlanLimitModal && planLimitData && (
+        <PlanLimitModal
+          isOpen={showPlanLimitModal}
+          onClose={() => {
+            setShowPlanLimitModal(false);
+            setPlanLimitData(null);
+          }}
+          details={{
+            ...planLimitData,
+            feature: 'services'
+          }}
+        />
+      )}
     </div>
   );
 };

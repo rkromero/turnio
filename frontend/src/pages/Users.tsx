@@ -17,18 +17,10 @@ import {
 } from 'lucide-react';
 import { UserWithStats, UserFilters, UserStats, CreateUserForm } from '../types';
 
-interface PlanLimitDetails {
-  currentPlan: string;
-  currentUsers: number;
-  maxUsers: number;
-  nextPlan: string;
-  nextPlanUsers: number;
-  upgradeRequired: boolean;
-}
 import { userService } from '../services/userService';
 import { UserModal } from '../components/users/UserModal';
 import { UserStatsCard } from '../components/users/UserStatsCard';
-import PlanLimitModal from '../components/PlanLimitModal';
+import PlanLimitModal, { PlanLimitDetails } from '../components/PlanLimitModal';
 import { toast } from 'react-hot-toast';
 
 const Users: React.FC = () => {
@@ -484,12 +476,10 @@ const Users: React.FC = () => {
             setShowPlanLimitModal(false);
             setPlanLimitData(null);
           }}
-          currentPlan={planLimitData.currentPlan}
-          currentUsers={planLimitData.currentUsers}
-          maxUsers={planLimitData.maxUsers}
-          nextPlan={planLimitData.nextPlan}
-          nextPlanUsers={planLimitData.nextPlanUsers}
-          feature="users"
+          details={{
+            ...planLimitData,
+            feature: 'users'
+          }}
         />
       )}
     </div>

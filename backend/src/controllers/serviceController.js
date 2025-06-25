@@ -108,7 +108,17 @@ const createService = async (req, res) => {
     if (serviceLimit !== -1 && activeServicesCount >= serviceLimit) {
       return res.status(400).json({
         success: false,
-        message: `Has alcanzado el límite de servicios de tu plan ${business.planType} (${serviceLimit} servicios). Considera actualizar tu plan.`
+        message: `No puedes crear más servicios en el Plan ${business.planType}`,
+        error: 'PLAN_LIMIT_EXCEEDED',
+        details: {
+          currentPlan: business.planType,
+          currentServices: activeServicesCount,
+          maxServices: serviceLimit,
+          nextPlan: business.planType === 'FREE' ? 'BASIC' : business.planType === 'BASIC' ? 'PREMIUM' : 'ENTERPRISE',
+          nextPlanServices: business.planType === 'FREE' ? 10 : business.planType === 'BASIC' ? 25 : -1,
+          upgradeRequired: true,
+          feature: 'services'
+        }
       });
     }
 
