@@ -1,0 +1,11 @@
+{
+  "status": "ok",
+  "timestamp": "2025-01-09",
+  "version": "1.0.1",
+  "service": "turnio-frontend",
+  "features": {
+    "branchBreakTimes": "enabled",
+    "spa": "enabled",
+    "expressServer": "enabled"
+  }
+} 

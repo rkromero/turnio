@@ -38,10 +38,17 @@ const PlanChangeTest: React.FC = () => {
       setLoading(true);
       const response = await subscriptionService.getCurrentSubscription();
       console.log('📊 Suscripción actual:', response);
+      console.log('📊 Response.data:', response.data);
+      console.log('📊 Response.data.subscription:', response.data?.subscription);
+      console.log('📊 Response.data.business:', response.data?.business);
       
       if (response.data && response.data.subscription) {
         setSubscription(response.data.subscription);
         setBusinessId(response.data.business?.id || '');
+        console.log('✅ Subscription cargada correctamente:', response.data.subscription);
+      } else {
+        console.log('❌ No se encontró subscription en la respuesta');
+        console.log('❌ Estructura completa de response.data:', JSON.stringify(response.data, null, 2));
       }
       
       // Cargar historial de cambios

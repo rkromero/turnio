@@ -117,6 +117,17 @@ async function startServer() {
       startReviewNotificationService();
     }
     
+    // 🚀 Inicializar scheduler de suscripciones automáticas
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SUBSCRIPTION_SCHEDULER === 'true') {
+      try {
+        const schedulerService = require('../schedulerService');
+        schedulerService.startValidationScheduler();
+        console.log('✅ Scheduler de suscripciones automáticas iniciado');
+      } catch (error) {
+        console.error('❌ Error iniciando scheduler de suscripciones:', error.message);
+      }
+    }
+    
     // 3. Configurar rutas
     const authRoutes = require('./routes/auth');
     const appointmentRoutes = require('./routes/appointments');
