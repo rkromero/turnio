@@ -17,17 +17,15 @@ class MercadoPagoService {
    */
   generateAuthUrl(businessId, state = null) {
     const stateParam = state || `business_${businessId}_${Date.now()}`;
-    const scopes = 'read,write'; // Permisos necesarios
     
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: 'code',
-      platform_id: 'mp',
       state: stateParam,
-      redirect_uri: this.redirectUri,
-      scope: scopes
+      redirect_uri: this.redirectUri
     });
 
+    // URL de autorización sin platform_id
     return `https://auth.mercadopago.com.ar/authorization?${params.toString()}`;
   }
 
