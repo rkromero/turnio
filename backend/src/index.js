@@ -662,6 +662,7 @@ async function startServer() {
     app.use('/api/break-times', breakTimeRoutes);
     app.use('/api/subscriptions', subscriptionRoutes);
     app.use('/api/mercadopago', mercadoPagoRoutes);
+    app.use('/api/payments', require('./routes/paymentRoutes')); // Nueva ruta de pagos
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);

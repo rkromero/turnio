@@ -27,6 +27,15 @@ model Business {
   primaryColor    String?
   businessType    BusinessType @default(GENERAL)
   defaultAppointmentDuration Int @default(60) // Duración en minutos
+  
+  // Configuración de MercadoPago
+  mp_access_token String?
+  mp_refresh_token String?
+  mp_user_id String?
+  mp_public_key String?
+  mp_connected Boolean @default(false)
+  mp_connected_at DateTime?
+  
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -40,6 +49,8 @@ model Business {
   reviews      Review[]
   subscription Subscription?
   planChanges  PlanChange[]
+  appointmentPayments AppointmentPayment[] // Pagos de citas individuales
+  paymentSettings PaymentSettings?
 
   @@map("businesses")
 }
@@ -167,6 +178,11 @@ model Appointment {
   notes        String?
   reminderSent Boolean           @default(false)
   reviewRequestSent Boolean      @default(false)
+  
+  // Campos de pago
+  payment_status String @default("pending") // pending, paid, failed, refunded
+  payment_id String?
+  
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -177,6 +193,7 @@ model Appointment {
   service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   review   Review?
+  payment  AppointmentPayment? @relation(fields: [payment_id], references: [id])
 
   @@map("appointments")
 }
@@ -445,4 +462,72 @@ enum PaymentStatus {
   REJECTED
   CANCELLED
   REFUNDED
+}
+
+// Pagos de citas individuales (diferente de suscripciones)
+model AppointmentPayment {
+  id            String   @id @default(cuid())
+  business_id   String
+  appointment_id String  @unique
+  
+  // Datos de Mercado Pago
+  mp_payment_id String?   @unique // ID del pago en MP
+  mp_preference_id String? // ID de la preferencia
+  mp_collection_id String? // ID de la colección
+  
+  // Datos del pago
+  amount        Float
+  currency      String   @default("ARS")
+  description   String?
+  
+  // Estados
+  status        String   @default("pending") // pending, approved, rejected, cancelled, refunded
+  payment_method String? // credit_card, debit_card, cash, etc
+  payment_type  String?  // account_money, credit_card, etc
+  
+  // Metadatos
+  external_reference String? // Referencia externa (appointment_id)
+  payer_email   String?
+  payer_name    String?
+  payer_phone   String?
+  
+  // Timestamps
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  paid_at       DateTime?
+  
+  // Datos adicionales de MP
+  mp_data       Json?    // Para guardar toda la respuesta de MP
+  
+  // Relaciones
+  business      Business     @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  appointments  Appointment[] // Relación inversa
+  
+  @@map("appointment_payments")
+}
+
+// Configuración de pagos por negocio
+model PaymentSettings {
+  id                    String   @id @default(cuid())
+  business_id           String   @unique
+  
+  // Configuraciones
+  require_payment       Boolean  @default(false) // Si requiere pago obligatorio
+  payment_deadline_hours Int     @default(24) // Horas para pagar antes de la cita
+  auto_cancel_unpaid    Boolean  @default(false) // Cancelar automáticamente si no paga
+  
+  // Configuración de MP
+  mp_webhook_url        String?
+  mp_success_url        String?
+  mp_failure_url        String?
+  mp_pending_url        String?
+  
+  // Metadatos
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+  
+  // Relaciones
+  business              Business @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  
+  @@map("payment_settings")
 }
