@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Building2, Clock, Calendar, CreditCard, Menu, X } from 'lucide-react';
+import { Settings as SettingsIcon, Building2, Clock, Calendar, CreditCard, Menu, X, DollarSign } from 'lucide-react';
 import { configService } from '../services/api';
 import BusinessConfigTab from '../components/settings/BusinessConfigTab';
 import WorkingHoursTab from '../components/settings/WorkingHoursTab';
 import HolidaysTab from '../components/settings/HolidaysTab';
 import PlanUsageTab from '../components/settings/PlanUsageTab';
+import PaymentConfigTab from '../components/PaymentConfigTab';
 import type { BusinessConfig, UserWithWorkingHours, Holiday, PlanUsage } from '../types';
 
-type TabType = 'business' | 'working-hours' | 'holidays' | 'plan';
+type TabType = 'business' | 'working-hours' | 'holidays' | 'payments' | 'plan';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('business');
@@ -39,6 +40,13 @@ const Settings: React.FC = () => {
       icon: Calendar,
       description: 'Días no laborables y feriados',
       color: 'text-orange-600'
+    },
+    {
+      key: 'payments' as TabType,
+      label: 'Pagos',
+      icon: DollarSign,
+      description: 'Configuración de pagos con MercadoPago',
+      color: 'text-emerald-600'
     },
     {
       key: 'plan' as TabType,
@@ -118,6 +126,8 @@ const Settings: React.FC = () => {
             onUpdate={handleHolidaysUpdate}
           />
         );
+      case 'payments':
+        return <PaymentConfigTab />;
       case 'plan':
         return (
           <PlanUsageTab
