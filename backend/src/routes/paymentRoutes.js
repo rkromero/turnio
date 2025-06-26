@@ -5,23 +5,18 @@ const paymentController = require('../controllers/paymentController');
 const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 
 // Middleware de autenticación para todas las rutas excepto webhook
-router.use((req, res, next) => {
-  // El webhook no necesita autenticación JWT
-  if (req.path === '/webhook') {
-    return next();
-  }
-  // Usar autenticación sin verificación de suscripción para pagos
-  return authenticateTokenOnly(req, res, next);
-});
+// REMOVIDO: El middleware global estaba causando problemas
+// Aplicaremos autenticación individualmente a cada ruta que la necesite
 
-// Rutas de configuración de MercadoPago
-router.get('/mp/connect', paymentController.connectMercadoPago);
-router.get('/mp/callback', paymentController.mercadoPagoCallback);
-router.get('/mp/status', paymentController.getConnectionStatus);
-router.delete('/mp/disconnect', paymentController.disconnectMercadoPago);
+// Rutas de configuración de MercadoPago (requieren autenticación)
+router.get('/mp/connect', authenticateTokenOnly, paymentController.connectMercadoPago);
+router.get('/mp/callback', paymentController.mercadoPagoCallback); // Callback OAuth GET (público)
+router.get('/mp/status', authenticateTokenOnly, paymentController.getConnectionStatus);
+router.delete('/mp/disconnect', authenticateTokenOnly, paymentController.disconnectMercadoPago);
 
-// Rutas de preferencias de pago
+// Rutas de preferencias de pago (requieren autenticación)
 router.post('/preference', 
+  authenticateTokenOnly,
   [
     body('appointmentId')
       .notEmpty()
@@ -35,8 +30,9 @@ router.post('/preference',
 // Webhook de MercadoPago (sin autenticación)
 router.post('/webhook', paymentController.webhook);
 
-// Rutas de consulta de pagos
+// Rutas de consulta de pagos (requieren autenticación)
 router.get('/status/:appointmentId',
+  authenticateTokenOnly,
   [
     param('appointmentId')
       .isUUID()
@@ -45,11 +41,12 @@ router.get('/status/:appointmentId',
   paymentController.getPaymentStatus
 );
 
-router.get('/history', paymentController.getPaymentHistory);
+router.get('/history', authenticateTokenOnly, paymentController.getPaymentHistory);
 
-// Rutas de configuración de pagos
-router.get('/settings', paymentController.getPaymentSettings);
+// Rutas de configuración de pagos (requieren autenticación)
+router.get('/settings', authenticateTokenOnly, paymentController.getPaymentSettings);
 router.put('/settings',
+  authenticateTokenOnly,
   [
     body('require_payment')
       .optional()
@@ -67,7 +64,7 @@ router.put('/settings',
   paymentController.updatePaymentSettings
 );
 
-// Callback de OAuth de MercadoPago
-router.post('/mp/callback', paymentController.handleOAuthCallback);
+// Callback de OAuth de MercadoPago POST (requiere autenticación)
+router.post('/mp/callback', authenticateTokenOnly, paymentController.handleOAuthCallback);
 
 module.exports = router; 
