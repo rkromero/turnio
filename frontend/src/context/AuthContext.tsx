@@ -27,10 +27,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('🔍 Verificando estado de autenticación...');
       const { user, business } = await authService.getProfile();
+      console.log('✅ Usuario autenticado:', user?.email);
       setUser(user);
       setBusiness(business);
-    } catch {
+    } catch (error) {
+      console.log('❌ Usuario no autenticado:', error);
       // Usuario no autenticado
       setUser(null);
       setBusiness(null);
@@ -40,9 +43,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const { user, business } = await authService.login({ email, password });
-    setUser(user);
-    setBusiness(business);
+    try {
+      console.log('🔍 Intentando login con:', email);
+      const { user, business } = await authService.login({ email, password });
+      console.log('✅ Login exitoso:', user?.email);
+      setUser(user);
+      setBusiness(business);
+    } catch (error) {
+      console.log('❌ Error en login:', error);
+      // Asegurar que el estado se limpie en caso de error
+      setUser(null);
+      setBusiness(null);
+      // Re-lanzar el error para que el componente Login lo maneje
+      throw error;
+    }
   };
 
   const register = async (data: RegisterForm) => {
@@ -72,8 +86,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {
       // Ignorar errores de logout
     } finally {
+      // Limpiar completamente el estado y tokens
       setUser(null);
       setBusiness(null);
+      localStorage.removeItem('token');
+      // Limpiar cookies
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     }
   };
 
