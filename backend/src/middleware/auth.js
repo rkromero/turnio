@@ -5,22 +5,30 @@ const { logDebug, logError } = require('../utils/logger');
 // Middleware para verificar token JWT sin verificación de suscripción
 const authenticateTokenOnly = async (req, res, next) => {
   try {
-    logDebug('AuthenticateTokenOnly - Verificando autenticación', {
+    logDebug('AuthenticateTokenOnly - DEBUG COMPLETO', {
       path: req.path,
       originalUrl: req.originalUrl,
-      cookies: req.cookies ? Object.keys(req.cookies) : 'no cookies',
-      authHeader: req.headers.authorization ? 'present' : 'missing'
+      method: req.method,
+      cookies: req.cookies,
+      cookieToken: req.cookies?.token ? 'PRESENTE' : 'AUSENTE',
+      authHeader: req.headers.authorization,
+      allHeaders: Object.keys(req.headers),
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin,
+      referer: req.headers.referer
     });
 
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      logError('AuthenticateTokenOnly - Token no encontrado', null, {
+      logError('AuthenticateTokenOnly - TOKEN NO ENCONTRADO', null, {
         cookies: req.cookies,
         headers: {
           authorization: req.headers.authorization,
-          cookie: req.headers.cookie
-        }
+          cookie: req.headers.cookie,
+          origin: req.headers.origin
+        },
+        path: req.originalUrl
       });
 
       return res.status(401).json({
@@ -29,7 +37,17 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
+    logDebug('AuthenticateTokenOnly - Token encontrado', {
+      tokenLength: token.length,
+      tokenStart: token.substring(0, 10) + '...'
+    });
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    logDebug('AuthenticateTokenOnly - Token decodificado', {
+      userId: decoded.userId,
+      businessId: decoded.businessId
+    });
     
     // Buscar usuario y su negocio
     const user = await prisma.user.findUnique({
@@ -40,8 +58,9 @@ const authenticateTokenOnly = async (req, res, next) => {
     });
 
     if (!user) {
-      logError('AuthenticateTokenOnly - Usuario no encontrado', null, {
-        decodedUserId: decoded.userId
+      logError('AuthenticateTokenOnly - Usuario no encontrado en BD', null, {
+        decodedUserId: decoded.userId,
+        decodedBusinessId: decoded.businessId
       });
 
       return res.status(401).json({
@@ -50,20 +69,23 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
-    logDebug('AuthenticateTokenOnly - Autenticación exitosa', {
+    logDebug('AuthenticateTokenOnly - AUTENTICACIÓN EXITOSA', {
       userId: user.id,
       userEmail: user.email,
-      businessId: user.businessId
+      businessId: user.businessId,
+      businessName: user.business?.name
     });
 
     req.user = user;
     req.businessId = user.businessId;
     next();
   } catch (error) {
-    logError('AuthenticateTokenOnly - Error en autenticación', error, {
-      path: req.path,
+    logError('AuthenticateTokenOnly - ERROR DE AUTENTICACIÓN', error, {
+      path: req.originalUrl,
       cookies: req.cookies,
-      authHeader: req.headers.authorization
+      authHeader: req.headers.authorization,
+      errorName: error.name,
+      errorMessage: error.message
     });
 
     return res.status(401).json({

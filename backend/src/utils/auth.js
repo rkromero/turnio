@@ -47,10 +47,11 @@ const setTokenCookie = (res, token) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' para cross-origin en producción
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en milisegundos
     path: '/',
+    // CRÍTICO: Configurar dominio para Railway cross-subdomain
+    domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
   };
 
-  // NO establecer dominio para permitir cookies cross-origin en Railway
-  // En producción Railway maneja esto automáticamente
+  // Dominio .up.railway.app permite cookies entre subdominios de Railway
 
   logDebug('Configurando cookie de autenticación', { cookieOptions });
   res.cookie('token', token, cookieOptions);
@@ -66,9 +67,11 @@ const clearTokenCookie = (res) => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Debe coincidir con setTokenCookie
     path: '/',
+    // CRÍTICO: Mismo dominio que setTokenCookie
+    domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
   };
 
-  // NO establecer dominio para permitir cookies cross-origin en Railway
+  // Dominio .up.railway.app permite limpiar cookies entre subdominios
 
   logDebug('Limpiando cookie de autenticación', { cookieOptions });
   res.clearCookie('token', cookieOptions);
