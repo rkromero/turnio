@@ -59,9 +59,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Solo redirigir a login si NO es una petición de profile
-    // (para evitar loop infinito en AuthContext)
-    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/profile')) {
+    // Solo redirigir a login si NO es una petición de profile o login
+    // (para evitar loop infinito en AuthContext y permitir manejo de errores de login)
+    if (error.response?.status === 401 && 
+        !error.config?.url?.includes('/auth/profile') && 
+        !error.config?.url?.includes('/auth/login')) {
       window.location.href = '/login';
     }
     return Promise.reject(error);
