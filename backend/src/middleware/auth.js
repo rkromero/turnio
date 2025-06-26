@@ -1,12 +1,28 @@
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/database');
+const { logDebug, logError } = require('../utils/logger');
 
 // Middleware para verificar token JWT sin verificación de suscripción
 const authenticateTokenOnly = async (req, res, next) => {
   try {
+    logDebug('AuthenticateTokenOnly - Verificando autenticación', {
+      path: req.path,
+      originalUrl: req.originalUrl,
+      cookies: req.cookies ? Object.keys(req.cookies) : 'no cookies',
+      authHeader: req.headers.authorization ? 'present' : 'missing'
+    });
+
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
 
     if (!token) {
+      logError('AuthenticateTokenOnly - Token no encontrado', null, {
+        cookies: req.cookies,
+        headers: {
+          authorization: req.headers.authorization,
+          cookie: req.headers.cookie
+        }
+      });
+
       return res.status(401).json({
         success: false,
         message: 'No se proporcionó token de autenticación'
@@ -24,17 +40,32 @@ const authenticateTokenOnly = async (req, res, next) => {
     });
 
     if (!user) {
+      logError('AuthenticateTokenOnly - Usuario no encontrado', null, {
+        decodedUserId: decoded.userId
+      });
+
       return res.status(401).json({
         success: false,
         message: 'Usuario no encontrado'
       });
     }
 
+    logDebug('AuthenticateTokenOnly - Autenticación exitosa', {
+      userId: user.id,
+      userEmail: user.email,
+      businessId: user.businessId
+    });
+
     req.user = user;
     req.businessId = user.businessId;
     next();
   } catch (error) {
-    console.error('Error en autenticación:', error);
+    logError('AuthenticateTokenOnly - Error en autenticación', error, {
+      path: req.path,
+      cookies: req.cookies,
+      authHeader: req.headers.authorization
+    });
+
     return res.status(401).json({
       success: false,
       message: 'Token inválido o expirado'
