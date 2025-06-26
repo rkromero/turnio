@@ -93,8 +93,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setBusiness(null);
       
-      // NO usar localStorage por seguridad - solo cookies httpOnly
-      // El backend ya limpió las cookies automáticamente
+      // Limpiar sessionStorage temporal para Railway
+      sessionStorage.removeItem('authToken');
+      
+      // El backend también limpia las cookies automáticamente
       
       console.log('✅ Logout completado');
     }

@@ -38,10 +38,16 @@ const api = axios.create({
 
 // Interceptor para agregar el token en el header Authorization
 api.interceptors.request.use((config) => {
-  // Solo usar cookies httpOnly - NO localStorage por seguridad
-  const cookies = document.cookie.split(';');
-  const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
+  // TEMPORAL: Usar sessionStorage para Railway cross-domain
+  // Prioridad: sessionStorage > cookies (para compatibilidad Railway)
+  let token = sessionStorage.getItem('authToken');
+  
+  // Fallback a cookies si no hay token en sessionStorage
+  if (!token) {
+    const cookies = document.cookie.split(';');
+    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+    token = tokenCookie ? tokenCookie.split('=')[1] : null;
+  }
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -91,10 +97,14 @@ export const authService = {
       throw new Error(response.data.message || 'Error en el login');
     }
     
-    const { user, business } = response.data.data;
+    const { user, business, token } = response.data.data;
     
-    // NO guardar token en localStorage por seguridad - solo cookies httpOnly
-    // El backend ya configuró la cookie automáticamente
+    // TEMPORAL: Usar sessionStorage para Railway cross-domain hasta resolver cookies
+    // sessionStorage es más seguro que localStorage (se limpia al cerrar tab)
+    if (token) {
+      sessionStorage.setItem('authToken', token);
+      console.log('🔑 Token guardado en sessionStorage para Railway cross-domain');
+    }
     
     return { user, business };
   },
