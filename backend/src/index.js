@@ -47,10 +47,16 @@ app.use(limiter);
 
 // CORS
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'https://turnio-frontend-production.up.railway.app',
+    'http://localhost:5173', // Vite dev server
+    'http://localhost:3000',  // Legacy
+    'https://turnio-frontend-production.up.railway.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
 };
 console.log('🌐 CORS configurado para:', corsOptions.origin);
 

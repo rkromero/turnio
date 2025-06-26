@@ -44,15 +44,13 @@ const setTokenCookie = (res, token) => {
   const cookieOptions = {
     httpOnly: true, // No accesible desde JavaScript del cliente
     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-    sameSite: 'lax', // Cambiar a 'lax' para mejor compatibilidad
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' para cross-origin en producción
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en milisegundos
     path: '/',
   };
 
-  // Si se define un dominio explícito para la cookie, lo agregamos
-  if (process.env.COOKIE_DOMAIN) {
-    cookieOptions.domain = process.env.COOKIE_DOMAIN;
-  }
+  // NO establecer dominio para permitir cookies cross-origin en Railway
+  // En producción Railway maneja esto automáticamente
 
   logDebug('Configurando cookie de autenticación', { cookieOptions });
   res.cookie('token', token, cookieOptions);
@@ -66,14 +64,11 @@ const clearTokenCookie = (res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax', // Debe coincidir con setTokenCookie
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Debe coincidir con setTokenCookie
     path: '/',
   };
 
-  // Si se define un dominio explícito para la cookie, lo agregamos
-  if (process.env.COOKIE_DOMAIN) {
-    cookieOptions.domain = process.env.COOKIE_DOMAIN;
-  }
+  // NO establecer dominio para permitir cookies cross-origin en Railway
 
   logDebug('Limpiando cookie de autenticación', { cookieOptions });
   res.clearCookie('token', cookieOptions);
