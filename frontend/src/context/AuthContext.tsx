@@ -82,16 +82,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      console.log('🚪 Iniciando logout...');
       await authService.logout();
-    } catch {
-      // Ignorar errores de logout
+    } catch (error) {
+      console.log('⚠️ Error en logout del servidor:', error);
+      // Ignorar errores de logout del servidor, pero continuar limpieza local
     } finally {
+      console.log('🧹 Limpiando estado local...');
       // Limpiar completamente el estado y tokens
       setUser(null);
       setBusiness(null);
+      
+      // Limpiar localStorage
       localStorage.removeItem('token');
-      // Limpiar cookies
+      localStorage.clear(); // Limpiar todo por si acaso
+      
+      // Limpiar cookies de manera más agresiva
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
       document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      console.log('✅ Logout completado');
     }
   };
 

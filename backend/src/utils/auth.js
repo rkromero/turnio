@@ -62,11 +62,20 @@ const setTokenCookie = (res, token) => {
 
 // Limpiar cookie de token
 const clearTokenCookie = (res) => {
-  res.clearCookie('token', {
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-  });
+    sameSite: 'lax', // Debe coincidir con setTokenCookie
+    path: '/',
+  };
+
+  // Si se define un dominio explícito para la cookie, lo agregamos
+  if (process.env.COOKIE_DOMAIN) {
+    cookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  console.log('🗑️ Limpiando cookie con opciones:', cookieOptions);
+  res.clearCookie('token', cookieOptions);
 };
 
 // Generar slug único para negocio
