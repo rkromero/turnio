@@ -37,7 +37,8 @@ const PaymentCallback: React.FC = () => {
         }
 
         // Enviar código al backend para intercambiar por tokens
-        const response = await fetch('/api/payments/mp/callback', {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
+        const response = await fetch(`${API_BASE_URL}/api/payments/mp/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
