@@ -42,15 +42,22 @@ api.interceptors.request.use((config) => {
   // Prioridad: sessionStorage > cookies (para compatibilidad Railway)
   let token = sessionStorage.getItem('authToken');
   
+  // Debug: Verificar token
+  console.log('🔍 Interceptor - Token en sessionStorage:', token ? 'PRESENTE' : 'AUSENTE');
+  
   // Fallback a cookies si no hay token en sessionStorage
   if (!token) {
     const cookies = document.cookie.split(';');
     const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
     token = tokenCookie ? tokenCookie.split('=')[1] : null;
+    console.log('🔍 Interceptor - Token en cookies:', token ? 'PRESENTE' : 'AUSENTE');
   }
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('🔑 Interceptor - Header Authorization configurado para:', config.url);
+  } else {
+    console.log('❌ Interceptor - NO HAY TOKEN para:', config.url);
   }
 
   return config;
@@ -104,6 +111,9 @@ export const authService = {
     if (token) {
       sessionStorage.setItem('authToken', token);
       console.log('🔑 Token guardado en sessionStorage para Railway cross-domain');
+      console.log('🔍 Token guardado:', token.substring(0, 20) + '...');
+    } else {
+      console.log('❌ NO SE RECIBIÓ TOKEN EN LA RESPUESTA');
     }
     
     return { user, business };

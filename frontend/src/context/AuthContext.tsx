@@ -28,13 +28,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       console.log('🔍 Verificando estado de autenticación...');
+      
+      // Verificar si hay token en sessionStorage
+      const token = sessionStorage.getItem('authToken');
+      console.log('🔍 Token en sessionStorage:', token ? 'PRESENTE' : 'AUSENTE');
+      
       const { user, business } = await authService.getProfile();
       console.log('✅ Usuario autenticado:', user?.email);
+      
+      // Si el token está en sessionStorage, guardarlo para futuras peticiones
+      if (token) {
+        console.log('🔑 Token guardado en sessionStorage para Railway cross-domain');
+      }
+      
       setUser(user);
       setBusiness(business);
     } catch (error) {
       console.log('❌ Usuario no autenticado:', error);
-      // Usuario no autenticado
+      // Usuario no autenticado - limpiar sessionStorage
+      sessionStorage.removeItem('authToken');
       setUser(null);
       setBusiness(null);
     } finally {
