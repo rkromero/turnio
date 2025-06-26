@@ -23,7 +23,22 @@ const Login: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      // Extraer el mensaje de error correcto de la respuesta del servidor
+      let errorMessage = 'Error al iniciar sesión';
+      
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
+        if (axiosError.response?.data?.message) {
+          // Error del servidor con mensaje específico
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.message) {
+          // Error de red o cliente
+          errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
