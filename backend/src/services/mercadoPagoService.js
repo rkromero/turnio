@@ -81,7 +81,7 @@ class MercadoPagoService {
         data: {
           mp_access_token: credentials.access_token,
           mp_refresh_token: credentials.refresh_token,
-          mp_user_id: credentials.user_id,
+          mp_user_id: credentials.user_id ? credentials.user_id.toString() : null,
           mp_public_key: credentials.public_key,
           mp_connected: true,
           mp_connected_at: new Date()
