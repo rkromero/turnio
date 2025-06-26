@@ -9,14 +9,20 @@ const { connectDatabase, disconnectDatabase } = require('./config/database');
 const { exec } = require('child_process');
 const util = require('util');
 const { startReviewNotificationService } = require('./services/reviewNotificationService');
+const { errorHandler, notFoundHandler, handleUncaughtExceptions } = require('./middleware/errorHandler');
+const { logInfo, logError } = require('./utils/logger');
 
 const execAsync = util.promisify(exec);
 
-// Debug: Log de variables de entorno importantes
-console.log('🔧 Variables de entorno:');
-console.log('- NODE_ENV:', process.env.NODE_ENV);
-console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('- PORT:', process.env.PORT);
+// Configurar manejo de excepciones no capturadas
+handleUncaughtExceptions();
+
+// Debug: Log de variables de entorno importantes (seguro)
+logInfo('Variables de entorno configuradas', {
+  nodeEnv: process.env.NODE_ENV,
+  frontendUrl: process.env.FRONTEND_URL ? '[CONFIGURED]' : '[NOT_SET]',
+  port: process.env.PORT
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1590,26 +1596,9 @@ async function startServer() {
       }
     });
 
-    // Manejo de rutas no encontradas
-    app.use('*', (req, res) => {
-      res.status(404).json({
-        success: false,
-        message: 'Ruta no encontrada'
-      });
-    });
-
-    // Manejo global de errores
-    app.use((error, req, res, next) => {
-      console.error('Error no manejado:', error);
-      
-      res.status(error.status || 500).json({
-        success: false,
-        message: process.env.NODE_ENV === 'production' 
-          ? 'Error interno del servidor' 
-          : error.message,
-        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-      });
-    });
+    // Middleware de manejo de errores seguro
+    app.use(notFoundHandler);
+    app.use(errorHandler);
 
     // 4. Iniciar servidor
     app.listen(PORT, () => {

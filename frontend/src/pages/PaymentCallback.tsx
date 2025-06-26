@@ -39,9 +39,8 @@ const PaymentCallback: React.FC = () => {
         // Enviar código al backend para intercambiar por tokens
         const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
         
-        // Obtener token de autenticación
-        const token = localStorage.getItem('token') || 
-                     document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+        // Obtener token de autenticación solo de cookies httpOnly
+        const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
         
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',

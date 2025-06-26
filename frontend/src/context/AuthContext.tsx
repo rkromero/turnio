@@ -89,17 +89,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Ignorar errores de logout del servidor, pero continuar limpieza local
     } finally {
       console.log('🧹 Limpiando estado local...');
-      // Limpiar completamente el estado y tokens
+      // Limpiar completamente el estado
       setUser(null);
       setBusiness(null);
       
-      // Limpiar localStorage
-      localStorage.removeItem('token');
-      localStorage.clear(); // Limpiar todo por si acaso
-      
-      // Limpiar cookies de manera más agresiva
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      // NO usar localStorage por seguridad - solo cookies httpOnly
+      // El backend ya limpió las cookies automáticamente
       
       console.log('✅ Logout completado');
     }

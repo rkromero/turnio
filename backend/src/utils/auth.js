@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { logInfo, logDebug, logError } = require('./logger');
 
 // Utilidades para contraseñas
 const hashPassword = async (password) => {
@@ -53,11 +54,11 @@ const setTokenCookie = (res, token) => {
     cookieOptions.domain = process.env.COOKIE_DOMAIN;
   }
 
-  console.log('🍪 Configurando cookie con opciones:', cookieOptions);
+  logDebug('Configurando cookie de autenticación', { cookieOptions });
   res.cookie('token', token, cookieOptions);
   
-  // También enviar el token en la respuesta para debug
-  console.log('🔑 Token generado:', token.substring(0, 20) + '...');
+  // Log seguro sin exponer el token
+  logInfo('Token de autenticación generado exitosamente', { userId: 'user', tokenLength: token.length });
 };
 
 // Limpiar cookie de token
@@ -74,7 +75,7 @@ const clearTokenCookie = (res) => {
     cookieOptions.domain = process.env.COOKIE_DOMAIN;
   }
 
-  console.log('🗑️ Limpiando cookie con opciones:', cookieOptions);
+  logDebug('Limpiando cookie de autenticación', { cookieOptions });
   res.clearCookie('token', cookieOptions);
 };
 

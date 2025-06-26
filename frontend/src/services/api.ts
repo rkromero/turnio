@@ -38,15 +38,10 @@ const api = axios.create({
 
 // Interceptor para agregar el token en el header Authorization
 api.interceptors.request.use((config) => {
-  // Obtener el token de la cookie primero
+  // Solo usar cookies httpOnly - NO localStorage por seguridad
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-  let token = tokenCookie ? tokenCookie.split('=')[1] : null;
-
-  // Si no hay token en cookie, usar localStorage como respaldo
-  if (!token) {
-    token = localStorage.getItem('token');
-  }
+  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -96,13 +91,10 @@ export const authService = {
       throw new Error(response.data.message || 'Error en el login');
     }
     
-    const { user, business, token } = response.data.data;
+    const { user, business } = response.data.data;
     
-    // Guardar token en localStorage como respaldo si viene en la respuesta
-    if (token) {
-      localStorage.setItem('token', token);
-      console.log('🔑 Token guardado en localStorage:', token.substring(0, 20) + '...');
-    }
+    // NO guardar token en localStorage por seguridad - solo cookies httpOnly
+    // El backend ya configuró la cookie automáticamente
     
     return { user, business };
   },
@@ -112,16 +104,8 @@ export const authService = {
   },
 
   getProfile: async (): Promise<AuthResponse> => {
-    // Obtener el token de la cookie
-    const cookies = document.cookie.split(';');
-    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-    const token = tokenCookie ? tokenCookie.split('=')[1] : null;
-
-    const response = await api.get<ApiResponse<{user: User, business: Business}>>('/auth/profile', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    // Las cookies se envían automáticamente - no necesitamos manejar tokens manualmente
+    const response = await api.get<ApiResponse<{user: User, business: Business}>>('/auth/profile');
     const { user, business } = response.data.data!;
     return { user, business };
   },
