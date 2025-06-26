@@ -88,7 +88,13 @@ export const authService = {
 
   login: async (data: LoginForm): Promise<AuthResponse> => {
     const response = await api.post<ApiResponse<{user: User, business: Business, token?: string}>>('/auth/login', data);
-    const { user, business, token } = response.data.data!;
+    
+    // Verificar que la respuesta sea exitosa y contenga datos
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Error en el login');
+    }
+    
+    const { user, business, token } = response.data.data;
     
     // Guardar token en localStorage como respaldo si viene en la respuesta
     if (token) {
