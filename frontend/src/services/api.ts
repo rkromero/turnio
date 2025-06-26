@@ -39,25 +39,14 @@ const api = axios.create({
 
 // Interceptor para agregar el token en el header Authorization
 api.interceptors.request.use((config) => {
-  // TEMPORAL: Usar sessionStorage para Railway cross-domain
-  // Prioridad: sessionStorage > cookies (para compatibilidad Railway)
-  let token = sessionStorage.getItem('authToken');
-  
-  // Fallback a cookies si no hay token en sessionStorage
-  if (!token) {
-    const cookies = document.cookie.split(';');
-    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-    token = tokenCookie ? tokenCookie.split('=')[1] : null;
-  }
+  // USAR SOLO COOKIES - sessionStorage causa problemas en Railway cross-domain
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
 
-  // SIEMPRE establecer el header Authorization si hay token
+  // Establecer el header Authorization si hay token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    // Solo para rutas de pagos, mostrar error
-    if (config.url?.includes('/payments/')) {
-      console.error('🚨 NO HAY TOKEN PARA RUTA DE PAGOS:', config.url);
-    }
   }
 
   return config;
@@ -97,9 +86,6 @@ export const authService = {
   },
 
   login: async (data: LoginForm): Promise<AuthResponse> => {
-    // Limpiar cualquier token anterior
-    sessionStorage.removeItem('authToken');
-    
     const response = await api.post<ApiResponse<{user: User, business: Business, token?: string}>>('/auth/login', data);
     
     // Verificar que la respuesta sea exitosa y contenga datos
@@ -107,23 +93,10 @@ export const authService = {
       throw new Error(response.data.message || 'Error en el login');
     }
     
-    const { user, business, token } = response.data.data;
+    const { user, business } = response.data.data;
     
-    // TEMPORAL: Usar sessionStorage para Railway cross-domain hasta resolver cookies
-    // sessionStorage es más seguro que localStorage (se limpia al cerrar tab)
-    if (token) {
-      sessionStorage.setItem('authToken', token);
-      
-      // Verificar que se guardó correctamente
-      const savedToken = sessionStorage.getItem('authToken');
-      if (savedToken === token) {
-        console.log('✅ Token guardado exitosamente en sessionStorage');
-      } else {
-        console.error('❌ Error guardando token en sessionStorage');
-      }
-    } else {
-      console.error('❌ NO SE RECIBIÓ TOKEN EN LA RESPUESTA DEL SERVIDOR');
-    }
+    // El token se maneja automáticamente via cookies httpOnly del backend
+    // No necesitamos guardarlo manualmente en sessionStorage
     
     return { user, business };
   },
