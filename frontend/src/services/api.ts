@@ -26,6 +26,7 @@ import type {
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
+// DEBUG: Timestamp para forzar rebuild - 2025-01-26-02:15:00
 
 // Configurar axios
 const api = axios.create({
@@ -42,22 +43,21 @@ api.interceptors.request.use((config) => {
   // Prioridad: sessionStorage > cookies (para compatibilidad Railway)
   let token = sessionStorage.getItem('authToken');
   
-  // Debug: Verificar token
-  console.log('🔍 Interceptor - Token en sessionStorage:', token ? 'PRESENTE' : 'AUSENTE');
-  
   // Fallback a cookies si no hay token en sessionStorage
   if (!token) {
     const cookies = document.cookie.split(';');
     const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
     token = tokenCookie ? tokenCookie.split('=')[1] : null;
-    console.log('🔍 Interceptor - Token en cookies:', token ? 'PRESENTE' : 'AUSENTE');
   }
 
+  // SIEMPRE establecer el header Authorization si hay token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('🔑 Interceptor - Header Authorization configurado para:', config.url);
   } else {
-    console.log('❌ Interceptor - NO HAY TOKEN para:', config.url);
+    // Solo para rutas de pagos, mostrar error
+    if (config.url?.includes('/payments/')) {
+      console.error('🚨 NO HAY TOKEN PARA RUTA DE PAGOS:', config.url);
+    }
   }
 
   return config;
@@ -97,6 +97,9 @@ export const authService = {
   },
 
   login: async (data: LoginForm): Promise<AuthResponse> => {
+    // Limpiar cualquier token anterior
+    sessionStorage.removeItem('authToken');
+    
     const response = await api.post<ApiResponse<{user: User, business: Business, token?: string}>>('/auth/login', data);
     
     // Verificar que la respuesta sea exitosa y contenga datos
@@ -110,10 +113,16 @@ export const authService = {
     // sessionStorage es más seguro que localStorage (se limpia al cerrar tab)
     if (token) {
       sessionStorage.setItem('authToken', token);
-      console.log('🔑 Token guardado en sessionStorage para Railway cross-domain');
-      console.log('🔍 Token guardado:', token.substring(0, 20) + '...');
+      
+      // Verificar que se guardó correctamente
+      const savedToken = sessionStorage.getItem('authToken');
+      if (savedToken === token) {
+        console.log('✅ Token guardado exitosamente en sessionStorage');
+      } else {
+        console.error('❌ Error guardando token en sessionStorage');
+      }
     } else {
-      console.log('❌ NO SE RECIBIÓ TOKEN EN LA RESPUESTA');
+      console.error('❌ NO SE RECIBIÓ TOKEN EN LA RESPUESTA DEL SERVIDOR');
     }
     
     return { user, business };

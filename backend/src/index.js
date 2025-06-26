@@ -14,8 +14,9 @@ const { logInfo, logError } = require('./utils/logger');
 
 const execAsync = util.promisify(exec);
 
-// Configurar manejo de excepciones no capturadas
-handleUncaughtExceptions();
+// Configurar manejo de excepciones no capturadas - TEMPORALMENTE DESHABILITADO
+// PROBLEMA: Puede estar interfiriendo con MercadoPago
+// handleUncaughtExceptions();
 
 // Debug: Log de variables de entorno importantes (seguro)
 logInfo('Variables de entorno configuradas', {
@@ -1602,9 +1603,11 @@ async function startServer() {
       }
     });
 
-    // Middleware de manejo de errores seguro
-    app.use(notFoundHandler);
-    app.use(errorHandler);
+    // Middleware de manejo de errores seguro - TEMPORALMENTE DESHABILITADO
+    // PROBLEMA: El errorHandler está interfiriendo con las respuestas de MercadoPago
+    // TODO: Reconfigurar para excluir rutas de pagos
+    // app.use(notFoundHandler);
+    // app.use(errorHandler);
 
     // 4. Iniciar servidor
     app.listen(PORT, () => {
