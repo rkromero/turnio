@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateJWT } = require('../middleware/auth');
+const { authenticateTokenOnly } = require('../middleware/auth');
 const { prisma } = require('../config/database');
 const { checkExpiredSubscriptions } = require('../controllers/subscriptionAutoController');
 
 // Endpoint para modificar fecha de suscripción (solo para testing)
-router.post('/subscription/modify-date', authenticateJWT, async (req, res) => {
+router.post('/subscription/modify-date', authenticateTokenOnly, async (req, res) => {
   try {
     const { subscriptionId, action } = req.body;
     const { user } = req;
@@ -98,7 +98,7 @@ router.post('/subscription/modify-date', authenticateJWT, async (req, res) => {
 });
 
 // Endpoint para ejecutar verificación de suscripciones vencidas manualmente
-router.post('/subscription/check-expired', authenticateJWT, async (req, res) => {
+router.post('/subscription/check-expired', authenticateTokenOnly, async (req, res) => {
   try {
     console.log('🧪 [TESTING] Ejecutando verificación manual de suscripciones vencidas...');
 
@@ -138,7 +138,7 @@ router.post('/subscription/check-expired', authenticateJWT, async (req, res) => 
 });
 
 // Endpoint para obtener información detallada de una suscripción
-router.get('/subscription/:id/details', authenticateJWT, async (req, res) => {
+router.get('/subscription/:id/details', authenticateTokenOnly, async (req, res) => {
   try {
     const { id } = req.params;
     const { user } = req;
@@ -211,7 +211,7 @@ router.get('/subscription/:id/details', authenticateJWT, async (req, res) => {
 });
 
 // Endpoint para restaurar fechas de suscripción
-router.post('/subscription/restore-date', authenticateJWT, async (req, res) => {
+router.post('/subscription/restore-date', authenticateTokenOnly, async (req, res) => {
   try {
     const { subscriptionId } = req.body;
     const { user } = req;
