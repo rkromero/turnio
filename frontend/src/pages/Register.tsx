@@ -32,7 +32,7 @@ const Register: React.FC = () => {
   useEffect(() => {
     const loadPlansAndDetectSelection = async () => {
       try {
-        // Cargar planes
+        // Cargar planes solo una vez
         const response = await subscriptionService.getPlans();
         setPlans(response.data.plans);
 
@@ -60,8 +60,27 @@ const Register: React.FC = () => {
       }
     };
 
-    loadPlansAndDetectSelection();
-  }, [searchParams]);
+    // Solo cargar una vez al montar el componente
+    if (plans.length === 0) {
+      loadPlansAndDetectSelection();
+    }
+  }, []); // Dependencias vacías para evitar el loop
+
+  // Detectar cambios en URL por separado
+  useEffect(() => {
+    if (plans.length > 0) {
+      const planKey = searchParams.get('plan');
+      const billing = searchParams.get('billing') as 'monthly' | 'yearly';
+
+      if (planKey) {
+        const plan = plans.find(p => p.key === planKey);
+        if (plan) {
+          setSelectedPlan(plan);
+          setSelectedBilling(billing || 'monthly');
+        }
+      }
+    }
+  }, [searchParams, plans]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -110,13 +129,11 @@ const Register: React.FC = () => {
       }
       
       const businessId = registerResponse.business.id;
+      const token = registerResponse.token; // Obtener token del registro
       console.log('✅ BusinessId obtenido directamente del registro:', businessId);
+      console.log('✅ Token obtenido del registro:', token ? 'SÍ' : 'NO');
       
-      // 3. Pequeña pausa para asegurar que la cookie de autenticación esté disponible
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('✅ Pausa completada, token debería estar disponible');
-      
-      // 4. Si hay un plan seleccionado que no sea gratuito, crear suscripción
+      // 3. Si hay un plan seleccionado que no sea gratuito, crear suscripción
       console.log('🔍 Plan seleccionado:', selectedPlan);
       console.log('🔍 ¿Es plan gratuito?', selectedPlan?.key === 'FREE');
       
@@ -124,12 +141,12 @@ const Register: React.FC = () => {
         console.log('🔄 Plan seleccionado:', selectedPlan.key);
         
         try {
-          // Crear la suscripción
+          // Crear la suscripción usando el token del registro
           const subscriptionResponse = await subscriptionService.createSubscription({
             businessId: businessId,
             planType: selectedPlan.key,
             billingCycle: selectedBilling === 'monthly' ? 'MONTHLY' : 'YEARLY'
-          });
+          }, token);
 
           console.log('✅ Suscripción creada:', subscriptionResponse);
 

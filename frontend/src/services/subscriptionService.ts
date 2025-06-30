@@ -123,9 +123,15 @@ class SubscriptionService {
   }
 
   // Crear suscripción
-  async createSubscription(request: CreateSubscriptionRequest): Promise<CreateSubscriptionResponse> {
+  async createSubscription(request: CreateSubscriptionRequest, token?: string): Promise<CreateSubscriptionResponse> {
     try {
-      const response = await this.api.post('/subscriptions/create-temp', request);
+      const config = token ? {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      } : {};
+      
+      const response = await this.api.post('/subscriptions/create-temp', request, config);
       return response.data;
     } catch (error) {
       console.error('Error en createSubscription:', error);
