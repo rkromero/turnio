@@ -183,6 +183,7 @@ export interface ApiResponse<T = unknown> {
 export interface AuthResponse {
   user: User;
   business: Business;
+  token?: string; // Token JWT opcional (disponible en registro)
 }
 
 // Tipos para contexto de autenticación

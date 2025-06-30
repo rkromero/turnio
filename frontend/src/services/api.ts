@@ -69,7 +69,7 @@ api.interceptors.response.use(
 
 // Servicios de autenticación
 export const authService = {
-  register: async (data: RegisterForm): Promise<AuthResponse & { token?: string }> => {
+  register: async (data: RegisterForm): Promise<AuthResponse> => {
     const response = await api.post<ApiResponse<{user: User, business: Business, token?: string}>>('/auth/register', data);
     console.log('🔍 Response completa del registro:', response.data);
     console.log('🔍 response.data.data:', response.data.data);
