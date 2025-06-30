@@ -289,14 +289,20 @@ const createSubscription = async (req, res) => {
       console.log('✅ Suscripción creada exitosamente:', subscription.id);
     }
 
-    // Actualizar el plan del negocio
-    await prisma.business.update({
-      where: { id: businessId },
-      data: {
-        planType,
-        maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
-      }
-    });
+    // Solo actualizar el plan del negocio si es FREE (no requiere pago)
+    // Para planes de pago, actualizar DESPUÉS de procesar el pago exitosamente
+    if (planType === 'FREE') {
+      await prisma.business.update({
+        where: { id: businessId },
+        data: {
+          planType,
+          maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
+        }
+      });
+      console.log(`✅ Plan ${planType} actualizado inmediatamente (sin pago requerido)`);
+    } else {
+      console.log(`⏳ Plan ${planType} pendiente de pago - negocio mantiene plan actual hasta completar pago`);
+    }
 
     console.log(`✅ Suscripción creada: ${planType} (${billingCycle}) para negocio ${business.name}`);
 
