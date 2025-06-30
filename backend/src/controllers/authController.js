@@ -98,11 +98,11 @@ const registerBusiness = async (req, res) => {
           planType: 'FREE',
           status: 'ACTIVE',
           startDate: new Date(),
-          // Para plan FREE no hay fecha de vencimiento (null)
+          endDate: null, // Plan FREE no vence
           nextBillingDate: null,
           priceAmount: 0,
-          billingCycle: 'MONTHLY',
-          autoRenew: false // Plan FREE no se auto-renueva
+          currency: 'ARS',
+          billingCycle: 'MONTHLY'
         }
       });
 
