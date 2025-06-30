@@ -679,6 +679,10 @@ async function startServer() {
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
+    
+    // Rutas de testing (solo para desarrollo y testing)
+    const testingRoutes = require('./routes/testingRoutes');
+    app.use('/api/testing', testingRoutes);
 
     // Debug endpoint para diagnosticar problemas de booking
     app.post('/api/debug/book-test', async (req, res) => {

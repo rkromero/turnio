@@ -385,7 +385,7 @@ const LandingPage: React.FC = () => {
               <p className="mt-4 text-gray-600">Cargando planes...</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
               {plans.map((plan) => {
                 const currentPricing = plan.pricing[billingCycle];
                 const isPopular = isPopularPlan(plan.key);
@@ -394,7 +394,7 @@ const LandingPage: React.FC = () => {
                 return (
                   <div 
                     key={plan.key} 
-                    className={`relative border-2 rounded-2xl p-6 transition-transform hover:scale-105 ${
+                    className={`relative border-2 rounded-2xl p-6 transition-transform hover:scale-105 flex flex-col h-full ${
                       isPopular 
                         ? 'border-purple-500 scale-105 shadow-xl' 
                         : 'border-gray-200 shadow-lg'
@@ -416,51 +416,55 @@ const LandingPage: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="text-center mb-6">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                        {plan.name}
-                      </h3>
-                      <p className="text-gray-600 mb-4 text-sm">
-                        {plan.description}
-                      </p>
-                      <div className="flex items-baseline justify-center">
-                        <span className="text-4xl font-bold text-gray-900">
-                          {formatPrice(currentPricing.displayPrice)}
-                        </span>
-                        {!isFree && (
-                          <span className="text-gray-500 ml-1">
-                            /{billingCycle === 'monthly' ? 'mes' : 'mes'}
+                    <div className="flex-grow">
+                      <div className="text-center mb-6">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                          {plan.name}
+                        </h3>
+                        <p className="text-gray-600 mb-4 text-sm">
+                          {plan.description}
+                        </p>
+                        <div className="flex items-baseline justify-center">
+                          <span className="text-4xl font-bold text-gray-900">
+                            {formatPrice(currentPricing.displayPrice)}
                           </span>
+                          {!isFree && (
+                            <span className="text-gray-500 ml-1">
+                              /{billingCycle === 'monthly' ? 'mes' : 'mes'}
+                            </span>
+                          )}
+                        </div>
+                        {billingCycle === 'yearly' && !isFree && 'savings' in currentPricing && currentPricing.savings > 0 && (
+                          <p className="text-green-600 text-sm mt-2 font-medium">
+                            Ahorrás ${currentPricing.savings.toLocaleString('es-AR')} al año
+                          </p>
                         )}
                       </div>
-                      {billingCycle === 'yearly' && !isFree && 'savings' in currentPricing && currentPricing.savings > 0 && (
-                        <p className="text-green-600 text-sm mt-2 font-medium">
-                          Ahorrás ${currentPricing.savings.toLocaleString('es-AR')} al año
-                        </p>
-                      )}
+
+                      <ul className="space-y-3 mb-8">
+                        {plan.features.map((feature, featureIndex) => (
+                          <li key={featureIndex} className="flex items-center text-sm">
+                            <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                            <span className="text-gray-700">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
 
-                    <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center text-sm">
-                          <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
-                          <span className="text-gray-700">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Link
-                      to={`/register?plan=${plan.key}&billing=${billingCycle}`}
-                      className={`w-full py-3 px-6 rounded-lg font-semibold text-center transition-colors inline-block text-sm ${
-                        isPopular 
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                          : isFree
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
-                      }`}
-                    >
-                      {isFree ? 'Empezar gratis' : `Elegir ${plan.name}`}
-                    </Link>
+                    <div className="mt-auto">
+                      <Link
+                        to={`/register?plan=${plan.key}&billing=${billingCycle}`}
+                        className={`w-full py-3 px-6 rounded-lg font-semibold text-center transition-colors inline-block text-sm ${
+                          isPopular 
+                            ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                            : isFree
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
+                        }`}
+                      >
+                        {isFree ? 'Empezar gratis' : `Elegir ${plan.name}`}
+                      </Link>
+                    </div>
                   </div>
                 );
               })}

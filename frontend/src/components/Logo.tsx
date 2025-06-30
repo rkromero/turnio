@@ -28,33 +28,31 @@ const Logo: React.FC<LogoProps> = ({
   };
 
   const textColorClasses = {
-    dark: 'text-gray-900',
+    dark: 'text-gray-800',
     light: 'text-white'
   };
 
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
-      {/* Icono del logo - A estilizada en círculo púrpura */}
-      <div className={`${sizeClasses[size]} bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+      {/* Icono oficial de Turnio */}
+      <div className={`${sizeClasses[size]} bg-gradient-to-br from-purple-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-lg`}>
         <svg
-          viewBox="0 0 24 24"
-          className="w-3/5 h-3/5 text-white"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
+          viewBox="0 0 32 32"
+          className="w-3/5 h-3/5 text-black"
+          fill="currentColor"
+          stroke="none"
         >
-          {/* Letra A estilizada */}
+          {/* Forma A estilizada como en el logo oficial */}
           <path 
-            d="M12 4L8 20M16 20L12 4M9.5 14h5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
+            d="M16 6 L24 24 L20 24 L18.5 20 L13.5 20 L12 24 L8 24 L16 6 Z M15 14 L17 14 L16 11 L15 14 Z" 
+            fillRule="evenodd"
           />
         </svg>
       </div>
       
       {/* Texto del logo */}
       {showText && (
-        <span className={`font-bold tracking-wide ${textSizeClasses[size]} ${textColorClasses[textColor]}`}>
+        <span className={`font-black tracking-wider ${textSizeClasses[size]} ${textColorClasses[textColor]} uppercase`}>
           TURNIO
         </span>
       )}
