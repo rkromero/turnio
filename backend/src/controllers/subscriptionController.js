@@ -200,12 +200,20 @@ const createSubscription = async (req, res) => {
       }
     }
 
-    // Verificar si ya tiene suscripción activa
-    if (business.subscription && business.subscription.status === 'ACTIVE') {
+    // Verificar si ya tiene suscripción activa (solo bloquear si es plan de pago)
+    if (business.subscription && 
+        business.subscription.status === 'ACTIVE' && 
+        business.subscription.planType !== 'FREE') {
+      console.log('❌ Ya tiene suscripción de pago activa:', business.subscription.planType);
       return res.status(400).json({
         success: false,
-        message: 'Ya tienes una suscripción activa'
+        message: `Ya tienes una suscripción ${business.subscription.planType} activa`
       });
+    }
+    
+    // Si tiene suscripción FREE, permitir upgrade
+    if (business.subscription && business.subscription.planType === 'FREE') {
+      console.log('✅ Actualizando desde plan FREE a:', planType);
     }
 
     const plan = AVAILABLE_PLANS[planType];
@@ -228,29 +236,58 @@ const createSubscription = async (req, res) => {
       }
     }
 
-    // Crear suscripción
-    console.log('🔍 Creando suscripción con datos:', {
-      businessId,
-      planType,
-      billingCycle,
-      priceAmount,
-      startDate,
-      nextBillingDate,
-      status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-    });
+    // Crear o actualizar suscripción
+    let subscription;
     
-    const subscription = await prisma.subscription.create({
-      data: {
+    if (business.subscription) {
+      // Actualizar suscripción existente
+      console.log('🔍 Actualizando suscripción existente con datos:', {
+        planType,
+        billingCycle,
+        priceAmount,
+        nextBillingDate,
+        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+      });
+      
+      subscription = await prisma.subscription.update({
+        where: { id: business.subscription.id },
+        data: {
+          planType,
+          billingCycle,
+          priceAmount,
+          currency: 'ARS',
+          nextBillingDate,
+          status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED',
+          updatedAt: new Date()
+        }
+      });
+      console.log('✅ Suscripción actualizada exitosamente:', subscription.id);
+    } else {
+      // Crear nueva suscripción
+      console.log('🔍 Creando nueva suscripción con datos:', {
         businessId,
         planType,
         billingCycle,
         priceAmount,
         startDate,
         nextBillingDate,
-        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED' // FREE es activa inmediatamente, pagos requieren pago
-      }
-    });
-    console.log('✅ Suscripción creada exitosamente:', subscription.id);
+        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+      });
+      
+      subscription = await prisma.subscription.create({
+        data: {
+          businessId,
+          planType,
+          billingCycle,
+          priceAmount,
+          currency: 'ARS',
+          startDate,
+          nextBillingDate,
+          status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+        }
+      });
+      console.log('✅ Suscripción creada exitosamente:', subscription.id);
+    }
 
     // Actualizar el plan del negocio
     await prisma.business.update({
