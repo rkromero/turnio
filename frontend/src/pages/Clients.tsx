@@ -4,6 +4,7 @@ import type { Client, Appointment } from '../types';
 import ClientModal from '../components/ClientModal';
 import FloatingActionButton from '../components/FloatingActionButton';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
+import { useAuth } from '../context/AuthContext';
 import { 
   Plus, 
   Search, 
@@ -28,6 +29,10 @@ const Clients: React.FC = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMobile = useIsMobileSimple();
+  const { user } = useAuth();
+  
+  // Verificar si el usuario puede eliminar clientes (solo admins)
+  const canDeleteClients = user?.role === 'ADMIN';
 
   useEffect(() => {
     loadClients();
@@ -568,15 +573,17 @@ const Clients: React.FC = () => {
                                   >
                                     Editar
                                   </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteClient(client.id);
-                                    }}
-                                    className="text-red-600 hover:text-red-900"
-                                  >
-                                    Eliminar
-                                  </button>
+                                  {canDeleteClients && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClient(client.id);
+                                      }}
+                                      className="text-red-600 hover:text-red-900"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -655,13 +662,15 @@ const Clients: React.FC = () => {
                           <Edit className="w-4 h-4" />
                           <span>Editar</span>
                         </button>
-                        <button
-                          onClick={() => handleDeleteClient(selectedClient.id)}
-                          className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center space-x-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Eliminar</span>
-                        </button>
+                        {canDeleteClients && (
+                          <button
+                            onClick={() => handleDeleteClient(selectedClient.id)}
+                            className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center space-x-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Eliminar</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

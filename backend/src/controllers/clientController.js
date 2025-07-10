@@ -205,6 +205,15 @@ const deleteClient = async (req, res) => {
   try {
     const { id } = req.params;
     const businessId = req.businessId;
+    const userRole = req.user.role;
+
+    // Verificar que solo los administradores puedan eliminar clientes
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar clientes'
+      });
+    }
 
     // Verificar que el cliente pertenezca al negocio
     const existingClient = await prisma.client.findFirst({
