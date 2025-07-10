@@ -132,15 +132,15 @@ router.get('/stats', authenticateTokenOnly, getUserStats);
 router.get('/:id', authenticateTokenOnly, getUser);
 
 // POST /api/users - Crear nuevo usuario/empleado (con asignación automática de sucursal)
-router.post('/', authenticateToken, createUserValidation, createUser);
+router.post('/', authenticateTokenOnly, createUserValidation, createUser);
 
 // PUT /api/users/:id - Actualizar usuario (incluye cambio de sucursal)
-router.put('/:id', authenticateToken, updateUserValidation, updateUser);
+router.put('/:id', authenticateTokenOnly, updateUserValidation, updateUser);
 
 // PATCH /api/users/:id/status - Activar/desactivar usuario
-router.patch('/:id/status', authenticateToken, toggleStatusValidation, toggleUserStatus);
+router.patch('/:id/status', authenticateTokenOnly, toggleStatusValidation, toggleUserStatus);
 
 // DELETE /api/users/:id - Eliminar usuario (desactivar)
-router.delete('/:id', authenticateToken, deleteUser);
+router.delete('/:id', authenticateTokenOnly, deleteUser);
 
 module.exports = router; 
