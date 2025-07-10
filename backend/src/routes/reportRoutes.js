@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateTokenOnly } = require('../middleware/auth');
 const { 
   getDashboardMetrics, 
   getRevenueReport, 
@@ -8,19 +8,10 @@ const {
   getClientsReport 
 } = require('../controllers/reportController');
 
-// Todas las rutas requieren autenticación
-router.use(authenticateToken);
-
-// GET /api/reports/dashboard - Métricas generales del dashboard
-router.get('/dashboard', getDashboardMetrics);
-
-// GET /api/reports/revenue - Reporte de ingresos
-router.get('/revenue', getRevenueReport);
-
-// GET /api/reports/services - Reporte de servicios
-router.get('/services', getServicesReport);
-
-// GET /api/reports/clients - Reporte de clientes
-router.get('/clients', getClientsReport);
+// Rutas de reportes (solo verifican token)
+router.get('/dashboard', authenticateTokenOnly, getDashboardMetrics);
+router.get('/revenue', authenticateTokenOnly, getRevenueReport);
+router.get('/services', authenticateTokenOnly, getServicesReport);
+router.get('/clients', authenticateTokenOnly, getClientsReport);
 
 module.exports = router; 

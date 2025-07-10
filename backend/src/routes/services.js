@@ -14,7 +14,7 @@ const {
   removeBranchService,
   getBranchServiceStats
 } = require('../controllers/serviceController');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -65,21 +65,18 @@ const branchServicePriceValidation = [
 // Ruta pública (sin autenticación)
 router.get('/public/:businessSlug', getPublicServices);
 
-// Todas las rutas siguientes requieren autenticación
-router.use(authenticateToken);
+// Rutas de lectura (solo verifican token)
+router.get('/', authenticateTokenOnly, getServices);
+router.get('/stats', authenticateTokenOnly, getServiceStats);
+router.get('/branch/:branchId', authenticateTokenOnly, getServicesByBranch);
+router.get('/branch/:branchId/stats', authenticateTokenOnly, getBranchServiceStats);
 
-// Rutas principales de servicios
-router.get('/', getServices);
-router.get('/stats', getServiceStats);
-router.post('/', requireAdmin, serviceValidation, createService);
-router.put('/:id', requireAdmin, updateService);
-router.delete('/:id', requireAdmin, deleteService);
-
-// Rutas para gestión de servicios por sucursal
-router.get('/branch/:branchId', getServicesByBranch);
-router.get('/branch/:branchId/stats', getBranchServiceStats);
-router.post('/branch/:branchId/assign/:serviceId', requireAdmin, branchServicePriceValidation, assignServiceToBranch);
-router.put('/branch/:branchId/price/:serviceId', requireAdmin, branchServicePriceValidation, updateBranchServicePrice);
-router.delete('/branch/:branchId/remove/:serviceId', requireAdmin, branchServiceValidation, removeBranchService);
+// Rutas de modificación (requieren suscripción válida y admin)
+router.post('/', authenticateToken, requireAdmin, serviceValidation, createService);
+router.put('/:id', authenticateToken, requireAdmin, updateService);
+router.delete('/:id', authenticateToken, requireAdmin, deleteService);
+router.post('/branch/:branchId/assign/:serviceId', authenticateToken, requireAdmin, branchServicePriceValidation, assignServiceToBranch);
+router.put('/branch/:branchId/price/:serviceId', authenticateToken, requireAdmin, branchServicePriceValidation, updateBranchServicePrice);
+router.delete('/branch/:branchId/remove/:serviceId', authenticateToken, requireAdmin, branchServiceValidation, removeBranchService);
 
 module.exports = router;

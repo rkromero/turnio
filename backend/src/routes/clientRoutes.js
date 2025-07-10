@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 const {
   getClients,
   getClient,
@@ -38,25 +38,14 @@ const clientValidation = [
     .withMessage('Las notas no pueden exceder 500 caracteres')
 ];
 
-// Aplicar autenticación a todas las rutas
-router.use(authenticateToken);
+// Rutas de lectura (solo verifican token)
+router.get('/stats', authenticateTokenOnly, getClientStats);
+router.get('/', authenticateTokenOnly, getClients);
+router.get('/:id', authenticateTokenOnly, getClient);
 
-// Obtener estadísticas de clientes
-router.get('/stats', getClientStats);
-
-// Obtener todos los clientes
-router.get('/', getClients);
-
-// Obtener un cliente específico
-router.get('/:id', getClient);
-
-// Crear nuevo cliente
-router.post('/', clientValidation, createClient);
-
-// Actualizar cliente
-router.put('/:id', clientValidation, updateClient);
-
-// Eliminar cliente
-router.delete('/:id', deleteClient);
+// Rutas de modificación (solo verifican token, límites se validan en controlador)
+router.post('/', authenticateTokenOnly, clientValidation, createClient);
+router.put('/:id', authenticateTokenOnly, clientValidation, updateClient);
+router.delete('/:id', authenticateTokenOnly, deleteClient);
 
 module.exports = router; 

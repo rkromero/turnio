@@ -13,7 +13,7 @@ const {
   getProfessionalAvailability,
   getPublicBranches
 } = require('../controllers/appointmentController');
-const { authenticateToken, requireBusinessAccess } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireBusinessAccess } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -49,12 +49,12 @@ router.get('/public/:businessSlug/professional/:professionalId/availability', ge
 router.get('/public/:businessSlug/services', getBusinessServices);
 router.get('/public/:businessSlug/available-slots', getAvailableSlots);
 
-// Rutas protegidas
-router.use(authenticateToken);
+// Rutas de lectura (solo verifican token)
+router.get('/', authenticateTokenOnly, getAppointments);
 
-router.get('/', getAppointments);
-router.post('/', createAppointmentValidation, createAppointment);
-router.put('/:id', updateAppointment);
-router.delete('/:id', cancelAppointment);
+// Rutas de modificación (requieren suscripción válida)
+router.post('/', authenticateToken, createAppointmentValidation, createAppointment);
+router.put('/:id', authenticateToken, updateAppointment);
+router.delete('/:id', authenticateToken, cancelAppointment);
 
 module.exports = router;
