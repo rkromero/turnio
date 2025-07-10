@@ -203,13 +203,26 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
   const handleChangePlan = async (newPlanKey: string) => {
     try {
       setIsChangingPlan(true);
-      await planService.changePlan(newPlanKey);
-      toast.success('Plan actualizado exitosamente');
-      setShowPlanModal(false);
+      const response = await planService.changePlan(newPlanKey);
       
-      // Recargar datos
-      if (onPlanChanged) {
-        onPlanChanged();
+      // Si requiere pago, redirigir a la página de planes
+      if (response.requiresPayment) {
+        toast.success(response.message || 'Redirigiendo al flujo de pago...');
+        setShowPlanModal(false);
+        
+        // Redirigir a la página de planes después de un momento
+        setTimeout(() => {
+          window.location.href = '/dashboard/plans';
+        }, 1500);
+      } else {
+        // Plan cambiado directamente (ej: FREE)
+        toast.success('Plan actualizado exitosamente');
+        setShowPlanModal(false);
+        
+        // Recargar datos
+        if (onPlanChanged) {
+          onPlanChanged();
+        }
       }
       
     } catch (error: unknown) {

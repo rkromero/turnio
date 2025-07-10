@@ -214,7 +214,132 @@ const getUserBranchStats = async (req, res) => {
   }
 };
 
+// Arreglar suscripción problemática - sincronizar business.planType con subscription
+const fixProblematicSubscription = async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    console.log(`🔧 Arreglando suscripción problemática para negocio: ${businessId}`);
+
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: {
+        subscription: true
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Negocio no encontrado'
+      });
+    }
+
+    console.log(`📊 Estado actual - business.planType: ${business.planType}, subscription: ${business.subscription ? `${business.subscription.planType} (${business.subscription.status})` : 'null'}`);
+
+    let result = {};
+
+    // Si el plan del negocio es FREE, asegurar que tenga suscripción FREE activa
+    if (business.planType === 'FREE') {
+      if (!business.subscription) {
+        console.log('🆕 Creando suscripción FREE para negocio con plan FREE');
+        
+        const subscription = await prisma.subscription.create({
+          data: {
+            businessId: business.id,
+            planType: 'FREE',
+            status: 'ACTIVE',
+            startDate: new Date(),
+            endDate: null,
+            nextBillingDate: null,
+            priceAmount: 0,
+            currency: 'ARS',
+            billingCycle: 'MONTHLY'
+          }
+        });
+
+        result = {
+          action: 'created_free_subscription',
+          subscription
+        };
+      } else if (business.subscription.status !== 'ACTIVE' || business.subscription.planType !== 'FREE') {
+        console.log('🔄 Actualizando suscripción existente a FREE ACTIVE');
+        
+        const subscription = await prisma.subscription.update({
+          where: { id: business.subscription.id },
+          data: {
+            planType: 'FREE',
+            status: 'ACTIVE',
+            endDate: null,
+            nextBillingDate: null,
+            priceAmount: 0
+          }
+        });
+
+        result = {
+          action: 'updated_to_free_subscription',
+          subscription
+        };
+      } else {
+        console.log('✅ Suscripción FREE ya está correcta');
+        result = {
+          action: 'already_correct',
+          subscription: business.subscription
+        };
+      }
+    } else {
+      // Si el plan del negocio es pagado pero la suscripción está mal
+      if (business.subscription && (business.subscription.status === 'PAYMENT_FAILED' || business.subscription.planType !== business.planType)) {
+        console.log(`🔄 Negocio tiene plan ${business.planType} pero suscripción problemática - revirtiendo a FREE`);
+        
+        // Revertir negocio a FREE
+        await prisma.business.update({
+          where: { id: business.id },
+          data: {
+            planType: 'FREE',
+            maxAppointments: 30
+          }
+        });
+
+        // Actualizar suscripción a FREE
+        const subscription = await prisma.subscription.update({
+          where: { id: business.subscription.id },
+          data: {
+            planType: 'FREE',
+            status: 'ACTIVE',
+            endDate: null,
+            nextBillingDate: null,
+            priceAmount: 0
+          }
+        });
+
+        result = {
+          action: 'reverted_to_free',
+          message: 'Plan revertido a FREE - para cambiar a plan pagado usa el flujo correcto de suscripción',
+          subscription
+        };
+      }
+    }
+
+    console.log(`✅ Suscripción arreglada exitosamente`);
+
+    res.json({
+      success: true,
+      message: 'Suscripción sincronizada exitosamente',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Error arreglando suscripción:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error arreglando suscripción',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   migrateUsersToMainBranch,
-  getUserBranchStats
+  getUserBranchStats,
+  fixProblematicSubscription
 }; 

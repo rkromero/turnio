@@ -199,31 +199,47 @@ const changePlan = async (req, res) => {
       });
     }
 
-    // Actualizar el plan del negocio
-    const updatedBusiness = await prisma.business.update({
-      where: { id: businessId },
-      data: {
-        planType: newPlan,
-        maxAppointments: newPlanLimits.appointments === -1 ? 999999 : newPlanLimits.appointments
-      },
-      select: {
-        id: true,
-        name: true,
-        planType: true,
-        maxAppointments: true
-      }
-    });
+    // Si es plan FREE, cambiar directamente
+    if (newPlan === 'FREE') {
+      const updatedBusiness = await prisma.business.update({
+        where: { id: businessId },
+        data: {
+          planType: newPlan,
+          maxAppointments: newPlanLimits.appointments === -1 ? 999999 : newPlanLimits.appointments
+        },
+        select: {
+          id: true,
+          name: true,
+          planType: true,
+          maxAppointments: true
+        }
+      });
 
-    console.log(`✅ Plan cambiado: ${business.planType} → ${newPlan} para negocio ${business.name}`);
+      console.log(`✅ Plan cambiado: ${business.planType} → ${newPlan} para negocio ${business.name}`);
 
-    res.json({
-      success: true,
-      message: `Plan actualizado exitosamente a ${AVAILABLE_PLANS[newPlan].name}`,
-      data: {
-        business: updatedBusiness,
-        newPlan: AVAILABLE_PLANS[newPlan]
-      }
-    });
+      res.json({
+        success: true,
+        message: `Plan actualizado exitosamente a ${AVAILABLE_PLANS[newPlan].name}`,
+        data: {
+          business: updatedBusiness,
+          newPlan: AVAILABLE_PLANS[newPlan]
+        }
+      });
+    } else {
+      // Para planes pagados, redirigir al flujo de suscripción
+      console.log(`⏳ Plan ${newPlan} requiere pago - redirigiendo al flujo de suscripción`);
+      
+      res.json({
+        success: true,
+        requiresPayment: true,
+        message: `Para cambiar al plan ${AVAILABLE_PLANS[newPlan].name} necesitas completar el pago`,
+        data: {
+          newPlan: AVAILABLE_PLANS[newPlan],
+          redirectTo: '/dashboard/plans',
+          action: 'create_subscription'
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error cambiando plan:', error);

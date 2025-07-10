@@ -9,5 +9,6 @@ router.use(authenticateToken);
 // Rutas de migración
 router.post('/migrate-users-to-branches', migrationController.migrateUsersToMainBranch);
 router.get('/user-branch-stats', migrationController.getUserBranchStats);
+router.post('/fix-subscription', migrationController.fixProblematicSubscription);
 
 module.exports = router; 
