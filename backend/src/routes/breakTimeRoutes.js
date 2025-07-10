@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { authenticateTokenOnly } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 const {
   getBranchBreakTimes,
@@ -52,18 +52,18 @@ const updateBreakTimeValidation = [
 
 // Rutas
 // GET /api/break-times - Obtener horarios de todas las sucursales
-router.get('/', authenticateTokenOnly, getAllBranchBreakTimes);
+router.get('/', authenticateToken, getAllBranchBreakTimes);
 
 // GET /api/break-times/branch/:branchId - Obtener horarios de una sucursal específica
-router.get('/branch/:branchId', authenticateTokenOnly, getBranchBreakTimes);
+router.get('/branch/:branchId', authenticateToken, getBranchBreakTimes);
 
 // POST /api/break-times/branch/:branchId - Crear horario de descanso para una sucursal
-router.post('/branch/:branchId', authenticateTokenOnly, createBreakTimeValidation, createBreakTime);
+router.post('/branch/:branchId', authenticateToken, createBreakTimeValidation, createBreakTime);
 
 // PUT /api/break-times/:breakTimeId - Actualizar horario de descanso
-router.put('/:breakTimeId', authenticateTokenOnly, updateBreakTimeValidation, updateBreakTime);
+router.put('/:breakTimeId', authenticateToken, updateBreakTimeValidation, updateBreakTime);
 
 // DELETE /api/break-times/:breakTimeId - Eliminar horario de descanso
-router.delete('/:breakTimeId', authenticateTokenOnly, deleteBreakTime);
+router.delete('/:breakTimeId', authenticateToken, deleteBreakTime);
 
 module.exports = router; 

@@ -8,7 +8,7 @@ const {
   deleteReview,
   getReviewToken
 } = require('../controllers/reviewController');
-const { authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -29,9 +29,9 @@ router.get('/public/:businessSlug', getPublicReviews);
 router.get('/public/token/:appointmentId', getReviewToken);
 router.post('/public/:appointmentId', createReviewValidation, createPublicReview);
 
-// Rutas protegidas (solo verifican token)
-router.get('/', authenticateTokenOnly, getReviews);
-router.patch('/:id/status', authenticateTokenOnly, requireAdmin, updateReviewStatus);
-router.delete('/:id', authenticateTokenOnly, requireAdmin, deleteReview);
+// Rutas protegidas (requieren autenticación)
+router.get('/', authenticateToken, getReviews);
+router.patch('/:id/status', authenticateToken, requireAdmin, updateReviewStatus);
+router.delete('/:id', authenticateToken, requireAdmin, deleteReview);
 
 module.exports = router; 
