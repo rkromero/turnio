@@ -95,20 +95,20 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
   };
 
   return (
-    <div className="relative">
-      {/* More Menu Overlay */}
+    <>
+      {/* More Menu Overlay - Rendered at root level */}
       {showMoreMenu && (
         <div 
-          className="mobile-more-menu-overlay"
+          className="fixed inset-0 z-[998] bg-black bg-opacity-25 backdrop-blur-sm"
           onClick={() => setShowMoreMenu(false)}
         />
       )}
       
-      {/* More Menu */}
+      {/* More Menu - Rendered at root level */}
       {showMoreMenu && (
-        <div className="mobile-more-menu">
+        <div className="fixed bottom-[70px] left-0 right-0 z-[999] bg-white border-t border-gray-200 shadow-2xl">
           <div className="safe-area-bottom pb-4">
-            <div className="mobile-more-menu-header">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <h3 className="text-sm font-medium text-gray-700">Más opciones</h3>
             </div>
             <div className="py-2">
@@ -121,11 +121,15 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
                     key={item.name}
                     to={item.href}
                     onClick={handleMenuItemClick}
-                    className={`mobile-more-menu-item ${active ? 'active' : ''}`}
+                    className={`flex items-center px-6 py-4 transition-colors touch-manipulation ${
+                      active 
+                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
                   >
                     <Icon 
                       size={20} 
-                      className="icon" 
+                      className={`mr-3 ${active ? 'text-purple-600' : 'text-gray-500'}`} 
                     />
                     <span className="font-medium">{item.name}</span>
                   </Link>
@@ -199,7 +203,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
           </button>
         </div>
       </nav>
-    </div>
+    </>
   );
 };
 
