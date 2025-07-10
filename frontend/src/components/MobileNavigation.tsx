@@ -99,16 +99,16 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
       {/* More Menu Overlay */}
       {showMoreMenu && (
         <div 
-          className="fixed inset-0 z-30 bg-black bg-opacity-25 backdrop-blur-sm"
+          className="mobile-more-menu-overlay"
           onClick={() => setShowMoreMenu(false)}
         />
       )}
       
       {/* More Menu */}
       {showMoreMenu && (
-        <div className="absolute bottom-full left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl">
+        <div className="mobile-more-menu">
           <div className="safe-area-bottom pb-4">
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="mobile-more-menu-header">
               <h3 className="text-sm font-medium text-gray-700">Más opciones</h3>
             </div>
             <div className="py-2">
@@ -121,15 +121,11 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
                     key={item.name}
                     to={item.href}
                     onClick={handleMenuItemClick}
-                    className={`flex items-center px-6 py-4 transition-colors touch-manipulation ${
-                      active 
-                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                    className={`mobile-more-menu-item ${active ? 'active' : ''}`}
                   >
                     <Icon 
                       size={20} 
-                      className={`mr-3 ${active ? 'text-purple-600' : 'text-gray-500'}`} 
+                      className="icon" 
                     />
                     <span className="font-medium">{item.name}</span>
                   </Link>

@@ -165,18 +165,35 @@ const authenticateToken = async (req, res, next) => {
                                  subscription.status === 'SUSPENDED';
       
       if (isProblematicStatus || isExpiredByDate) {
-        // Permitir acceso a endpoints de pago y suscripción
+        // Permitir acceso a endpoints de pago, suscripción y configuración básica
         const allowedEndpoints = [
+          // Endpoints de MercadoPago y pagos
           '/api/mercadopago/create-payment',
           '/api/mercadopago/payment-status',
-          '/api/subscriptions/current',
           '/api/mercadopago/webhook',
-          '/api/auth/profile',
-          '/api/subscriptions/plans',
           '/api/payments/mp/connect',
           '/api/payments/mp/status',
           '/api/payments/mp/disconnect',
-          '/api/payments/settings'
+          '/api/payments/settings',
+          
+          // Endpoints de suscripción y planes
+          '/api/subscriptions/current',
+          '/api/subscriptions/plans',
+          '/api/subscriptions/upgrade',
+          '/api/subscriptions/downgrade',
+          
+          // Endpoints de autenticación y perfil
+          '/api/auth/profile',
+          '/api/auth/logout',
+          
+          // Endpoints de configuración básica (solo lectura)
+          '/api/config/business',
+          '/api/config/plan-usage',
+          '/api/config/working-hours',
+          '/api/config/holidays',
+          
+          // Dashboard básico (para mostrar estado y enlaces de pago)
+          '/api/dashboard/stats'
         ];
         
         console.log('🔍 Ruta actual:', req.originalUrl);

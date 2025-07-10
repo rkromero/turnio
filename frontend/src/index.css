@@ -1700,3 +1700,78 @@ select {
     height: 4px;
   }
 }
+
+/* User Menu Styles */
+.user-menu-dropdown {
+  animation: slideDownFadeIn 0.2s ease-out;
+  transform-origin: top right;
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.user-menu-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* User menu item hover effects */
+.user-menu-item {
+  transition: all 0.2s ease;
+}
+
+.user-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: translateX(2px);
+}
+
+.user-menu-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.05);
+  transform: translateX(2px);
+}
+
+/* Avatar animation */
+.user-avatar-button {
+  transition: all 0.2s ease;
+}
+
+.user-avatar-button:hover {
+  transform: scale(1.05);
+}
+
+.user-avatar-button:active {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments for user menu */
+@media (max-width: 375px) {
+  .user-menu-dropdown {
+    width: 240px;
+    right: -1rem;
+  }
+}
+
+/* Safe area adjustments for user menu */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .user-menu-dropdown {
+    margin-top: calc(0.5rem + env(safe-area-inset-top));
+  }
+}
+
+/* Accessibility improvements for user menu */
+@media (prefers-reduced-motion: reduce) {
+  .user-menu-dropdown,
+  .user-menu-overlay,
+  .user-menu-item,
+  .user-avatar-button {
+    animation: none;
+    transition: none;
+  }
+}
