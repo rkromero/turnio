@@ -106,8 +106,8 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
       
       {/* More Menu - Rendered at root level */}
       {showMoreMenu && (
-        <div className="fixed bottom-[70px] left-0 right-0 z-[999] bg-white border-t border-gray-200 shadow-2xl">
-          <div className="safe-area-bottom pb-4">
+        <div className="fixed bottom-0 left-0 right-0 z-[999] bg-white border-t border-gray-200 shadow-2xl">
+          <div className="pb-[70px]">
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <h3 className="text-sm font-medium text-gray-700">Más opciones</h3>
             </div>
