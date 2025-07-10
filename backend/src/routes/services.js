@@ -71,12 +71,12 @@ router.get('/stats', authenticateTokenOnly, getServiceStats);
 router.get('/branch/:branchId', authenticateTokenOnly, getServicesByBranch);
 router.get('/branch/:branchId/stats', authenticateTokenOnly, getBranchServiceStats);
 
-// Rutas de modificación (requieren suscripción válida y admin)
-router.post('/', authenticateToken, requireAdmin, serviceValidation, createService);
-router.put('/:id', authenticateToken, requireAdmin, updateService);
-router.delete('/:id', authenticateToken, requireAdmin, deleteService);
-router.post('/branch/:branchId/assign/:serviceId', authenticateToken, requireAdmin, branchServicePriceValidation, assignServiceToBranch);
-router.put('/branch/:branchId/price/:serviceId', authenticateToken, requireAdmin, branchServicePriceValidation, updateBranchServicePrice);
-router.delete('/branch/:branchId/remove/:serviceId', authenticateToken, requireAdmin, branchServiceValidation, removeBranchService);
+// Rutas de modificación (solo verifican token y admin, límites se validan en controlador)
+router.post('/', authenticateTokenOnly, requireAdmin, serviceValidation, createService);
+router.put('/:id', authenticateTokenOnly, requireAdmin, updateService);
+router.delete('/:id', authenticateTokenOnly, requireAdmin, deleteService);
+router.post('/branch/:branchId/assign/:serviceId', authenticateTokenOnly, requireAdmin, branchServicePriceValidation, assignServiceToBranch);
+router.put('/branch/:branchId/price/:serviceId', authenticateTokenOnly, requireAdmin, branchServicePriceValidation, updateBranchServicePrice);
+router.delete('/branch/:branchId/remove/:serviceId', authenticateTokenOnly, requireAdmin, branchServiceValidation, removeBranchService);
 
 module.exports = router;
