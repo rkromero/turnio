@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, param } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 const {
   getBusinessConfig,
   updateBusinessConfig,
@@ -15,8 +15,7 @@ const {
 
 const router = express.Router();
 
-// Aplicar autenticación a todas las rutas
-router.use(authenticateToken);
+// No aplicar middleware global - se aplica individualmente según el tipo de operación
 
 // Validaciones para actualizar configuración del negocio
 const updateBusinessValidation = [
@@ -115,34 +114,34 @@ const updateHolidayValidation = [
 ];
 
 // === RUTAS DE CONFIGURACIÓN DEL NEGOCIO ===
-// GET /api/config/business - Obtener configuración del negocio
-router.get('/business', getBusinessConfig);
+// GET /api/config/business - Obtener configuración del negocio (solo lectura, permitido con problemas de suscripción)
+router.get('/business', authenticateTokenOnly, getBusinessConfig);
 
-// PUT /api/config/business - Actualizar configuración del negocio
-router.put('/business', updateBusinessValidation, updateBusinessConfig);
+// PUT /api/config/business - Actualizar configuración del negocio (requiere suscripción activa)
+router.put('/business', authenticateToken, updateBusinessValidation, updateBusinessConfig);
 
 // === RUTAS DE HORARIOS DE TRABAJO ===
-// GET /api/config/working-hours - Obtener horarios de trabajo
-router.get('/working-hours', getWorkingHours);
+// GET /api/config/working-hours - Obtener horarios de trabajo (solo lectura, permitido con problemas de suscripción)
+router.get('/working-hours', authenticateTokenOnly, getWorkingHours);
 
-// PUT /api/config/working-hours/:userId - Actualizar horarios de un usuario
-router.put('/working-hours/:userId', updateWorkingHoursValidation, updateWorkingHours);
+// PUT /api/config/working-hours/:userId - Actualizar horarios de un usuario (requiere suscripción activa)
+router.put('/working-hours/:userId', authenticateToken, updateWorkingHoursValidation, updateWorkingHours);
 
 // === RUTAS DE FERIADOS ===
-// GET /api/config/holidays - Obtener feriados
-router.get('/holidays', getHolidays);
+// GET /api/config/holidays - Obtener feriados (solo lectura, permitido con problemas de suscripción)
+router.get('/holidays', authenticateTokenOnly, getHolidays);
 
-// POST /api/config/holidays - Crear feriado
-router.post('/holidays', createHolidayValidation, createHoliday);
+// POST /api/config/holidays - Crear feriado (requiere suscripción activa)
+router.post('/holidays', authenticateToken, createHolidayValidation, createHoliday);
 
-// PUT /api/config/holidays/:id - Actualizar feriado
-router.put('/holidays/:id', updateHolidayValidation, updateHoliday);
+// PUT /api/config/holidays/:id - Actualizar feriado (requiere suscripción activa)
+router.put('/holidays/:id', authenticateToken, updateHolidayValidation, updateHoliday);
 
-// DELETE /api/config/holidays/:id - Eliminar feriado
-router.delete('/holidays/:id', deleteHoliday);
+// DELETE /api/config/holidays/:id - Eliminar feriado (requiere suscripción activa)
+router.delete('/holidays/:id', authenticateToken, deleteHoliday);
 
 // === RUTAS DE PLAN Y ESTADÍSTICAS ===
-// GET /api/config/plan-usage - Obtener estadísticas de uso del plan
-router.get('/plan-usage', getPlanUsage);
+// GET /api/config/plan-usage - Obtener estadísticas de uso del plan (solo lectura, permitido con problemas de suscripción)
+router.get('/plan-usage', authenticateTokenOnly, getPlanUsage);
 
 module.exports = router; 
