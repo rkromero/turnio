@@ -47,11 +47,9 @@ const setTokenCookie = (res, token) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' para cross-origin en producción
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en milisegundos
     path: '/',
-    // CRÍTICO: Configurar dominio para Railway cross-subdomain
-    domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
+    // REMOVIDO: domain específico para Railway - puede causar problemas cross-domain
+    // domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
   };
-
-  // Dominio .up.railway.app permite cookies entre subdominios de Railway
 
   logDebug('Configurando cookie de autenticación', { cookieOptions });
   res.cookie('token', token, cookieOptions);

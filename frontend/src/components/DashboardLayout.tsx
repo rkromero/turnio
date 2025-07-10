@@ -23,17 +23,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     navigate(-1);
   };
 
-  const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-    { name: 'Servicios', href: '/dashboard/services', icon: '⚙️' },
-    { name: 'Turnos', href: '/dashboard/appointments', icon: '📅' },
-    { name: 'Clientes', href: '/dashboard/clients', icon: '👥' },
-    { name: 'Reseñas', href: '/dashboard/reviews', icon: '⭐' },
-    { name: 'Usuarios', href: '/dashboard/users', icon: '👤' },
-    { name: 'Sucursales', href: '/dashboard/branches', icon: '🏢' },
-    { name: 'Reportes', href: '/dashboard/reports', icon: '📈' },
-    { name: 'Configuraciones', href: '/dashboard/settings', icon: '🔧' },
-  ];
+  // Elementos de navegación según el rol del usuario
+  const getNavigationItems = () => {
+    if (user?.role === 'EMPLOYEE') {
+      // Empleados solo ven: Mi Agenda, Clientes (limitado), Reseñas
+      return [
+        { name: 'Mi Agenda', href: '/dashboard/my-appointments', icon: '📅' },
+        { name: 'Clientes', href: '/dashboard/clients', icon: '👥' },
+        { name: 'Reseñas', href: '/dashboard/reviews', icon: '⭐' },
+      ];
+    } else {
+      // Administradores ven todo
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+        { name: 'Servicios', href: '/dashboard/services', icon: '⚙️' },
+        { name: 'Turnos', href: '/dashboard/appointments', icon: '📅' },
+        { name: 'Clientes', href: '/dashboard/clients', icon: '👥' },
+        { name: 'Reseñas', href: '/dashboard/reviews', icon: '⭐' },
+        { name: 'Usuarios', href: '/dashboard/users', icon: '👤' },
+        { name: 'Sucursales', href: '/dashboard/branches', icon: '🏢' },
+        { name: 'Reportes', href: '/dashboard/reports', icon: '📈' },
+        { name: 'Configuraciones', href: '/dashboard/settings', icon: '🔧' },
+      ];
+    }
+  };
+
+  const navigationItems = getNavigationItems();
 
   // Determinar el título de la página actual
   const getPageTitle = () => {

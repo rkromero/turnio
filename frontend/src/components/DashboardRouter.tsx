@@ -4,6 +4,7 @@ import DashboardLayout from './DashboardLayout';
 import Dashboard from '../pages/Dashboard';
 import Services from '../pages/Services';
 import Appointments from '../pages/Appointments';
+import MyAppointments from '../pages/MyAppointments';
 import Clients from '../pages/Clients';
 import Reviews from '../pages/Reviews';
 import Users from '../pages/Users';
@@ -19,6 +20,7 @@ const DashboardRouter: React.FC = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/services" element={<Services />} />
         <Route path="/appointments" element={<Appointments />} />
+        <Route path="/my-appointments" element={<MyAppointments />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/users" element={<Users />} />
