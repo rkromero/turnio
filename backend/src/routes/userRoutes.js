@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 const {
   getUsers,
   getUser,
@@ -123,13 +123,13 @@ const toggleStatusValidation = [
 // Rutas
 
 // GET /api/users - Obtener todos los usuarios/empleados (con filtro opcional por sucursal)
-router.get('/', authenticateToken, getUsers);
+router.get('/', authenticateTokenOnly, getUsers);
 
 // GET /api/users/stats - Obtener estadísticas de usuarios
-router.get('/stats', authenticateToken, getUserStats);
+router.get('/stats', authenticateTokenOnly, getUserStats);
 
 // GET /api/users/:id - Obtener un usuario específico
-router.get('/:id', authenticateToken, getUser);
+router.get('/:id', authenticateTokenOnly, getUser);
 
 // POST /api/users - Crear nuevo usuario/empleado (con asignación automática de sucursal)
 router.post('/', authenticateToken, createUserValidation, createUser);
