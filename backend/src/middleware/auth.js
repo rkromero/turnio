@@ -5,19 +5,19 @@ const { logDebug, logError } = require('../utils/logger');
 // Middleware para verificar token JWT sin verificación de suscripción
 const authenticateTokenOnly = async (req, res, next) => {
   try {
-    // DEBUG TEMPORALMENTE REDUCIDO para no interferir con MercadoPago
-    // logDebug('AuthenticateTokenOnly - DEBUG COMPLETO', {
-    //   path: req.path,
-    //   originalUrl: req.originalUrl,
-    //   method: req.method,
-    //   cookies: req.cookies,
-    //   cookieToken: req.cookies?.token ? 'PRESENTE' : 'AUSENTE',
-    //   authHeader: req.headers.authorization,
-    //   allHeaders: Object.keys(req.headers),
-    //   userAgent: req.headers['user-agent'],
-    //   origin: req.headers.origin,
-    //   referer: req.headers.referer
-    // });
+    // DEBUG TEMPORALMENTE ACTIVADO para resolver problema 401
+    logDebug('AuthenticateTokenOnly - DEBUG COMPLETO', {
+      path: req.path,
+      originalUrl: req.originalUrl,
+      method: req.method,
+      cookies: req.cookies,
+      cookieToken: req.cookies?.token ? 'PRESENTE' : 'AUSENTE',
+      authHeader: req.headers.authorization,
+      allHeaders: Object.keys(req.headers),
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin,
+      referer: req.headers.referer
+    });
 
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
 
@@ -38,10 +38,10 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
-    // logDebug('AuthenticateTokenOnly - Token encontrado', {
-    //   tokenLength: token.length,
-    //   tokenStart: token.substring(0, 10) + '...'
-    // });
+    logDebug('AuthenticateTokenOnly - Token encontrado', {
+      tokenLength: token.length,
+      tokenStart: token.substring(0, 10) + '...'
+    });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
@@ -70,12 +70,12 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
-    // logDebug('AuthenticateTokenOnly - AUTENTICACIÓN EXITOSA', {
-    //   userId: user.id,
-    //   userEmail: user.email,
-    //   businessId: user.businessId,
-    //   businessName: user.business?.name
-    // });
+    logDebug('AuthenticateTokenOnly - AUTENTICACIÓN EXITOSA', {
+      userId: user.id,
+      userEmail: user.email,
+      businessId: user.businessId,
+      businessName: user.business?.name
+    });
 
     req.user = user;
     req.businessId = user.businessId;

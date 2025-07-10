@@ -39,16 +39,10 @@ const api = axios.create({
 
 // Interceptor para agregar el token en el header Authorization
 api.interceptors.request.use((config) => {
-  // USAR SOLO COOKIES - sessionStorage causa problemas en Railway cross-domain
-  const cookies = document.cookie.split(';');
-  const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
-  const token = tokenCookie ? tokenCookie.split('=')[1] : null;
-
-  // Establecer el header Authorization si hay token
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
+  // NO NECESITAMOS LEER LA COOKIE MANUALMENTE
+  // Las cookies httpOnly se envían automáticamente con withCredentials: true
+  // El backend las procesará directamente desde req.cookies.token
+  
   return config;
 });
 
