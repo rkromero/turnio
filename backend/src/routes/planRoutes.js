@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 const {
   getAvailablePlans,
   changePlan,
@@ -8,9 +8,6 @@ const {
 } = require('../controllers/planController');
 
 const router = express.Router();
-
-// Aplicar autenticación a todas las rutas
-router.use(authenticateToken);
 
 // Validaciones para cambio de plan
 const changePlanValidation = [
@@ -23,13 +20,13 @@ const changePlanValidation = [
 
 // === RUTAS DE PLANES ===
 
-// GET /api/plans/available - Obtener planes disponibles
-router.get('/available', getAvailablePlans);
+// GET /api/plans/available - Obtener planes disponibles (solo verifica token)
+router.get('/available', authenticateTokenOnly, getAvailablePlans);
 
-// GET /api/plans/current - Obtener información del plan actual
-router.get('/current', getCurrentPlanInfo);
+// GET /api/plans/current - Obtener información del plan actual (solo verifica token)
+router.get('/current', authenticateTokenOnly, getCurrentPlanInfo);
 
-// PUT /api/plans/change - Cambiar plan del negocio
-router.put('/change', changePlanValidation, changePlan);
+// PUT /api/plans/change - Cambiar plan del negocio (requiere suscripción válida)
+router.put('/change', authenticateToken, changePlanValidation, changePlan);
 
 module.exports = router; 
