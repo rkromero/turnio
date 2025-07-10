@@ -26,11 +26,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   // Elementos de navegación según el rol del usuario
   const getNavigationItems = () => {
     if (user?.role === 'EMPLOYEE') {
-      // Empleados solo ven: Mi Agenda, Clientes (limitado), Reseñas
+      // Empleados solo ven: Mi Agenda, Clientes, Reseñas, Turnos
       return [
         { name: 'Mi Agenda', href: '/dashboard/my-appointments', icon: '📅' },
         { name: 'Clientes', href: '/dashboard/clients', icon: '👥' },
         { name: 'Reseñas', href: '/dashboard/reviews', icon: '⭐' },
+        { name: 'Turnos', href: '/dashboard/appointments', icon: '📋' },
       ];
     } else {
       // Administradores ven todo
