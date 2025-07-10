@@ -2,10 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
 const branchController = require('../controllers/branchController');
-const { authenticateToken } = require('../middleware/auth');
-
-// Middleware de autenticación para todas las rutas
-router.use(authenticateToken);
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 
 // Validaciones
 const createBranchValidation = [
@@ -196,15 +193,15 @@ const assignServiceValidation = [
     .withMessage('El precio debe ser un número positivo')
 ];
 
-// Rutas
-router.get('/', branchController.getBranches);
-router.get('/:branchId', branchController.getBranchById);
-router.post('/', createBranchValidation, branchController.createBranch);
-router.put('/:branchId', updateBranchValidation, branchController.updateBranch);
-router.delete('/:branchId', branchController.deleteBranch);
+// Rutas de lectura (solo verifican token)
+router.get('/', authenticateTokenOnly, branchController.getBranches);
+router.get('/:branchId', authenticateTokenOnly, branchController.getBranchById);
+router.get('/:branchId/services', authenticateTokenOnly, branchController.getBranchServices);
 
-// Rutas para servicios de sucursal
-router.get('/:branchId/services', branchController.getBranchServices);
-router.post('/:branchId/services', assignServiceValidation, branchController.assignServiceToBranch);
+// Rutas de modificación (verifican token + suscripción)
+router.post('/', authenticateToken, createBranchValidation, branchController.createBranch);
+router.put('/:branchId', authenticateToken, updateBranchValidation, branchController.updateBranch);
+router.delete('/:branchId', authenticateToken, branchController.deleteBranch);
+router.post('/:branchId/services', authenticateToken, assignServiceValidation, branchController.assignServiceToBranch);
 
 module.exports = router; 
