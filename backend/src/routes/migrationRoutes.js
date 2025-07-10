@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const migrationController = require('../controllers/migrationController');
-const { authenticateToken } = require('../middleware/auth');
-
-// Middleware de autenticación para todas las rutas
-router.use(authenticateToken);
+const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 
 // Rutas de migración
-router.post('/migrate-users-to-branches', migrationController.migrateUsersToMainBranch);
-router.get('/user-branch-stats', migrationController.getUserBranchStats);
-router.post('/fix-subscription', migrationController.fixProblematicSubscription);
+router.post('/migrate-users-to-branches', authenticateToken, migrationController.migrateUsersToMainBranch);
+router.get('/user-branch-stats', authenticateToken, migrationController.getUserBranchStats);
+router.post('/fix-subscription', authenticateTokenOnly, migrationController.fixProblematicSubscription);
 
 module.exports = router; 
