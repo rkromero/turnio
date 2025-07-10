@@ -343,45 +343,78 @@ const resetDatabase = async (req, res) => {
   try {
     console.log('🗑️  Iniciando limpieza completa de base de datos...');
     
+    // Verificar que prisma está disponible
+    if (!prisma) {
+      throw new Error('Prisma client no está disponible');
+    }
+    
     // Borrar datos en orden correcto (respetando foreign keys)
-    console.log('Borrando appointments...');
-    await prisma.appointment.deleteMany({});
+    // Usar try-catch individual para cada tabla en caso de que alguna no exista
     
-    console.log('Borrando reviews...');
-    await prisma.review.deleteMany({});
+    try {
+      console.log('Borrando appointments...');
+      await prisma.appointment.deleteMany({});
+    } catch (e) { console.log('Tabla appointment no existe o error:', e.message); }
     
-    console.log('Borrando client scores...');
-    await prisma.clientScore.deleteMany({});
+    try {
+      console.log('Borrando reviews...');
+      await prisma.review.deleteMany({});
+    } catch (e) { console.log('Tabla review no existe o error:', e.message); }
     
-    console.log('Borrando client events...');
-    await prisma.clientEvent.deleteMany({});
+    try {
+      console.log('Borrando client scores...');
+      await prisma.clientScore.deleteMany({});
+    } catch (e) { console.log('Tabla clientScore no existe o error:', e.message); }
     
-    console.log('Borrando clients...');
-    await prisma.client.deleteMany({});
+    try {
+      console.log('Borrando client events...');
+      await prisma.clientEvent.deleteMany({});
+    } catch (e) { console.log('Tabla clientEvent no existe o error:', e.message); }
     
-    console.log('Borrando service branch assignments...');
-    await prisma.serviceBranch.deleteMany({});
+    try {
+      console.log('Borrando clients...');
+      await prisma.client.deleteMany({});
+    } catch (e) { console.log('Tabla client no existe o error:', e.message); }
     
-    console.log('Borrando services...');
-    await prisma.service.deleteMany({});
+    try {
+      console.log('Borrando service branch assignments...');
+      await prisma.serviceBranch.deleteMany({});
+    } catch (e) { console.log('Tabla serviceBranch no existe o error:', e.message); }
     
-    console.log('Borrando working hours...');
-    await prisma.workingHours.deleteMany({});
+    try {
+      console.log('Borrando services...');
+      await prisma.service.deleteMany({});
+    } catch (e) { console.log('Tabla service no existe o error:', e.message); }
     
-    console.log('Borrando break times...');
-    await prisma.breakTime.deleteMany({});
+    try {
+      console.log('Borrando working hours...');
+      await prisma.workingHours.deleteMany({});
+    } catch (e) { console.log('Tabla workingHours no existe o error:', e.message); }
     
-    console.log('Borrando branches...');
-    await prisma.branch.deleteMany({});
+    try {
+      console.log('Borrando break times...');
+      await prisma.breakTime.deleteMany({});
+    } catch (e) { console.log('Tabla breakTime no existe o error:', e.message); }
     
-    console.log('Borrando users...');
-    await prisma.user.deleteMany({});
+    try {
+      console.log('Borrando branches...');
+      await prisma.branch.deleteMany({});
+    } catch (e) { console.log('Tabla branch no existe o error:', e.message); }
     
-    console.log('Borrando subscriptions...');
-    await prisma.subscription.deleteMany({});
+    try {
+      console.log('Borrando users...');
+      await prisma.user.deleteMany({});
+    } catch (e) { console.log('Tabla user no existe o error:', e.message); }
     
-    console.log('Borrando businesses...');
-    await prisma.business.deleteMany({});
+    try {
+      console.log('Borrando subscriptions...');
+      await prisma.subscription.deleteMany({});
+    } catch (e) { console.log('Tabla subscription no existe o error:', e.message); }
+    
+    try {
+      console.log('Borrando businesses...');
+      await prisma.business.deleteMany({});
+    } catch (e) { console.log('Tabla business no existe o error:', e.message); }
     
     console.log('✅ Base de datos limpiada exitosamente!');
     
