@@ -500,11 +500,25 @@ select {
   }
   
   .btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
-    @apply text-base px-6 py-3;
+    @apply text-base px-6 py-3 min-h-[44px];
   }
   
   .stats-card {
     @apply p-4;
+  }
+  
+  /* Mejorar modal en mobile */
+  .modal-overlay {
+    @apply p-0;
+  }
+  
+  /* Hacer inputs más touch-friendly */
+  .input-field {
+    @apply min-h-[44px] text-base;
+  }
+  
+  .input-field select {
+    @apply min-h-[44px];
   }
   
   /* Ocultar elementos no esenciales en móvil */

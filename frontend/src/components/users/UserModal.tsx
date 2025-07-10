@@ -154,23 +154,25 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 md:p-8">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col shadow-2xl 
+                      sm:rounded-2xl mobile-only:rounded-t-2xl mobile-only:rounded-b-none mobile-only:max-h-[95vh] mobile-only:mt-auto">
+        {/* Header - Fixed */}
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">
             {isEditing ? 'Editar Usuario' : 'Nuevo Usuario'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 touch-manipulation"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Form - Scrollable */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
           {/* Nombre */}
           <div>
             <label className="label">
@@ -346,19 +348,21 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onSave, onClose }) =
             </select>
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-end space-x-3 pt-4">
+          </div>
+
+          {/* Buttons - Fixed at bottom */}
+          <div className="flex justify-end space-x-3 p-4 sm:p-6 border-t border-gray-200 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="btn-ghost"
+              className="btn-ghost touch-manipulation"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !emailAvailable}
-              className="btn-primary disabled:opacity-50"
+              className="btn-primary disabled:opacity-50 touch-manipulation flex items-center"
             >
               {loading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>}
               {isEditing ? 'Actualizar' : 'Crear Usuario'}
