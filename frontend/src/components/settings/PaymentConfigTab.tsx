@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Link2, Check, X, Settings, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
+// Configurar axios con la misma configuración que api.ts
+const api = axios.create({
+  baseURL: `${import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app'}/api`,
+  withCredentials: true, // Para incluir cookies httpOnly
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 interface PaymentSettings {
   require_payment: boolean;
@@ -35,28 +43,18 @@ const PaymentConfigTab: React.FC = () => {
     try {
       setLoading(true);
       
-      // Cargar estado de conexión y configuración en paralelo
+      // Cargar estado de conexión y configuración en paralelo usando axios
       const [statusResponse, settingsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/payments/mp/status`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }),
-        fetch(`${API_BASE_URL}/api/payments/settings`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
+        api.get('/payments/mp/status'),
+        api.get('/payments/settings')
       ]);
 
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        setConnectionStatus(statusData.data);
+      if (statusResponse.data.success) {
+        setConnectionStatus(statusResponse.data.data);
       }
 
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        setSettings(settingsData.data);
+      if (settingsResponse.data.success) {
+        setSettings(settingsResponse.data.data);
       }
 
     } catch (error) {
@@ -71,17 +69,13 @@ const PaymentConfigTab: React.FC = () => {
     try {
       setConnecting(true);
       
-      const response = await fetch(`${API_BASE_URL}/api/payments/mp/connect`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/payments/mp/connect');
 
-      if (!response.ok) {
+      if (!response.data.success) {
         throw new Error('Error obteniendo URL de conexión');
       }
 
-      const data = await response.json();
+      const data = response.data;
       
       // Redirigir a MercadoPago para autorización
       window.location.href = data.data.auth_url;
@@ -99,14 +93,9 @@ const PaymentConfigTab: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payments/mp/disconnect`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.delete('/payments/mp/disconnect');
 
-      if (!response.ok) {
+      if (!response.data.success) {
         throw new Error('Error desconectando MercadoPago');
       }
 
@@ -123,16 +112,9 @@ const PaymentConfigTab: React.FC = () => {
     try {
       setSavingSettings(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/payments/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(settings)
-      });
+      const response = await api.put('/payments/settings', settings);
 
-      if (!response.ok) {
+      if (!response.data.success) {
         throw new Error('Error guardando configuración');
       }
 
