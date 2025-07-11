@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CreditCard, Users, Calendar, Wrench, TrendingUp, Check, X, ArrowRight, Zap, Crown, Sparkles } from 'lucide-react';
 import { planService } from '../../services/api';
+import { subscriptionService } from '../../services/subscriptionService';
 import toast from 'react-hot-toast';
 import type { PlanUsage, AvailablePlansResponse, AvailablePlan } from '../../types';
 
@@ -8,6 +9,9 @@ interface PlanUsageTabProps {
   planUsage: PlanUsage | null;
   onPlanChanged?: () => void;
 }
+
+// Los planes del frontend y backend usan las mismas claves
+// FREE, BASIC, PREMIUM, ENTERPRISE
 
 const PLAN_FEATURES = {
   FREE: {
@@ -203,34 +207,62 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
   const handleChangePlan = async (newPlanKey: string) => {
     try {
       setIsChangingPlan(true);
-      const response = await planService.changePlan(newPlanKey);
       
-      // Si requiere pago, redirigir a la página de planes
-      if (response.requiresPayment) {
-        toast.success(response.message || 'Redirigiendo al flujo de pago...');
-        setShowPlanModal(false);
-        
-        // Redirigir a la página de planes después de un momento
-        setTimeout(() => {
-          window.location.href = '/dashboard/plans';
-        }, 1500);
-      } else {
-        // Plan cambiado directamente (ej: FREE)
+      console.log(`🔄 Iniciando cambio de plan: ${newPlanKey}`);
+      
+      // Para plan FREE, usar el endpoint antiguo que funciona bien
+      if (newPlanKey === 'FREE') {
+        await planService.changePlan(newPlanKey);
         toast.success('Plan actualizado exitosamente');
         setShowPlanModal(false);
-        
-        // Recargar datos
         if (onPlanChanged) {
           onPlanChanged();
         }
+        return;
+      }
+      
+      // Para planes pagados, usar el sistema de suscripciones
+      const response = await subscriptionService.changePlan(null, newPlanKey);
+      
+      if (response.success) {
+        if (response.data.requiresPayment) {
+          // Crear el pago de MercadoPago
+          const paymentResponse = await subscriptionService.createPayment({
+            subscriptionId: response.data.subscription.id
+          });
+          
+          if (paymentResponse.success) {
+            toast.success('Redirigiendo al checkout...');
+            setShowPlanModal(false);
+            
+            // Redirigir al checkout de MercadoPago
+            const checkoutUrl = paymentResponse.data.initPoint || paymentResponse.data.sandboxInitPoint;
+            window.location.href = checkoutUrl;
+          } else {
+            throw new Error('Error al crear el pago');
+          }
+        } else {
+          // Plan cambiado directamente (sin pago)
+          toast.success('Plan actualizado exitosamente');
+          setShowPlanModal(false);
+          if (onPlanChanged) {
+            onPlanChanged();
+          }
+        }
+      } else {
+        throw new Error(response.message || 'Error al cambiar el plan');
       }
       
     } catch (error: unknown) {
+      console.error('❌ Error en handleChangePlan:', error);
+      
       let message = 'Error al cambiar el plan';
       
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         message = axiosError.response?.data?.message || message;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        message = (error as { message: string }).message;
       }
       
       toast.error(message);
