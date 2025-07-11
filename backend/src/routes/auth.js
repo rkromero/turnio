@@ -3,8 +3,62 @@ const { body } = require('express-validator');
 const { registerBusiness, login, logout, getProfile } = require('../controllers/authController');
 const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
 const authController = require('../controllers/authController');
+const jwt = require('jsonwebtoken');
+const { prisma } = require('../config/database');
 
 const router = express.Router();
+
+// Middleware simplificado para depurar
+const simpleAuthMiddleware = async (req, res, next) => {
+  try {
+    console.log('🔍 Simple auth middleware - iniciando');
+    
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    console.log('🔍 Token presente:', !!token);
+    
+    if (!token) {
+      console.log('❌ No token found');
+      return res.status(401).json({
+        success: false,
+        message: 'No se proporcionó token de autenticación'
+      });
+    }
+    
+    console.log('🔍 Verificando token...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('🔍 Token decodificado:', { userId: decoded.userId, businessId: decoded.businessId });
+    
+    console.log('🔍 Buscando usuario en BD...');
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: {
+        business: true
+      }
+    });
+    
+    console.log('🔍 Usuario encontrado:', !!user);
+    
+    if (!user) {
+      console.log('❌ Usuario no encontrado');
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+    
+    console.log('✅ Auth exitosa');
+    req.user = user;
+    req.businessId = user.businessId;
+    next();
+    
+  } catch (error) {
+    console.error('❌ Error en auth simple:', error.message);
+    return res.status(401).json({
+      success: false,
+      message: 'Token inválido o expirado'
+    });
+  }
+};
 
 // Validaciones para registro
 const registerValidation = [
@@ -51,6 +105,56 @@ router.post('/login', loginValidation, login);
 // Rutas protegidas
 router.post('/logout', authenticateToken, logout);
 router.get('/profile', authenticateTokenOnly, getProfile); // Usar authenticateTokenOnly para perfil básico
+
+// Ruta de prueba para depurar autenticación
+router.get('/test-auth', authenticateTokenOnly, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Autenticación funcionando correctamente',
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+      role: req.user.role
+    },
+    businessId: req.businessId,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Ruta de prueba SIN middleware para verificar si el problema está en el middleware
+router.get('/test-basic', (req, res) => {
+  const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+  
+  res.json({
+    success: true,
+    message: 'Endpoint básico funcionando',
+    hasToken: !!token,
+    tokenLength: token ? token.length : 0,
+    cookies: Object.keys(req.cookies || {}),
+    headers: {
+      authorization: !!req.headers.authorization,
+      cookie: !!req.headers.cookie
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Ruta de prueba CON middleware simple para comparar
+router.get('/test-simple', simpleAuthMiddleware, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Middleware simple funcionando',
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+      role: req.user.role
+    },
+    businessId: req.businessId,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Ruta para crear usuario de prueba (desarrollo)
 router.post('/create-test-user', authController.createTestUser);

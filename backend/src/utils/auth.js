@@ -65,11 +65,9 @@ const clearTokenCookie = (res) => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Debe coincidir con setTokenCookie
     path: '/',
-    // CRÍTICO: Mismo dominio que setTokenCookie
-    domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
+    // IMPORTANTE: Debe coincidir exactamente con setTokenCookie
+    // domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined
   };
-
-  // Dominio .up.railway.app permite limpiar cookies entre subdominios
 
   logDebug('Limpiando cookie de autenticación', { cookieOptions });
   res.clearCookie('token', cookieOptions);
