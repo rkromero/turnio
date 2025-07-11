@@ -66,6 +66,10 @@ const registerValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('El nombre del negocio debe tener entre 2 y 100 caracteres'),
+  body('professionalName')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El nombre del profesional debe tener entre 2 y 100 caracteres'),
   body('email')
     .isEmail()
     .normalizeEmail()

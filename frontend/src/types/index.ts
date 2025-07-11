@@ -124,6 +124,7 @@ export interface BookingData {
 // Tipos para formularios
 export interface RegisterForm {
   businessName: string;
+  professionalName: string; // Nombre del profesional principal (obligatorio)
   email: string;
   password: string;
   phone?: string;

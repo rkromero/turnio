@@ -11,6 +11,7 @@ const Register: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState<RegisterForm>({
     businessName: '',
+    professionalName: '', // Nombre del profesional principal
     email: '',
     password: '',
     phone: '',
@@ -242,6 +243,25 @@ const Register: React.FC = () => {
                     value={formData.businessName}
                     onChange={handleChange}
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label htmlFor="professionalName" className="label">
+                    Nombre del Profesional Principal *
+                  </label>
+                  <input
+                    id="professionalName"
+                    name="professionalName"
+                    type="text"
+                    required
+                    className="input-field"
+                    placeholder="Ej: María González"
+                    value={formData.professionalName}
+                    onChange={handleChange}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Nombre del profesional que realizará los servicios
+                  </p>
                 </div>
 
                 {/* Tipo de Negocio */}

@@ -685,7 +685,7 @@ const getAvailableProfessionals = async (req, res) => {
         users: {
           where: { 
             isActive: true,
-            role: 'EMPLOYEE', // Solo empleados, no admins/dueños
+            role: { in: ['EMPLOYEE', 'ADMIN'] }, // Incluir empleados y admins como profesionales
             ...(branchId && { branchId: branchId })
           },
           include: {
@@ -969,7 +969,7 @@ const getAllProfessionals = async (req, res) => {
         users: {
           where: { 
             isActive: true,
-            role: 'EMPLOYEE', // Solo empleados, no admins/dueños
+            role: { in: ['EMPLOYEE', 'ADMIN'] }, // Incluir empleados y admins como profesionales
             ...(branchId && { branchId: branchId })
           },
           select: {

@@ -19,7 +19,7 @@ const registerBusiness = async (req, res) => {
       });
     }
 
-    const { businessName, email, password, phone, address, description, businessType, defaultAppointmentDuration } = req.body;
+    const { businessName, professionalName, email, password, phone, address, description, businessType, defaultAppointmentDuration } = req.body;
 
     // Verificar si el email ya existe
     const existingUser = await prisma.user.findUnique({
@@ -84,11 +84,28 @@ const registerBusiness = async (req, res) => {
         data: {
           businessId: business.id,
           branchId: mainBranch.id,
-          name: businessName,
+          name: professionalName, // Usar el nombre del profesional principal (obligatorio)
           email,
           password: hashedPassword,
           role: 'ADMIN'
         }
+      });
+
+      // ✅ CREAR HORARIOS DE TRABAJO PREDETERMINADOS PARA EL ADMIN
+      // Crear horarios básicos (Lunes a Viernes 9:00 - 17:00) para que aparezca como profesional disponible
+      const defaultWorkingHours = [];
+      for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++) { // 1=Lunes, 5=Viernes
+        defaultWorkingHours.push({
+          userId: user.id,
+          dayOfWeek,
+          startTime: '09:00',
+          endTime: '17:00',
+          isActive: true
+        });
+      }
+      
+      await tx.workingHours.createMany({
+        data: defaultWorkingHours
       });
 
       // ✅ CREAR SUSCRIPCIÓN FREE AUTOMÁTICAMENTE
