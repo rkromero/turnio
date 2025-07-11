@@ -13,7 +13,20 @@ const authenticateTokenOnly = async (req, res, next) => {
       console.log('🔍 [PROFILE DEBUG] req.headers.cookie:', req.headers.cookie);
     }
 
-    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    // Manejar cookies duplicadas - tomar el ÚLTIMO token si hay múltiples
+    let token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    
+    // Si hay múltiples tokens en las cookies, tomar el último
+    if (req.headers.cookie && req.headers.cookie.includes('token=')) {
+      const tokenMatches = req.headers.cookie.match(/token=([^;]+)/g);
+      if (tokenMatches && tokenMatches.length > 1) {
+        // Tomar el último token
+        token = tokenMatches[tokenMatches.length - 1].replace('token=', '');
+        if (req.originalUrl === '/api/auth/profile') {
+          console.log('🔍 [PROFILE DEBUG] Múltiples tokens detectados, usando el último:', token.substring(0, 20) + '...');
+        }
+      }
+    }
 
     if (req.originalUrl === '/api/auth/profile') {
       console.log('🔍 [PROFILE DEBUG] Token extraído:', token ? 'SÍ (' + token.length + ' chars)' : 'NO');
@@ -87,7 +100,17 @@ const authenticateTokenOnly = async (req, res, next) => {
 // Middleware para verificar token JWT con verificación de suscripción
 const authenticateToken = async (req, res, next) => {
   try {
-    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    // Manejar cookies duplicadas - tomar el ÚLTIMO token si hay múltiples
+    let token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    
+    // Si hay múltiples tokens en las cookies, tomar el último
+    if (req.headers.cookie && req.headers.cookie.includes('token=')) {
+      const tokenMatches = req.headers.cookie.match(/token=([^;]+)/g);
+      if (tokenMatches && tokenMatches.length > 1) {
+        // Tomar el último token
+        token = tokenMatches[tokenMatches.length - 1].replace('token=', '');
+      }
+    }
 
     if (!token) {
       return res.status(401).json({
