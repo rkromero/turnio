@@ -29,8 +29,15 @@ const clientValidation = [
   
   body('phone')
     .optional({ nullable: true, checkFalsy: true })
-    .isMobilePhone('any')
-    .withMessage('Teléfono inválido'),
+    .custom((value) => {
+      // Permitir campo vacío, null o undefined
+      if (!value || value.trim() === '') return true; 
+      // Validar formato solo si tiene contenido (números, espacios, guiones, paréntesis, +)
+      if (!/^[\d\s\-\+\(\)]+$/.test(value.trim())) {
+        throw new Error('Formato de teléfono inválido');
+      }
+      return true;
+    }),
   
   body('notes')
     .optional({ nullable: true, checkFalsy: true })

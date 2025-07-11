@@ -64,14 +64,21 @@ const getClient = async (req, res) => {
 // Crear nuevo cliente
 const createClient = async (req, res) => {
   try {
+    // Log temporal para debug
+    console.log('🔍 [CLIENT DEBUG] Datos recibidos:', req.body);
+    console.log('🔍 [CLIENT DEBUG] BusinessId:', req.businessId);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ [CLIENT DEBUG] Errores de validación:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
         errors: errors.array()
       });
     }
+    
+    console.log('✅ [CLIENT DEBUG] Validaciones pasadas correctamente');
 
     const { name, email, phone, notes } = req.body;
     const businessId = req.businessId;
