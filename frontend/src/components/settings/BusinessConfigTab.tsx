@@ -19,6 +19,7 @@ const BusinessConfigTab: React.FC<BusinessConfigTabProps> = ({ businessConfig, o
     if (businessConfig) {
       setFormData({
         name: businessConfig.name || '',
+        professionalName: businessConfig.professionalName || '',
         phone: businessConfig.phone || '',
         address: businessConfig.address || '',
         description: businessConfig.description || '',
@@ -72,6 +73,12 @@ const BusinessConfigTab: React.FC<BusinessConfigTabProps> = ({ businessConfig, o
       newErrors.name = 'El nombre del negocio es requerido';
     } else if (formData.name.length < 2) {
       newErrors.name = 'El nombre debe tener al menos 2 caracteres';
+    }
+
+    if (!formData.professionalName?.trim()) {
+      newErrors.professionalName = 'El nombre del profesional principal es requerido';
+    } else if (formData.professionalName.length < 2) {
+      newErrors.professionalName = 'El nombre del profesional debe tener al menos 2 caracteres';
     }
 
     if (formData.phone && !/^[+]?[\d\s\-()]{10,20}$/.test(formData.phone)) {
@@ -196,6 +203,31 @@ const BusinessConfigTab: React.FC<BusinessConfigTabProps> = ({ businessConfig, o
             {errors.name && (
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
             )}
+          </div>
+
+          {/* Nombre del profesional principal */}
+          <div>
+            <label htmlFor="professionalName" className="block text-sm font-medium text-gray-700 mb-2">
+              <Building2 className="inline h-4 w-4 mr-1" />
+              Nombre del Profesional Principal *
+            </label>
+            <input
+              type="text"
+              id="professionalName"
+              name="professionalName"
+              value={formData.professionalName || ''}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                errors.professionalName ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="Ej: Dr. Juan Pérez"
+            />
+            {errors.professionalName && (
+              <p className="mt-1 text-sm text-red-600">{errors.professionalName}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">
+              Este es el nombre que verán los clientes al hacer reservas
+            </p>
           </div>
 
           {/* Teléfono */}

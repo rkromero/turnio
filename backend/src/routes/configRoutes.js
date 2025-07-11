@@ -24,6 +24,11 @@ const updateBusinessValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('El nombre debe tener entre 2 y 100 caracteres'),
+  body('professionalName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El nombre del profesional debe tener entre 2 y 100 caracteres'),
   body('phone')
     .optional()
     .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)

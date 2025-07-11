@@ -212,6 +212,7 @@ export interface BusinessConfig {
   primaryColor?: string;
   businessType?: BusinessType;
   defaultAppointmentDuration?: number;
+  professionalName?: string; // Nombre del profesional principal
   createdAt: string;
   updatedAt: string;
 }
@@ -225,6 +226,7 @@ export interface BusinessConfigForm {
   logo?: string;
   businessType?: BusinessType;
   defaultAppointmentDuration?: number;
+  professionalName?: string; // Nombre del profesional principal
 }
 
 // Horarios de trabajo

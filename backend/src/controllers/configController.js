@@ -20,8 +20,15 @@ const getBusinessConfig = async (req, res) => {
         address: true,
         description: true,
         primaryColor: true,
+        businessType: true,
+        defaultAppointmentDuration: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        users: {
+          where: { role: 'ADMIN', isActive: true },
+          select: { name: true },
+          take: 1
+        }
       }
     });
 
@@ -32,9 +39,16 @@ const getBusinessConfig = async (req, res) => {
       });
     }
 
+    // Obtener el nombre del profesional principal (usuario admin)
+    const professionalName = business.users[0]?.name || null;
+
     res.json({
       success: true,
-      data: business
+      data: {
+        ...business,
+        professionalName,
+        users: undefined // Remover users del resultado final
+      }
     });
 
   } catch (error) {
@@ -54,6 +68,7 @@ const updateBusinessConfig = async (req, res) => {
     console.log('Body:', JSON.stringify(req.body, null, 2));
     console.log('businessType:', req.body.businessType, typeof req.body.businessType);
     console.log('defaultAppointmentDuration:', req.body.defaultAppointmentDuration, typeof req.body.defaultAppointmentDuration);
+    console.log('professionalName:', req.body.professionalName, typeof req.body.professionalName);
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -67,26 +82,78 @@ const updateBusinessConfig = async (req, res) => {
     }
 
     const businessId = req.businessId;
-    const { name, phone, address, description, primaryColor, logo, businessType, defaultAppointmentDuration } = req.body;
+    const { name, phone, address, description, primaryColor, logo, businessType, defaultAppointmentDuration, professionalName } = req.body;
 
-    const updatedBusiness = await prisma.business.update({
+    // Usar transacción para actualizar tanto el negocio como el usuario admin
+    const result = await prisma.$transaction(async (tx) => {
+      // Actualizar configuración del negocio
+      const updatedBusiness = await tx.business.update({
+        where: { id: businessId },
+        data: {
+          ...(name && { name }),
+          ...(phone && { phone }),
+          ...(address && { address }),
+          ...(description && { description }),
+          ...(primaryColor && { primaryColor }),
+          ...(logo && { logo }),
+          ...(businessType && { businessType }),
+          ...(defaultAppointmentDuration && { defaultAppointmentDuration })
+        }
+      });
+
+      // Si se proporciona professionalName, actualizar el usuario admin
+      if (professionalName) {
+        await tx.user.updateMany({
+          where: { 
+            businessId: businessId,
+            role: 'ADMIN',
+            isActive: true
+          },
+          data: {
+            name: professionalName
+          }
+        });
+      }
+
+      return updatedBusiness;
+    });
+
+    // Obtener la configuración actualizada con el nombre del profesional
+    const businessWithProfessional = await prisma.business.findUnique({
       where: { id: businessId },
-      data: {
-        ...(name && { name }),
-        ...(phone && { phone }),
-        ...(address && { address }),
-        ...(description && { description }),
-        ...(primaryColor && { primaryColor }),
-        ...(logo && { logo }),
-        ...(businessType && { businessType }),
-        ...(defaultAppointmentDuration && { defaultAppointmentDuration })
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        slug: true,
+        planType: true,
+        maxAppointments: true,
+        logo: true,
+        phone: true,
+        address: true,
+        description: true,
+        primaryColor: true,
+        businessType: true,
+        defaultAppointmentDuration: true,
+        createdAt: true,
+        updatedAt: true,
+        users: {
+          where: { role: 'ADMIN', isActive: true },
+          select: { name: true },
+          take: 1
+        }
       }
     });
+
+    const professionalNameResult = businessWithProfessional?.users[0]?.name || null;
 
     res.json({
       success: true,
       message: 'Configuración actualizada exitosamente',
-      data: updatedBusiness
+      data: {
+        ...result,
+        professionalName: professionalNameResult
+      }
     });
 
   } catch (error) {
