@@ -156,6 +156,45 @@ router.get('/test-simple', simpleAuthMiddleware, (req, res) => {
   });
 });
 
+// Endpoint para limpiar cookies duplicadas y verificar BD
+router.post('/debug-fix', async (req, res) => {
+  try {
+    console.log('🔧 [DEBUG FIX] Iniciando limpieza...');
+    
+    // Limpiar cookies
+    res.clearCookie('token', { path: '/', httpOnly: true });
+    
+    // Verificar usuarios en BD
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isActive: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+    
+    console.log('🔧 [DEBUG FIX] Usuarios en BD:', users);
+    
+    res.json({
+      success: true,
+      message: 'Cookies limpiadas y BD verificada',
+      users: users,
+      instruction: 'Intenta hacer login nuevamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG FIX] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Ruta para crear usuario de prueba (desarrollo)
 router.post('/create-test-user', authController.createTestUser);
 
