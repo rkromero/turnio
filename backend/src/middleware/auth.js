@@ -5,32 +5,25 @@ const { logDebug, logError } = require('../utils/logger');
 // Middleware para verificar token JWT sin verificación de suscripción
 const authenticateTokenOnly = async (req, res, next) => {
   try {
-    // DEBUG TEMPORALMENTE ACTIVADO para resolver problema 401
-    logDebug('AuthenticateTokenOnly - DEBUG COMPLETO', {
-      path: req.path,
-      originalUrl: req.originalUrl,
-      method: req.method,
-      cookies: req.cookies,
-      cookieToken: req.cookies?.token ? 'PRESENTE' : 'AUSENTE',
-      authHeader: req.headers.authorization,
-      allHeaders: Object.keys(req.headers),
-      userAgent: req.headers['user-agent'],
-      origin: req.headers.origin,
-      referer: req.headers.referer
-    });
+    // Solo logs detallados en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      logDebug('AuthenticateTokenOnly - Request', {
+        path: req.path,
+        method: req.method,
+        hasToken: !!(req.cookies?.token || req.headers.authorization)
+      });
+    }
 
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      logError('AuthenticateTokenOnly - TOKEN NO ENCONTRADO', null, {
-        cookies: req.cookies,
-        headers: {
-          authorization: req.headers.authorization,
-          cookie: req.headers.cookie,
+      // Solo log básico en producción
+      if (process.env.NODE_ENV === 'development') {
+        logError('AuthenticateTokenOnly - TOKEN NO ENCONTRADO', null, {
+          path: req.originalUrl,
           origin: req.headers.origin
-        },
-        path: req.originalUrl
-      });
+        });
+      }
 
       return res.status(401).json({
         success: false,
@@ -38,17 +31,7 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
-    logDebug('AuthenticateTokenOnly - Token encontrado', {
-      tokenLength: token.length,
-      tokenStart: token.substring(0, 10) + '...'
-    });
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // logDebug('AuthenticateTokenOnly - Token decodificado', {
-    //   userId: decoded.userId,
-    //   businessId: decoded.businessId
-    // });
     
     // Buscar usuario y su negocio
     const user = await prisma.user.findUnique({
@@ -59,10 +42,12 @@ const authenticateTokenOnly = async (req, res, next) => {
     });
 
     if (!user) {
-      logError('AuthenticateTokenOnly - Usuario no encontrado en BD', null, {
-        decodedUserId: decoded.userId,
-        decodedBusinessId: decoded.businessId
-      });
+      // Solo log básico en producción
+      if (process.env.NODE_ENV === 'development') {
+        logError('AuthenticateTokenOnly - Usuario no encontrado en BD', null, {
+          decodedUserId: decoded.userId
+        });
+      }
 
       return res.status(401).json({
         success: false,
@@ -70,24 +55,29 @@ const authenticateTokenOnly = async (req, res, next) => {
       });
     }
 
-    logDebug('AuthenticateTokenOnly - AUTENTICACIÓN EXITOSA', {
-      userId: user.id,
-      userEmail: user.email,
-      businessId: user.businessId,
-      businessName: user.business?.name
-    });
+    // Log básico solo en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      logDebug('AuthenticateTokenOnly - AUTENTICACIÓN EXITOSA', {
+        userId: user.id,
+        userEmail: user.email,
+        businessId: user.businessId
+      });
+    }
 
     req.user = user;
     req.businessId = user.businessId;
     next();
   } catch (error) {
-    logError('AuthenticateTokenOnly - ERROR DE AUTENTICACIÓN', error, {
-      path: req.originalUrl,
-      cookies: req.cookies,
-      authHeader: req.headers.authorization,
-      errorName: error.name,
-      errorMessage: error.message
-    });
+    // Solo log básico en producción, detallado en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      logError('AuthenticateTokenOnly - ERROR DE AUTENTICACIÓN', error, {
+        path: req.originalUrl,
+        errorName: error.name,
+        errorMessage: error.message
+      });
+    } else {
+      console.error('Authentication error:', error.message);
+    }
 
     return res.status(401).json({
       success: false,
@@ -99,8 +89,10 @@ const authenticateTokenOnly = async (req, res, next) => {
 // Middleware para verificar token JWT con verificación de suscripción
 const authenticateToken = async (req, res, next) => {
   try {
-    // Log para depuración
-    console.log('🔍 Ruta solicitada:', req.path);
+    // Solo log detallado en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Ruta solicitada:', req.path);
+    }
     
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
 
@@ -138,7 +130,9 @@ const authenticateToken = async (req, res, next) => {
 
     // Si no hay suscripción y el plan no es FREE, hay un problema
     if (!subscription && business?.planType !== 'FREE') {
-      console.log('⚠️ Usuario sin suscripción en plan pagado:', business?.planType);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Usuario sin suscripción en plan pagado:', business?.planType);
+      }
       return res.status(403).json({
         success: false,
         message: 'No tienes una suscripción activa. Por favor, contacta soporte.',
@@ -152,7 +146,9 @@ const authenticateToken = async (req, res, next) => {
       
       // Para planes FREE, siempre permitir acceso (no tienen fecha de vencimiento)
       if (subscription.planType === 'FREE') {
-        console.log('✅ Usuario con suscripción FREE activa');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Usuario con suscripción FREE activa');
+        }
         req.user = user;
         req.businessId = user.businessId;
         return next();
@@ -196,10 +192,13 @@ const authenticateToken = async (req, res, next) => {
           '/api/dashboard/stats'
         ];
         
-        console.log('🔍 Ruta actual:', req.originalUrl);
-        console.log('🔍 Estado suscripción:', subscription.status);
-        console.log('🔍 Fecha próximo cobro:', subscription.nextBillingDate);
-        console.log('🔍 Vencida por fecha:', isExpiredByDate);
+        // Solo logs detallados en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Ruta actual:', req.originalUrl);
+          console.log('🔍 Estado suscripción:', subscription.status);
+          console.log('🔍 Fecha próximo cobro:', subscription.nextBillingDate);
+          console.log('🔍 Vencida por fecha:', isExpiredByDate);
+        }
         
         if (!allowedEndpoints.includes(req.originalUrl)) {
           let message = 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.';
@@ -225,7 +224,12 @@ const authenticateToken = async (req, res, next) => {
     req.businessId = user.businessId;
     next();
   } catch (error) {
-    console.error('Error en autenticación:', error);
+    // Solo log detallado en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error en autenticación:', error);
+    } else {
+      console.error('Authentication error:', error.message);
+    }
     return res.status(401).json({
       success: false,
       message: 'Token inválido o expirado'
