@@ -5,7 +5,7 @@ import BusinessConfigTab from '../components/settings/BusinessConfigTab';
 import WorkingHoursTab from '../components/settings/WorkingHoursTab';
 import HolidaysTab from '../components/settings/HolidaysTab';
 import PlanUsageTab from '../components/settings/PlanUsageTab';
-import PaymentConfigTab from '../components/PaymentConfigTab';
+import PaymentConfigTab from '../components/settings/PaymentConfigTab';
 import type { BusinessConfig, UserWithWorkingHours, Holiday, PlanUsage } from '../types';
 
 type TabType = 'business' | 'working-hours' | 'holidays' | 'payments' | 'plan';
