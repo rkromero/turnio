@@ -248,6 +248,8 @@ const createAppointment = async (req, res) => {
     }
 
     // Crear o encontrar cliente
+    console.log('🔍 [CLIENT DEBUG] Buscando cliente con:', { clientEmail, clientPhone });
+    
     let client = await prisma.client.findFirst({
       where: {
         businessId,
@@ -259,6 +261,7 @@ const createAppointment = async (req, res) => {
     });
 
     if (!client) {
+      console.log('✅ [CLIENT DEBUG] Cliente no encontrado, creando nuevo con:', { clientName, clientEmail, clientPhone });
       client = await prisma.client.create({
         data: {
           businessId,
@@ -267,6 +270,10 @@ const createAppointment = async (req, res) => {
           phone: clientPhone
         }
       });
+      console.log('✅ [CLIENT DEBUG] Cliente creado:', client);
+    } else {
+      console.log('⚠️ [CLIENT DEBUG] Cliente existente encontrado:', client);
+      console.log('⚠️ [CLIENT DEBUG] Usando cliente existente en lugar de crear nuevo');
     }
 
     // Crear el turno
