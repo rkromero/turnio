@@ -210,7 +210,10 @@ const createAppointment = async (req, res) => {
     }
 
     // Calcular hora de fin basada en la duración del servicio
-    const startDateTime = new Date(startTime);
+    // El frontend envía "2025-01-17T17:00" (sin zona horaria)
+    // Necesitamos tratarlo como hora local argentina
+    const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
+    const startDateTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
     // Verificar disponibilidad (no hay otro turno en el mismo horario)
@@ -388,7 +391,16 @@ const updateAppointment = async (req, res) => {
         });
       }
 
-      const newStartTime = startTime ? new Date(startTime) : existingAppointment.startTime;
+      let newStartTime;
+      if (startTime) {
+        // El frontend envía "2025-01-17T17:00" (sin zona horaria)
+        // Necesitamos tratarlo como hora local argentina
+        // Agregar la zona horaria de Argentina para evitar conversiones incorrectas
+        const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
+        newStartTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
+      } else {
+        newStartTime = existingAppointment.startTime;
+      }
       const newEndTime = new Date(newStartTime.getTime() + service.duration * 60000);
 
       updateData.startTime = newStartTime;

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from 'lucide-react';
 import type { Appointment } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 
@@ -227,16 +227,18 @@ const DayView: React.FC<DayViewProps> = ({
                         </span>
                       </div>
                       
-                      {appointment.service && (
-                        <div className="text-xs text-gray-600 truncate leading-tight">
-                          {appointment.service.name}
+                      {/* Email prominente - sin truncate para que se vea completo */}
+                      {appointment.client?.email && (
+                        <div className="text-xs text-gray-600 leading-tight break-all">
+                          {appointment.client.email}
                         </div>
                       )}
                       
-                      <div className="flex items-center text-xs text-gray-500 leading-tight">
-                        <User className="w-3 h-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{appointment.client?.email}</span>
-                      </div>
+                      {appointment.service && (
+                        <div className="text-xs text-gray-500 truncate leading-tight">
+                          {appointment.service.name}
+                        </div>
+                      )}
                       
                       {appointment.client?.phone && (
                         <div className="flex items-center text-xs text-gray-500 leading-tight">
