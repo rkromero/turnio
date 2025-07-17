@@ -50,7 +50,13 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   useEffect(() => {
     if (appointment) {
       const startDateTime = new Date(appointment.startTime);
-      const formattedDateTime = startDateTime.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+      // Usar la hora local sin conversión UTC para evitar problemas de zona horaria
+      const year = startDateTime.getFullYear();
+      const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
+      const day = String(startDateTime.getDate()).padStart(2, '0');
+      const hours = String(startDateTime.getHours()).padStart(2, '0');
+      const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
+      const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
 
       setFormData({
         clientName: appointment.client?.name || '',
