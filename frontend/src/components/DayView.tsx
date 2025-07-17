@@ -219,7 +219,7 @@ const DayView: React.FC<DayViewProps> = ({
                   <div className="p-1.5 md:p-2 h-full flex flex-col justify-start overflow-hidden">
                     <div className="flex-1 min-h-0 space-y-1">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-medium text-sm truncate flex-1 leading-tight">
+                        <span className="font-medium text-sm leading-tight break-words">
                           {appointment.client?.name}
                         </span>
                         <span className="text-xs font-medium whitespace-nowrap text-right">
@@ -227,15 +227,15 @@ const DayView: React.FC<DayViewProps> = ({
                         </span>
                       </div>
                       
-                      {/* Email prominente - sin truncate para que se vea completo */}
+                      {/* Email - sin truncate para que se vea completo */}
                       {appointment.client?.email && (
-                        <div className="text-xs text-gray-600 leading-tight break-all">
+                        <div className="text-xs text-gray-600 leading-tight break-words">
                           {appointment.client.email}
                         </div>
                       )}
                       
                       {appointment.service && (
-                        <div className="text-xs text-gray-500 truncate leading-tight">
+                        <div className="text-xs text-gray-500 leading-tight break-words">
                           {appointment.service.name}
                         </div>
                       )}
@@ -243,7 +243,7 @@ const DayView: React.FC<DayViewProps> = ({
                       {appointment.client?.phone && (
                         <div className="flex items-center text-xs text-gray-500 leading-tight">
                           <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-                          <span className="truncate">{appointment.client.phone}</span>
+                          <span className="break-words">{appointment.client.phone}</span>
                         </div>
                       )}
                     </div>
