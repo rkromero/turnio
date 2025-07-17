@@ -102,14 +102,20 @@ const getAppointments = async (req, res) => {
 // Crear nuevo turno
 const createAppointment = async (req, res) => {
   try {
+    console.log('🔍 [APPOINTMENT DEBUG] Datos recibidos:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 [APPOINTMENT DEBUG] BusinessId:', req.businessId);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ [APPOINTMENT DEBUG] Errores de validación:', JSON.stringify(errors.array(), null, 2));
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
         errors: errors.array()
       });
     }
+    
+    console.log('✅ [APPOINTMENT DEBUG] Validaciones pasadas correctamente');
 
     const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes, branchId } = req.body;
     const businessId = req.businessId;
