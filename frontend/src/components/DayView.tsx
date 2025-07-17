@@ -178,13 +178,13 @@ const DayView: React.FC<DayViewProps> = ({
       <div className="flex-1 overflow-y-auto max-h-[600px]">
         <div className="relative">
           {/* Líneas de tiempo */}
-          <div className="absolute left-0 top-0 w-16 md:w-20">
+          <div className="absolute left-0 top-0 w-14 md:w-20">
             {timeSlots.map((slot) => (
               <div
                 key={slot.hour}
                 className="h-[60px] border-b border-gray-100 flex items-start pt-1"
               >
-                <span className="text-xs text-gray-500 px-2">
+                <span className="text-xs text-gray-500 px-1 md:px-2">
                   {isMobile ? slot.time : slot.displayTime}
                 </span>
               </div>
@@ -192,7 +192,7 @@ const DayView: React.FC<DayViewProps> = ({
           </div>
 
           {/* Área de citas */}
-          <div className="ml-16 md:ml-20 relative">
+          <div className="ml-14 md:ml-20 relative">
             {/* Líneas de fondo */}
             {timeSlots.map((slot) => (
               <div
@@ -208,7 +208,7 @@ const DayView: React.FC<DayViewProps> = ({
               return (
                 <div
                   key={appointment.id}
-                  className={`absolute left-2 right-2 rounded-lg border cursor-pointer hover:shadow-md transition-all ${getStatusColor(appointment.status)}`}
+                  className={`absolute left-1 right-1 md:left-2 md:right-2 rounded-lg border cursor-pointer hover:shadow-md transition-all overflow-hidden ${getStatusColor(appointment.status)}`}
                   style={{
                     top: `${position.top}px`,
                     height: `${position.height}px`,
@@ -216,31 +216,31 @@ const DayView: React.FC<DayViewProps> = ({
                   }}
                   onClick={() => onEditAppointment(appointment)}
                 >
-                  <div className="p-2 h-full flex flex-col justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm truncate">
+                  <div className="p-1.5 md:p-2 h-full flex flex-col justify-start overflow-hidden">
+                    <div className="flex-1 min-h-0 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-medium text-sm truncate flex-1 leading-tight">
                           {appointment.client?.name}
                         </span>
-                        <span className="text-xs font-medium">
+                        <span className="text-xs font-medium whitespace-nowrap text-right">
                           {formatTime(appointment.startTime)}
                         </span>
                       </div>
                       
                       {appointment.service && (
-                        <div className="text-xs text-gray-600 truncate mb-1">
+                        <div className="text-xs text-gray-600 truncate leading-tight">
                           {appointment.service.name}
                         </div>
                       )}
                       
-                      <div className="flex items-center text-xs text-gray-500">
-                        <User className="w-3 h-3 mr-1" />
+                      <div className="flex items-center text-xs text-gray-500 leading-tight">
+                        <User className="w-3 h-3 mr-1 flex-shrink-0" />
                         <span className="truncate">{appointment.client?.email}</span>
                       </div>
                       
                       {appointment.client?.phone && (
-                        <div className="flex items-center text-xs text-gray-500">
-                          <MapPin className="w-3 h-3 mr-1" />
+                        <div className="flex items-center text-xs text-gray-500 leading-tight">
+                          <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                           <span className="truncate">{appointment.client.phone}</span>
                         </div>
                       )}
