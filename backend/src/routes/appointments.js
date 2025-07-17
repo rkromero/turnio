@@ -30,14 +30,14 @@ const createAppointmentValidation = [
     .withMessage('Email inválido'),
   body('clientPhone')
     .optional()
-    .matches(/^[\+]?[\d\s\-\(\)]{10,20}$/)
-    .withMessage('Número de teléfono inválido'),
+    .matches(/^[\+]?[\d\s\-\(\)]{7,20}$/)
+    .withMessage('Número de teléfono inválido - debe tener entre 7 y 20 caracteres'),
   body('serviceId')
     .notEmpty()
     .withMessage('El servicio es requerido'),
   body('startTime')
-    .isISO8601()
-    .withMessage('Fecha y hora inválida'),
+    .matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d{3})?([+-]\d{2}:\d{2}|Z)?$/)
+    .withMessage('Fecha y hora inválida - formato requerido: YYYY-MM-DDTHH:MM'),
 ];
 
 // Rutas públicas (para reservas online)
