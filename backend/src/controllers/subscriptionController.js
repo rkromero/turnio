@@ -597,17 +597,82 @@ const changeSubscriptionPlan = async (req, res) => {
         });
       }
 
+      // Verificar que el plan sea válido
+      if (!AVAILABLE_PLANS[newPlanType]) {
+        return res.status(400).json({
+          success: false,
+          message: 'Plan no válido'
+        });
+      }
+
+      const plan = AVAILABLE_PLANS[newPlanType];
+      let priceAmount = plan.price;
+      const billingCycle = 'MONTHLY';
+      
+      // Aplicar descuento anual
+      if (billingCycle === 'YEARLY' && priceAmount > 0) {
+        priceAmount = Math.round(priceAmount * 12 * 0.9); // 10% descuento
+      }
+
+      const startDate = new Date();
+      let nextBillingDate = null;
+      
+      if (priceAmount > 0) {
+        nextBillingDate = new Date(startDate);
+        if (billingCycle === 'MONTHLY') {
+          nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+        } else {
+          nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+        }
+      }
+
       // Crear nueva suscripción
-      const createResult = await createSubscription({
-        body: {
+      console.log('🔍 Creando nueva suscripción con datos:', {
+        businessId: user.businessId,
+        planType: newPlanType,
+        billingCycle,
+        priceAmount,
+        startDate,
+        nextBillingDate,
+        status: newPlanType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+      });
+      
+      const subscription = await prisma.subscription.create({
+        data: {
           businessId: user.businessId,
           planType: newPlanType,
-          billingCycle: 'MONTHLY'
-        },
-        user
-      }, res);
+          billingCycle,
+          priceAmount,
+          currency: 'ARS',
+          startDate,
+          nextBillingDate,
+          status: newPlanType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
+        }
+      });
+      console.log('✅ Suscripción creada exitosamente:', subscription.id);
 
-      return; // createSubscription ya maneja la respuesta
+      // Solo actualizar el plan del negocio si es FREE (no requiere pago)
+      if (newPlanType === 'FREE') {
+        await prisma.business.update({
+          where: { id: user.businessId },
+          data: {
+            planType: newPlanType,
+            maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
+          }
+        });
+        console.log(`✅ Plan ${newPlanType} actualizado inmediatamente (sin pago requerido)`);
+      } else {
+        console.log(`⏳ Plan ${newPlanType} pendiente de pago - negocio mantiene plan actual hasta completar pago`);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Suscripción creada exitosamente',
+        data: {
+          subscription,
+          requiresPayment: priceAmount > 0
+        }
+      });
     }
 
     // Usuario con suscripción existente

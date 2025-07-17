@@ -5,6 +5,7 @@ import AppointmentModal from '../components/AppointmentModal';
 import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import CalendarView from '../components/CalendarView';
+import DayView from '../components/DayView';
 import PlanLimitModal, { PlanLimitDetails } from '../components/PlanLimitModal';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { toast } from 'react-hot-toast';
@@ -42,7 +43,7 @@ const Appointments: React.FC = () => {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'day'>('day');
   const [filters, setFilters] = useState({
     date: '',
     status: '',
@@ -321,7 +322,18 @@ const Appointments: React.FC = () => {
                 }`}
               >
                 <List className="w-4 h-4" />
-                <span>{isMobile ? 'Lista' : 'Vista Lista'}</span>
+                <span>{isMobile ? 'Lista' : 'Lista'}</span>
+              </button>
+              <button
+                onClick={() => setViewMode('day')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'day'
+                    ? 'bg-white text-purple-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                <span>{isMobile ? 'Día' : 'Día'}</span>
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
@@ -332,7 +344,7 @@ const Appointments: React.FC = () => {
                 }`}
               >
                 <CalendarDays className="w-4 h-4" />
-                <span>{isMobile ? 'Calendario' : 'Vista Calendario'}</span>
+                <span>{isMobile ? 'Mes' : 'Mes'}</span>
               </button>
             </div>
 
@@ -518,6 +530,14 @@ const Appointments: React.FC = () => {
         ) : viewMode === 'calendar' ? (
           /* Vista Calendario */
           <CalendarView
+            appointments={appointments}
+            onEditAppointment={handleEditAppointment}
+            onCreateAppointment={handleCreateAppointment}
+            onStatusChange={handleStatusChange}
+          />
+        ) : viewMode === 'day' ? (
+          /* Vista Día */
+          <DayView
             appointments={appointments}
             onEditAppointment={handleEditAppointment}
             onCreateAppointment={handleCreateAppointment}

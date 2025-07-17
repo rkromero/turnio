@@ -1,0 +1,303 @@
+import React, { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin } from 'lucide-react';
+import type { Appointment } from '../types';
+import { useIsMobileSimple } from '../hooks/useIsMobile';
+
+interface AppointmentWithScoring extends Appointment {
+  clientScore?: {
+    hasScore: boolean;
+    starRating: number | null;
+    totalBookings: number;
+    attendedCount: number;
+    noShowCount: number;
+  };
+}
+
+interface DayViewProps {
+  appointments: AppointmentWithScoring[];
+  onEditAppointment: (appointment: Appointment) => void;
+  onCreateAppointment: () => void;
+  onStatusChange: (appointmentId: string, newStatus: string) => void;
+}
+
+const DayView: React.FC<DayViewProps> = ({
+  appointments,
+  onEditAppointment,
+  onCreateAppointment
+}) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const isMobile = useIsMobileSimple();
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const dayNames = [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ];
+
+  // Filtrar citas del día actual
+  const todayAppointments = useMemo(() => {
+    const today = currentDate.toISOString().split('T')[0];
+    return appointments
+      .filter(appointment => {
+        const appointmentDate = new Date(appointment.startTime).toISOString().split('T')[0];
+        return appointmentDate === today;
+      })
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  }, [appointments, currentDate]);
+
+  // Generar horarios del día (6:00 AM - 10:00 PM)
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let hour = 6; hour <= 22; hour++) {
+      slots.push({
+        hour,
+        time: `${hour.toString().padStart(2, '0')}:00`,
+        displayTime: hour < 12 ? `${hour === 0 ? 12 : hour}:00 AM` : `${hour === 12 ? 12 : hour - 12}:00 PM`
+      });
+    }
+    return slots;
+  }, []);
+
+  const navigateDay = (direction: 'prev' | 'next') => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      if (direction === 'prev') {
+        newDate.setDate(newDate.getDate() - 1);
+      } else {
+        newDate.setDate(newDate.getDate() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const isToday = () => {
+    const today = new Date();
+    return currentDate.toDateString() === today.toDateString();
+  };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200';
+      case 'NO_SHOW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getAppointmentPosition = (appointment: AppointmentWithScoring) => {
+    const startTime = new Date(appointment.startTime);
+    const endTime = new Date(appointment.endTime);
+    const startHour = startTime.getHours();
+    const startMinutes = startTime.getMinutes();
+    const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60); // en minutos
+    
+    const topPosition = ((startHour - 6) * 60 + startMinutes) * (60 / 60); // 60px por hora
+    const height = Math.max(duration * (60 / 60), 40); // mínimo 40px de altura
+    
+    return {
+      top: topPosition,
+      height: height
+    };
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Header del calendario */}
+      <div className="p-4 md:p-6 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              {dayNames[currentDate.getDay()]}, {currentDate.getDate()} de {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </h2>
+            {!isToday() && (
+              <button
+                onClick={goToToday}
+                className="btn-secondary text-sm py-2 px-3"
+              >
+                Hoy
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => navigateDay('prev')}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <button
+              onClick={() => navigateDay('next')}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Información del día */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <span className="flex items-center">
+              <Clock className="w-4 h-4 mr-1" />
+              {todayAppointments.length} citas
+            </span>
+            {isToday() && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                Hoy
+              </span>
+            )}
+          </div>
+          
+          <button
+            onClick={onCreateAppointment}
+            className="btn-primary text-sm py-2 px-4"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Cita
+          </button>
+        </div>
+      </div>
+
+      {/* Vista del día */}
+      <div className="flex-1 overflow-y-auto max-h-[600px]">
+        <div className="relative">
+          {/* Líneas de tiempo */}
+          <div className="absolute left-0 top-0 w-16 md:w-20">
+            {timeSlots.map((slot) => (
+              <div
+                key={slot.hour}
+                className="h-[60px] border-b border-gray-100 flex items-start pt-1"
+              >
+                <span className="text-xs text-gray-500 px-2">
+                  {isMobile ? slot.time : slot.displayTime}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Área de citas */}
+          <div className="ml-16 md:ml-20 relative">
+            {/* Líneas de fondo */}
+            {timeSlots.map((slot) => (
+              <div
+                key={slot.hour}
+                className="h-[60px] border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => onCreateAppointment()}
+              />
+            ))}
+
+            {/* Citas */}
+            {todayAppointments.map((appointment) => {
+              const position = getAppointmentPosition(appointment);
+              return (
+                <div
+                  key={appointment.id}
+                  className={`absolute left-2 right-2 rounded-lg border cursor-pointer hover:shadow-md transition-all ${getStatusColor(appointment.status)}`}
+                  style={{
+                    top: `${position.top}px`,
+                    height: `${position.height}px`,
+                    minHeight: '40px'
+                  }}
+                  onClick={() => onEditAppointment(appointment)}
+                >
+                  <div className="p-2 h-full flex flex-col justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm truncate">
+                          {appointment.client?.name}
+                        </span>
+                        <span className="text-xs font-medium">
+                          {formatTime(appointment.startTime)}
+                        </span>
+                      </div>
+                      
+                      {appointment.service && (
+                        <div className="text-xs text-gray-600 truncate mb-1">
+                          {appointment.service.name}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center text-xs text-gray-500">
+                        <User className="w-3 h-3 mr-1" />
+                        <span className="truncate">{appointment.client?.email}</span>
+                      </div>
+                      
+                      {appointment.client?.phone && (
+                        <div className="flex items-center text-xs text-gray-500">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          <span className="truncate">{appointment.client.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Mensaje cuando no hay citas */}
+            {todayAppointments.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center py-12">
+                  <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No hay citas programadas
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {isToday() ? 'para hoy' : `para el ${currentDate.toLocaleDateString('es-AR')}`}
+                  </p>
+                  <button
+                    onClick={onCreateAppointment}
+                    className="btn-primary"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear Primera Cita
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-wrap gap-4 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+            <span className="text-gray-600">Confirmado</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+            <span className="text-gray-600">Completado</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
+            <span className="text-gray-600">No asistió</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+            <span className="text-gray-600">Cancelado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DayView; 
