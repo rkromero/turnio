@@ -306,6 +306,18 @@ const Clients: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Scoring del Cliente - Mobile */}
+                {clientScoring && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <ClientStarRating
+                      starRating={clientScoring.starRating}
+                      totalBookings={clientScoring.totalBookings}
+                      attendedCount={clientScoring.attendedCount}
+                      noShowCount={clientScoring.noShowCount}
+                    />
+                  </div>
+                )}
+
                 {selectedClient.email && (
                   <div className="flex items-center space-x-3 text-sm">
                     <Mail className="w-4 h-4 text-gray-400" />
