@@ -78,21 +78,14 @@ const Clients: React.FC = () => {
         const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
         const scoreData = await response.json();
         
-        console.log('🔍 [CLIENT SCORING] Respuesta de API:', scoreData);
-        console.log('🔍 [CLIENT SCORING] scoreData.success:', scoreData.success);
-        console.log('🔍 [CLIENT SCORING] scoreData.data:', scoreData.data);
-        
         if (scoreData.success && scoreData.data) {
-          const scoringData = {
+          setClientScoring({
             starRating: scoreData.data.starRating,
             totalBookings: scoreData.data.totalBookings || 0,
             attendedCount: scoreData.data.attendedCount || 0,
             noShowCount: scoreData.data.noShowCount || 0
-          };
-          console.log('🔍 [CLIENT SCORING] Seteando scoring:', scoringData);
-          setClientScoring(scoringData);
+          });
         } else {
-          console.log('🔍 [CLIENT SCORING] No hay scoring o falla success');
           // Cliente sin historial
           setClientScoring({
             starRating: null,
