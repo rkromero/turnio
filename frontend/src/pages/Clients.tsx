@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { clientService, appointmentService } from '../services/api';
 import type { Client, Appointment } from '../types';
 import ClientModal from '../components/ClientModal';
+import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,12 @@ const Clients: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientAppointments, setClientAppointments] = useState<Appointment[]>([]);
+  const [clientScoring, setClientScoring] = useState<{
+    starRating: number | null;
+    totalBookings: number;
+    attendedCount: number;
+    noShowCount: number;
+  } | null>(null);
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -57,6 +64,52 @@ const Clients: React.FC = () => {
     } catch (error) {
       console.error('Error cargando citas del cliente:', error);
       setClientAppointments([]);
+    }
+  };
+
+  const loadClientScoring = async (client: Client) => {
+    try {
+      // Construir la URL de la API para obtener el scoring
+      const params = new URLSearchParams();
+      if (client.email) params.append('email', client.email);
+      if (client.phone) params.append('phone', client.phone);
+      
+      if (params.toString()) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/client-scoring/score?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          setClientScoring({
+            starRating: data.starRating,
+            totalBookings: data.totalBookings || 0,
+            attendedCount: data.attendedCount || 0,
+            noShowCount: data.noShowCount || 0
+          });
+        } else {
+          // Cliente sin historial
+          setClientScoring({
+            starRating: null,
+            totalBookings: 0,
+            attendedCount: 0,
+            noShowCount: 0
+          });
+        }
+      } else {
+        // Cliente sin email ni teléfono
+        setClientScoring({
+          starRating: null,
+          totalBookings: 0,
+          attendedCount: 0,
+          noShowCount: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando scoring del cliente:', error);
+      setClientScoring({
+        starRating: null,
+        totalBookings: 0,
+        attendedCount: 0,
+        noShowCount: 0
+      });
     }
   };
 
@@ -105,7 +158,10 @@ const Clients: React.FC = () => {
   const handleClientClick = async (client: Client) => {
     setSelectedClient(client);
     setShowClientDetails(true);
-    await loadClientAppointments(client.id);
+    await Promise.all([
+      loadClientAppointments(client.id),
+      loadClientScoring(client)
+    ]);
   };
 
   const handleDeleteClient = async (clientId: string) => {
@@ -132,6 +188,7 @@ const Clients: React.FC = () => {
     setShowClientDetails(false);
     setSelectedClient(null);
     setClientAppointments([]);
+    setClientScoring(null);
   };
 
   const filteredClients = clients.filter(client =>
@@ -632,6 +689,21 @@ const Clients: React.FC = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Scoring del cliente */}
+                    {clientScoring && (
+                      <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
+                        <ClientStarRating
+                          starRating={clientScoring.starRating}
+                          totalBookings={clientScoring.totalBookings}
+                          attendedCount={clientScoring.attendedCount}
+                          noShowCount={clientScoring.noShowCount}
+                          size="md"
+                          showDetails={true}
+                          showLabel={true}
+                        />
+                      </div>
+                    )}
 
                     {selectedClient.email && (
                       <div className="flex items-center space-x-3">
