@@ -81,6 +81,7 @@ export interface BookingFormData {
   startTime: string;
   notes?: string;
   professionalId?: string;
+  paymentMethod?: 'local' | 'online';
 }
 
 export interface BookingResponse {
@@ -118,4 +119,32 @@ export interface BookingData {
     };
   }[];
   urgency: UrgencyStats;
+}
+
+// Tipos para opciones de pago
+export interface PaymentOptions {
+  canPayLater: boolean;
+  canPayOnline: boolean;
+  requiresPayment: boolean;
+  scoring: {
+    starRating: number;
+    totalBookings: number;
+    attendedCount: number;
+    noShowCount: number;
+  } | null;
+  reason: string;
+}
+
+export interface PaymentOptionsResponse {
+  success: boolean;
+  data: {
+    paymentOptions: PaymentOptions;
+    message: string;
+    clientScoring: {
+      starRating: number;
+      totalBookings: number;
+      attendedCount: number;
+      noShowCount: number;
+    } | null;
+  };
 } 

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ProfessionalsResponse, BookingFormData, BookingResponse, BookingData, Service, Business } from '../types/booking';
+import { ProfessionalsResponse, BookingFormData, BookingResponse, BookingData, Service, Business, PaymentOptionsResponse } from '../types/booking';
 
 // Usar la misma configuración que api.ts
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
@@ -111,6 +111,18 @@ export const bookingService = {
   // Obtener información del negocio
   async getBusinessInfo(businessSlug: string) {
     const response = await axios.get(`${BASE_URL}/api/businesses/public/${businessSlug}`);
+    return response.data;
+  },
+
+  // Obtener opciones de pago basado en scoring del cliente
+  async getPaymentOptions(email?: string, phone?: string): Promise<PaymentOptionsResponse> {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (phone) params.append('phone', phone);
+    
+    const response = await axios.get(
+      `${BASE_URL}/api/payments/payment-options?${params.toString()}`
+    );
     return response.data;
   }
 }; 

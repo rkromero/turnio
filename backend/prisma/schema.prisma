@@ -354,6 +354,7 @@ enum AppointmentStatus {
   CANCELLED
   NO_SHOW
   COMPLETED
+  PENDING_PAYMENT
 }
 
 enum ClientEventType {

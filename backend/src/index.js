@@ -1081,8 +1081,8 @@ async function startServer() {
       try {
         console.log('🔧 BOOKING DEBUG - Starting booking process');
         const { businessSlug } = req.params;
-        const { clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId } = req.body;
-        console.log('🔧 BOOKING DEBUG - Request data:', { businessSlug, clientName, serviceId, startTime, professionalId });
+        const { clientName, clientEmail, clientPhone, serviceId, startTime, notes, professionalId, paymentMethod } = req.body;
+        console.log('🔧 BOOKING DEBUG - Request data:', { businessSlug, clientName, serviceId, startTime, professionalId, paymentMethod });
 
         // Buscar el negocio
         const { prisma } = require('./config/database');
@@ -1115,6 +1115,39 @@ async function startServer() {
           return res.status(404).json({
             success: false,
             message: 'Servicio no encontrado'
+          });
+        }
+
+        // 💳 VALIDAR OPCIONES DE PAGO BASADO EN SCORING
+        const PaymentValidationService = require('./services/paymentValidationService');
+        let paymentValidation = null;
+        
+        if (clientEmail || clientPhone) {
+          try {
+            paymentValidation = await PaymentValidationService.getPaymentOptions(clientEmail, clientPhone);
+            console.log('💳 [BOOKING] Validación de pago:', paymentValidation);
+          } catch (error) {
+            console.error('❌ [BOOKING] Error validando opciones de pago:', error);
+            // Continuar sin validación en caso de error
+          }
+        }
+
+        // Si el cliente requiere pago obligatorio pero no seleccionó pagar online
+        if (paymentValidation?.requiresPayment && paymentMethod !== 'online') {
+          return res.status(400).json({
+            success: false,
+            message: 'Este cliente debe pagar por adelantado para confirmar la reserva',
+            paymentRequired: true,
+            scoring: paymentValidation.scoring,
+            reason: paymentValidation.reason
+          });
+        }
+
+        // Si seleccionó pago online pero puede pagar en el local, validar que sea necesario
+        if (paymentMethod === 'online' && paymentValidation && !paymentValidation.requiresPayment && !paymentValidation.canPayOnline) {
+          return res.status(400).json({
+            success: false,
+            message: 'Método de pago no disponible para este cliente'
           });
         }
 
@@ -1282,54 +1315,136 @@ async function startServer() {
           });
         }
 
-        // Crear el turno
+        // 💳 MANEJAR FLUJO DE PAGO
         const startDateTime = new Date(startTime);
         const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
-        const appointment = await prisma.appointment.create({
-          data: {
-            businessId: business.id,
-            branchId: branchId, // ← AGREGAR EL BRANCH ID FALTANTE
-            clientId: client.id,
-            serviceId,
-            userId: assignedProfessional.id,
-            startTime: startDateTime,
-            endTime: endDateTime,
-            notes,
-            status: 'CONFIRMED'
-          },
-          include: {
-            service: {
-              select: {
-                name: true,
-                duration: true,
-                price: true
-              }
+        if (paymentMethod === 'online') {
+          console.log('💳 [BOOKING] Iniciando flujo de pago online');
+          
+          // Crear cita temporal en estado PENDING_PAYMENT
+          const appointment = await prisma.appointment.create({
+            data: {
+              businessId: business.id,
+              branchId: branchId,
+              clientId: client.id,
+              serviceId,
+              userId: assignedProfessional.id,
+              startTime: startDateTime,
+              endTime: endDateTime,
+              notes,
+              status: 'PENDING_PAYMENT' // Estado temporal hasta que se pague
             },
-            user: {
-              select: {
-                name: true,
-                avatar: true
+            include: {
+              service: {
+                select: {
+                  name: true,
+                  duration: true,
+                  price: true
+                }
+              },
+              user: {
+                select: {
+                  name: true,
+                  avatar: true
+                }
               }
             }
-          }
-        });
+          });
 
-        res.status(201).json({
-          success: true,
-          message: 'Turno reservado exitosamente',
-          data: {
-            appointmentId: appointment.id,
-            clientName: client.name,
-            serviceName: appointment.service.name,
-            professionalName: appointment.user.name,
-            professionalAvatar: appointment.user.avatar,
-            startTime: appointment.startTime,
-            duration: appointment.service.duration,
-            businessName: business.name,
-            wasAutoAssigned: !professionalId
+          // Crear preferencia de MercadoPago
+          try {
+            const MercadoPagoService = require('./services/mercadoPagoService');
+            const mercadoPagoService = new MercadoPagoService();
+            
+            const preference = await mercadoPagoService.createPaymentPreference(appointment.id, business.id);
+            
+            console.log('✅ [BOOKING] Preferencia de MercadoPago creada');
+            
+            return res.status(201).json({
+              success: true,
+              message: 'Reserva iniciada - proceder con el pago',
+              requiresPayment: true,
+              data: {
+                appointmentId: appointment.id,
+                clientName: client.name,
+                serviceName: appointment.service.name,
+                professionalName: appointment.user.name,
+                startTime: appointment.startTime,
+                duration: appointment.service.duration,
+                businessName: business.name,
+                price: appointment.service.price,
+                payment: {
+                  preferenceId: preference.id,
+                  initPoint: preference.init_point,
+                  sandboxInitPoint: preference.sandbox_init_point
+                },
+                wasAutoAssigned: !professionalId
+              }
+            });
+            
+          } catch (paymentError) {
+            console.error('❌ [BOOKING] Error creando preferencia de pago:', paymentError);
+            
+            // Eliminar la cita temporal en caso de error
+            await prisma.appointment.delete({
+              where: { id: appointment.id }
+            });
+            
+            return res.status(500).json({
+              success: false,
+              message: 'Error procesando el pago. Intenta nuevamente.'
+            });
           }
-        });
+        } else {
+          // Flujo tradicional - crear cita directamente
+          console.log('📅 [BOOKING] Creando cita sin pago adelantado');
+          
+          const appointment = await prisma.appointment.create({
+            data: {
+              businessId: business.id,
+              branchId: branchId,
+              clientId: client.id,
+              serviceId,
+              userId: assignedProfessional.id,
+              startTime: startDateTime,
+              endTime: endDateTime,
+              notes,
+              status: 'CONFIRMED'
+            },
+            include: {
+              service: {
+                select: {
+                  name: true,
+                  duration: true,
+                  price: true
+                }
+              },
+              user: {
+                select: {
+                  name: true,
+                  avatar: true
+                }
+              }
+            }
+          });
+
+          res.status(201).json({
+            success: true,
+            message: 'Turno reservado exitosamente',
+            data: {
+              appointmentId: appointment.id,
+              clientName: client.name,
+              serviceName: appointment.service.name,
+              professionalName: appointment.user.name,
+              professionalAvatar: appointment.user.avatar,
+              startTime: appointment.startTime,
+              duration: appointment.service.duration,
+              businessName: business.name,
+              wasAutoAssigned: !professionalId
+            }
+          });
+        }
 
       } catch (error) {
         console.error('🔧 BOOKING DEBUG - Error en reserva pública:', error);

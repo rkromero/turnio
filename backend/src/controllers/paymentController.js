@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const mercadoPagoService = require('../services/mercadoPagoService');
 const { validationResult } = require('express-validator');
+const PaymentValidationService = require('../services/paymentValidationService');
 
 // Conectar cuenta de MercadoPago (OAuth)
 const connectMercadoPago = async (req, res) => {
@@ -440,6 +441,42 @@ const handleOAuthCallback = async (req, res) => {
   }
 };
 
+// Obtener opciones de pago basado en scoring del cliente
+const getPaymentOptions = async (req, res) => {
+  try {
+    const { email, phone } = req.query;
+
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere email o teléfono para evaluar opciones de pago'
+      });
+    }
+
+    console.log('💳 [PAYMENT OPTIONS] Evaluando opciones de pago para:', { email, phone });
+
+    const paymentOptions = await PaymentValidationService.getPaymentOptions(email, phone);
+    const message = PaymentValidationService.formatPaymentOptionsMessage(paymentOptions);
+
+    res.json({
+      success: true,
+      data: {
+        paymentOptions,
+        message,
+        clientScoring: paymentOptions.scoring
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error evaluando opciones de pago:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error evaluando opciones de pago',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   connectMercadoPago,
   mercadoPagoCallback,
@@ -451,5 +488,6 @@ module.exports = {
   getPaymentHistory,
   updatePaymentSettings,
   getPaymentSettings,
-  handleOAuthCallback
+  handleOAuthCallback,
+  getPaymentOptions
 }; 

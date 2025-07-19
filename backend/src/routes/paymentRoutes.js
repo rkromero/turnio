@@ -27,6 +27,9 @@ router.post('/preference',
   paymentController.createPaymentPreference
 );
 
+// Obtener opciones de pago basado en scoring (público)
+router.get('/payment-options', paymentController.getPaymentOptions);
+
 // Webhook de MercadoPago (sin autenticación)
 router.post('/webhook', paymentController.webhook);
 
