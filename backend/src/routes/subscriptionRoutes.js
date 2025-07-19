@@ -31,9 +31,9 @@ router.get('/test-plans', (req, res) => {
       data: {
         plans: [
           { key: 'FREE', name: 'Plan Gratuito', price: 0 },
-          { key: 'BASIC', name: 'Plan Básico', price: 4900 },
-          { key: 'PREMIUM', name: 'Plan Premium', price: 9900 },
-          { key: 'ENTERPRISE', name: 'Plan Empresa', price: 14900 }
+          { key: 'BASIC', name: 'Plan Básico', price: 18900 },
+          { key: 'PREMIUM', name: 'Plan Premium', price: 24900 },
+          { key: 'ENTERPRISE', name: 'Plan Empresa', price: 90900 }
         ]
       }
     });

@@ -23,7 +23,7 @@ const AVAILABLE_PLANS = {
   BASIC: {
     name: 'Plan Básico',
     description: 'Ideal para profesionales individuales',
-    price: 4900,
+    price: 18900,
     limits: {
       appointments: 100,
       services: 10,
@@ -42,7 +42,7 @@ const AVAILABLE_PLANS = {
   PREMIUM: {
     name: 'Plan Premium',
     description: 'Para equipos y consultorios',
-    price: 9900,
+    price: 24900,
     limits: {
       appointments: 500,
       services: 25,
@@ -62,7 +62,7 @@ const AVAILABLE_PLANS = {
   ENTERPRISE: {
     name: 'Plan Empresa',
     description: 'Para empresas y clínicas',
-    price: 14900,
+    price: 90900,
     limits: {
       appointments: -1, // Ilimitado
       services: -1,     // Ilimitado

@@ -6,9 +6,9 @@ class PlanChangeService {
   static calculateProRataDifference(currentPlan, newPlan, daysRemaining) {
     const planPrices = {
       'FREE': 0,
-      'BASIC': 4900,
-      'PREMIUM': 9900,
-      'ENTERPRISE': 14900
+      'BASIC': 18900,
+      'PREMIUM': 24900,
+      'ENTERPRISE': 90900
     };
 
     const currentPrice = planPrices[currentPlan] || 0;
@@ -81,9 +81,9 @@ class PlanChangeService {
         console.log('📈 Procesando UPGRADE...');
         
         const planPrices = {
-          'BASIC': 4900,
-          'PREMIUM': 9900,
-          'ENTERPRISE': 14900
+          'BASIC': 18900,
+          'PREMIUM': 24900,
+          'ENTERPRISE': 90900
         };
 
         const newPlanPrice = planPrices[newPlanType];
@@ -152,9 +152,9 @@ class PlanChangeService {
         console.log('📉 Procesando DOWNGRADE...');
         
         const planPrices = {
-          'BASIC': 4900,
-          'PREMIUM': 9900,
-          'ENTERPRISE': 14900
+          'BASIC': 18900,
+          'PREMIUM': 24900,
+          'ENTERPRISE': 90900
         };
 
         const newPlanPrice = planPrices[newPlanType];

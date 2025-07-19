@@ -378,7 +378,7 @@ export const PLANS: Plan[] = [
     tier: 'PROFESIONAL',
     name: 'Profesional',
     subtitle: 'Ideal para salones establecidos',
-    price: 8900,
+    price: 18900,
     currency: 'ARS',
     billingCycle: 'monthly',
     limits: {
@@ -411,7 +411,7 @@ export const PLANS: Plan[] = [
     tier: 'INTELIGENTE', 
     name: 'Inteligente',
     subtitle: 'Con IA para salones premium',
-    price: 17900,
+    price: 24900,
     currency: 'ARS',
     billingCycle: 'monthly',
     limits: {
@@ -449,7 +449,7 @@ export const PLANS: Plan[] = [
     tier: 'EMPRESARIAL',
     name: 'Empresarial', 
     subtitle: 'Sin límites para cadenas',
-    price: 34900,
+    price: 90900,
     currency: 'ARS',
     billingCycle: 'monthly',
     limits: {
