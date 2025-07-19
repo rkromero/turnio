@@ -75,16 +75,24 @@ const Clients: React.FC = () => {
       if (client.phone) params.append('phone', client.phone);
       
       if (params.toString()) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/client-scoring/score?${params.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          setClientScoring({
-            starRating: data.starRating,
-            totalBookings: data.totalBookings || 0,
-            attendedCount: data.attendedCount || 0,
-            noShowCount: data.noShowCount || 0
-          });
+        const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+        const scoreData = await response.json();
+        
+        console.log('🔍 [CLIENT SCORING] Respuesta de API:', scoreData);
+        console.log('🔍 [CLIENT SCORING] scoreData.success:', scoreData.success);
+        console.log('🔍 [CLIENT SCORING] scoreData.data:', scoreData.data);
+        
+        if (scoreData.success && scoreData.data) {
+          const scoringData = {
+            starRating: scoreData.data.starRating,
+            totalBookings: scoreData.data.totalBookings || 0,
+            attendedCount: scoreData.data.attendedCount || 0,
+            noShowCount: scoreData.data.noShowCount || 0
+          };
+          console.log('🔍 [CLIENT SCORING] Seteando scoring:', scoringData);
+          setClientScoring(scoringData);
         } else {
+          console.log('🔍 [CLIENT SCORING] No hay scoring o falla success');
           // Cliente sin historial
           setClientScoring({
             starRating: null,
