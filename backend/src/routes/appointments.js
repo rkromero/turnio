@@ -38,6 +38,10 @@ const createAppointmentValidation = [
   body('startTime')
     .matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d{3})?([+-]\d{2}:\d{2}|Z)?$/)
     .withMessage('Fecha y hora inválida - formato requerido: YYYY-MM-DDTHH:MM'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['local', 'online', 'prepaid'])
+    .withMessage('Método de pago inválido - debe ser: local, online, o prepaid'),
 ];
 
 // Rutas públicas (para reservas online)
