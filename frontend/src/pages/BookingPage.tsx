@@ -9,9 +9,10 @@ import {
   Building
 } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import { Professional, Service, BookingFormData, UrgencyStats, Branch } from '../types/booking';
+import { Professional, Service, BookingFormData, UrgencyStats, Branch, PaymentOptions } from '../types/booking';
 import ProfessionalSelector from '../components/ProfessionalSelector';
 import ClientStarRating from '../components/ClientStarRating';
+import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import Logo from '../components/Logo';
 import { toast } from 'react-hot-toast';
 
@@ -25,6 +26,13 @@ interface SuccessData {
   duration: number;
   businessName: string;
   wasAutoAssigned: boolean;
+  requiresPayment?: boolean;
+  payment?: {
+    preferenceId: string;
+    initPoint: string;
+    sandboxInitPoint: string;
+  };
+  price?: number;
 }
 
 interface BookingState {
@@ -52,6 +60,12 @@ interface BookingState {
     noShowCount: number;
     lastActivity?: string;
   } | null;
+  paymentOptions?: {
+    options: PaymentOptions | null;
+    message: string;
+    loading: boolean;
+  };
+  paymentMethod: 'local' | 'online' | null;
 }
 
 const BookingPage: React.FC = () => {
@@ -79,7 +93,13 @@ const BookingPage: React.FC = () => {
       email: '',
       phone: '',
       notes: ''
-    }
+    },
+    paymentOptions: {
+      options: null,
+      message: '',
+      loading: false
+    },
+    paymentMethod: null
   });
 
   useEffect(() => {
@@ -414,9 +434,10 @@ const BookingPage: React.FC = () => {
       clientData: { ...prev.clientData, [field]: value }
     }));
     
-    // Si es email o teléfono, cargar scoring del cliente
+    // Si es email o teléfono, cargar scoring del cliente y opciones de pago
     if ((field === 'email' || field === 'phone') && value.length > 3) {
       loadClientScore(field === 'email' ? value : null, field === 'phone' ? value : null);
+      loadPaymentOptions(field === 'email' ? value : null, field === 'phone' ? value : null);
     }
   };
 
@@ -441,6 +462,63 @@ const BookingPage: React.FC = () => {
       console.error('Error cargando scoring del cliente:', error);
       // No mostrar error al usuario, solo no mostrar scoring
     }
+  };
+
+  const loadPaymentOptions = async (email: string | null, phone: string | null) => {
+    if (!email && !phone) return;
+    
+    // Solo evaluar opciones de pago si hay datos suficientes
+    const currentData = booking.clientData;
+    const hasEmail = email || currentData.email;
+    const hasPhone = phone || currentData.phone;
+    
+    if (!hasEmail && !hasPhone) return;
+    
+    try {
+      // Establecer loading
+      setBooking(prev => ({
+        ...prev,
+        paymentOptions: {
+          ...prev.paymentOptions!,
+          loading: true
+        }
+      }));
+
+      const paymentOptionsResponse = await bookingService.getPaymentOptions(
+        hasEmail || undefined, 
+        hasPhone || undefined
+      );
+
+      if (paymentOptionsResponse.success) {
+        setBooking(prev => ({
+          ...prev,
+          paymentOptions: {
+            options: paymentOptionsResponse.data.paymentOptions,
+            message: paymentOptionsResponse.data.message,
+            loading: false
+          },
+          // Si requiere pago, pre-seleccionar online
+          paymentMethod: paymentOptionsResponse.data.paymentOptions.requiresPayment ? 'online' : null
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando opciones de pago:', error);
+      setBooking(prev => ({
+        ...prev,
+        paymentOptions: {
+          options: null,
+          message: 'Error evaluando opciones de pago',
+          loading: false
+        }
+      }));
+    }
+  };
+
+  const handlePaymentMethodSelect = (method: 'local' | 'online') => {
+    setBooking(prev => ({
+      ...prev,
+      paymentMethod: method
+    }));
   };
 
   const handleSubmitBooking = async () => {
@@ -468,13 +546,33 @@ const BookingPage: React.FC = () => {
         serviceId: booking.selectedService.id,
         startTime: selectedDateTime.toISOString(),
         notes: booking.clientData.notes,
-        professionalId: booking.selectedProfessional || undefined
+        professionalId: booking.selectedProfessional || undefined,
+        paymentMethod: booking.paymentMethod || 'local'
       };
 
       const response = await bookingService.createBooking(businessSlug!, bookingData);
 
       if (response.success) {
-        setSuccessData(response.data);
+        const responseData = response.data as SuccessData;
+        
+        // Si requiere pago, redirigir a MercadoPago
+        if (responseData.requiresPayment && responseData.payment) {
+          const initPoint = process.env.NODE_ENV === 'production' 
+            ? responseData.payment.initPoint 
+            : responseData.payment.sandboxInitPoint;
+            
+          toast.success('Redirigiendo al pago...');
+          
+          // Pequeño delay para mostrar el mensaje
+          setTimeout(() => {
+            window.location.href = initPoint;
+          }, 1000);
+          
+          return;
+        }
+        
+        // Reserva confirmada sin pago
+        setSuccessData(responseData);
         setStep(5);
         toast.success('¡Reserva confirmada exitosamente!');
       }
@@ -1292,6 +1390,20 @@ const BookingPage: React.FC = () => {
                     rows={3}
                   />
                 </div>
+
+                {/* Opciones de Pago */}
+                {booking.selectedService && (booking.clientData.email || booking.clientData.phone) && (
+                  <div className="mt-6">
+                    <PaymentMethodSelector
+                      paymentOptions={booking.paymentOptions?.options || null}
+                      message={booking.paymentOptions?.message || ''}
+                      selectedMethod={booking.paymentMethod}
+                      onMethodSelect={handlePaymentMethodSelect}
+                      servicePrice={booking.selectedService.price}
+                      isLoading={booking.paymentOptions?.loading || false}
+                    />
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -1303,10 +1415,11 @@ const BookingPage: React.FC = () => {
               <div className="mt-8 text-center">
                 <button
                   onClick={handleSubmitBooking}
-                  disabled={submitting || !booking.clientData.name}
+                  disabled={submitting || !booking.clientData.name || 
+                    (booking.paymentOptions?.options && !booking.paymentMethod)}
                   className="px-8 py-4 md:px-12 md:py-5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                 >
-                  {submitting ? 'Confirmando...' : 'Confirmar reserva'}
+                  {submitting ? 'Confirmando...' : booking.paymentMethod === 'online' ? 'Proceder al pago' : 'Confirmar reserva'}
                 </button>
               </div>
             </div>
