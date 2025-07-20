@@ -93,7 +93,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         if (!value) return 'Debe seleccionar fecha y hora';
         const selectedDate = new Date(value);
         const now = new Date();
-        return selectedDate <= now ? 'La fecha debe ser futura' : '';
+        const minFutureTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutos en el futuro
+        return selectedDate < minFutureTime ? 'La fecha debe ser al menos 5 minutos en el futuro' : '';
       }
       case 'clientEmail':
         return value && !value.includes('@') ? 'Email inválido' : '';
@@ -457,8 +458,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Botones de Asistencia (solo para citas confirmadas que ya pasaron) */}
-                  {appointment && appointment.status === 'CONFIRMED' && new Date(appointment.startTime) < new Date() && (
+                  {/* Botones de Asistencia (solo para citas confirmadas) */}
+                  {appointment && appointment.status === 'CONFIRMED' && (
                     <div>
                       <label className="label">Marcar asistencia</label>
                       <div className="flex space-x-3">
