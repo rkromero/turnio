@@ -183,6 +183,22 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}min`;
   };
 
+  const handleAttendanceChange = async (newStatus: 'COMPLETED' | 'NO_SHOW') => {
+    if (!appointment) return;
+    
+    try {
+      const updatedFormData = {
+        ...formData,
+        status: newStatus
+      };
+      
+      await onSubmit(updatedFormData);
+      onClose();
+    } catch (error) {
+      console.error('Error actualizando asistencia:', error);
+    }
+  };
+
   const canGoToNextStep = () => {
     if (currentStep === 1) {
       return formData.serviceId && formData.startTime && !errors.serviceId && !errors.startTime;
@@ -441,21 +457,46 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Estado (solo para edición) */}
-                  {appointment && (
+                  {/* Botones de Asistencia (solo para citas confirmadas que ya pasaron) */}
+                  {appointment && appointment.status === 'CONFIRMED' && new Date(appointment.startTime) < new Date() && (
                     <div>
-                      <label className="label">Estado</label>
-                      <select
-                        name="status"
-                        value={formData.status}
-                        onChange={handleInputChange}
-                        className="input-field"
-                      >
-                        <option value="CONFIRMED">Confirmado</option>
-                        <option value="COMPLETED">Completado</option>
-                        <option value="CANCELLED">Cancelado</option>
-                        <option value="NO_SHOW">No asistió</option>
-                      </select>
+                      <label className="label">Marcar asistencia</label>
+                      <div className="flex space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => handleAttendanceChange('COMPLETED')}
+                          className="flex-1 bg-green-50 text-green-700 py-3 px-4 rounded-lg font-medium hover:bg-green-100 transition-colors flex items-center justify-center"
+                          disabled={isLoading}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Asistió
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAttendanceChange('NO_SHOW')}
+                          className="flex-1 bg-yellow-50 text-yellow-700 py-3 px-4 rounded-lg font-medium hover:bg-yellow-100 transition-colors flex items-center justify-center"
+                          disabled={isLoading}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          No asistió
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estado actual (solo mostrar para citas ya procesadas) */}
+                  {appointment && (appointment.status === 'COMPLETED' || appointment.status === 'NO_SHOW' || appointment.status === 'CANCELLED') && (
+                    <div>
+                      <label className="label">Estado actual</label>
+                      <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                        appointment.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        appointment.status === 'NO_SHOW' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {appointment.status === 'COMPLETED' ? 'Completado - Cliente asistió' :
+                         appointment.status === 'NO_SHOW' ? 'No asistió - Cliente no se presentó' :
+                         'Cancelado'}
+                      </div>
                     </div>
                   )}
 
