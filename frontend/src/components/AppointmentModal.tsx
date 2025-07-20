@@ -162,7 +162,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const getMinDateTime = () => {
     const now = new Date();
-    now.setMinutes(now.getMinutes() + 30); // Mínimo 30 minutos desde ahora
+    now.setMinutes(now.getMinutes() + 5); // Mínimo 5 minutos desde ahora (consistente con validación)
     return now.toISOString().slice(0, 16);
   };
 
