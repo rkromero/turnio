@@ -158,6 +158,7 @@ async function startServer() {
     const breakTimeRoutes = require('./routes/breakTimeRoutes');
     const subscriptionRoutes = require('./routes/subscriptionRoutes');
     const mercadoPagoRoutes = require('./routes/mercadoPagoRoutes');
+    const debugRoutes = require('./routes/debugRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -679,6 +680,9 @@ async function startServer() {
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
+    
+    // Rutas de debug para índices de performance
+    app.use('/api/debug', debugRoutes);
     
     // Rutas de testing (solo para desarrollo y testing)
     const testingRoutes = require('./routes/testingRoutes');
