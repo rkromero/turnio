@@ -207,14 +207,14 @@ const monitorIndexUsage = async (req, res) => {
       const query = `
         SELECT 
           schemaname,
-          tablename,
-          indexname,
+          relname as tablename,
+          indexrelname as indexname,
           idx_scan as scans,
           idx_tup_read as tuples_read,
           idx_tup_fetch as tuples_fetched
         FROM pg_stat_user_indexes 
         WHERE schemaname = 'public'
-          AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
+          AND relname IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
         ORDER BY idx_scan DESC;
       `;
       
