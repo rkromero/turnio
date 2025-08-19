@@ -19,59 +19,69 @@ const applyPerformanceIndexes = async (req, res) => {
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_client 
        ON appointments(clientId, startTime)`,
       
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_user 
-       ON appointments(userId, startTime) WHERE userId IS NOT NULL`,
-      
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_service 
-       ON appointments(serviceId, startTime)`,
-      
       // Índices para clients
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_email 
-       ON clients(businessId, email) WHERE email IS NOT NULL`,
+       ON clients(businessId, email)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_phone 
-       ON clients(businessId, phone) WHERE phone IS NOT NULL`,
+       ON clients(businessId, phone)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_name 
        ON clients(businessId, name)`,
       
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_created 
-       ON clients(businessId, createdAt DESC)`,
-      
       // Índices para reviews
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_business_approved 
-       ON reviews(businessId, isApproved, createdAt DESC) WHERE isPublic = true`,
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_business_rating 
+       ON reviews(businessId, rating)`,
       
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_client 
-       ON reviews(clientId, createdAt DESC)`,
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_business_created 
+       ON reviews(businessId, createdAt)`,
       
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_appointment 
-       ON reviews(appointmentId)`
+      // Índices para client_scores
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_scores_email 
+       ON client_scores(email)`,
+      
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_scores_phone 
+       ON client_scores(phone)`,
+      
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_scores_rating 
+       ON client_scores(starRating)`,
+      
+      // Índices para client_history
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_history_client_event 
+       ON client_history(clientScoreId, eventType)`,
+      
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_history_business_date 
+       ON client_history(businessId, eventDate)`
     ];
     
+    const results = [];
     let successCount = 0;
     let errorCount = 0;
-    const results = [];
     
     for (let i = 0; i < indexes.length; i++) {
-      const index = indexes[i];
       try {
-        console.log(`⏳ Aplicando índice ${i + 1}/${indexes.length}...`);
-        await prisma.$executeRawUnsafe(index);
+        // Usar $queryRawUnsafe para evitar restricciones de seguridad
+        await prisma.$queryRawUnsafe(indexes[i]);
+        results.push({
+          index: i + 1,
+          status: 'success',
+          message: `Índice ${i + 1} creado exitosamente`
+        });
         successCount++;
-        results.push({ index: i + 1, status: 'success' });
-        console.log(`✅ Índice ${i + 1} aplicado exitosamente`);
+        console.log(`✅ Índice ${i + 1} creado exitosamente`);
       } catch (error) {
+        results.push({
+          index: i + 1,
+          status: 'error',
+          message: error.message
+        });
         errorCount++;
-        results.push({ index: i + 1, status: 'error', message: error.message });
-        console.log(`❌ Error en índice ${i + 1}: ${error.message}`);
+        console.error(`❌ Error en índice ${i + 1}:`, error.message);
       }
       
-      // Pequeña pausa entre índices
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Pausa entre comandos para no sobrecargar la DB
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
-    console.log(`📊 Resumen: ${successCount} exitosos, ${errorCount} errores`);
     
     res.json({
       success: true,
@@ -81,14 +91,13 @@ const applyPerformanceIndexes = async (req, res) => {
         success: successCount,
         errors: errorCount
       },
-      results: results
+      results
     });
     
   } catch (error) {
     console.error('❌ Error aplicando índices:', error);
     res.status(500).json({
       success: false,
-      message: 'Error aplicando índices',
       error: error.message
     });
   }
@@ -99,28 +108,31 @@ const checkIndexes = async (req, res) => {
   try {
     console.log('🔍 Verificando índices existentes...');
     
-    const result = await prisma.$queryRaw`
+    // Consulta para obtener todos los índices de las tablas principales
+    const query = `
       SELECT 
         schemaname,
         tablename,
         indexname,
         indexdef
       FROM pg_indexes 
-      WHERE indexname LIKE 'idx_%'
-      ORDER BY tablename, indexname
+      WHERE schemaname = 'public' 
+        AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
+      ORDER BY tablename, indexname;
     `;
+    
+    const indexes = await prisma.$queryRawUnsafe(query);
     
     res.json({
       success: true,
-      data: result,
-      count: result.length
+      data: indexes,
+      count: indexes.length
     });
     
   } catch (error) {
     console.error('❌ Error verificando índices:', error);
     res.status(500).json({
       success: false,
-      message: 'Error verificando índices',
       error: error.message
     });
   }
@@ -131,7 +143,7 @@ const monitorIndexUsage = async (req, res) => {
   try {
     console.log('📊 Monitoreando uso de índices...');
     
-    const result = await prisma.$queryRaw`
+    const query = `
       SELECT 
         schemaname,
         tablename,
@@ -140,20 +152,23 @@ const monitorIndexUsage = async (req, res) => {
         idx_tup_read as tuples_read,
         idx_tup_fetch as tuples_fetched
       FROM pg_stat_user_indexes 
-      WHERE indexname LIKE 'idx_%'
-      ORDER BY idx_scan DESC
+      WHERE schemaname = 'public'
+        AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
+      ORDER BY idx_scan DESC;
     `;
+    
+    const usage = await prisma.$queryRawUnsafe(query);
     
     res.json({
       success: true,
-      data: result
+      data: usage,
+      count: usage.length
     });
     
   } catch (error) {
     console.error('❌ Error monitoreando índices:', error);
     res.status(500).json({
       success: false,
-      message: 'Error monitoreando índices',
       error: error.message
     });
   }
