@@ -1,6 +1,13 @@
 const { prisma } = require('../config/database');
+const { Pool } = require('pg');
 
-// Aplicar índices de performance
+// Crear pool de conexión directa a PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Aplicar índices de performance usando conexión directa
 const applyPerformanceIndexes = async (req, res) => {
   try {
     console.log('🚀 Aplicando índices de performance...');
@@ -60,15 +67,22 @@ const applyPerformanceIndexes = async (req, res) => {
     
     for (let i = 0; i < indexes.length; i++) {
       try {
-        // Usar $queryRawUnsafe para evitar restricciones de seguridad
-        await prisma.$queryRawUnsafe(indexes[i]);
-        results.push({
-          index: i + 1,
-          status: 'success',
-          message: `Índice ${i + 1} creado exitosamente`
-        });
-        successCount++;
-        console.log(`✅ Índice ${i + 1} creado exitosamente`);
+        console.log(`⏳ Aplicando índice ${i + 1}/${indexes.length}...`);
+        
+        // Usar conexión directa a PostgreSQL
+        const client = await pool.connect();
+        try {
+          await client.query(indexes[i]);
+          results.push({
+            index: i + 1,
+            status: 'success',
+            message: `Índice ${i + 1} creado exitosamente`
+          });
+          successCount++;
+          console.log(`✅ Índice ${i + 1} creado exitosamente`);
+        } finally {
+          client.release();
+        }
       } catch (error) {
         results.push({
           index: i + 1,
@@ -80,7 +94,7 @@ const applyPerformanceIndexes = async (req, res) => {
       }
       
       // Pausa entre comandos para no sobrecargar la DB
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
     res.json({
@@ -108,26 +122,30 @@ const checkIndexes = async (req, res) => {
   try {
     console.log('🔍 Verificando índices existentes...');
     
-    // Consulta para obtener todos los índices de las tablas principales
-    const query = `
-      SELECT 
-        schemaname,
-        tablename,
-        indexname,
-        indexdef
-      FROM pg_indexes 
-      WHERE schemaname = 'public' 
-        AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
-      ORDER BY tablename, indexname;
-    `;
-    
-    const indexes = await prisma.$queryRawUnsafe(query);
-    
-    res.json({
-      success: true,
-      data: indexes,
-      count: indexes.length
-    });
+    const client = await pool.connect();
+    try {
+      const query = `
+        SELECT 
+          schemaname,
+          tablename,
+          indexname,
+          indexdef
+        FROM pg_indexes 
+        WHERE schemaname = 'public' 
+          AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
+        ORDER BY tablename, indexname;
+      `;
+      
+      const result = await client.query(query);
+      
+      res.json({
+        success: true,
+        data: result.rows,
+        count: result.rows.length
+      });
+    } finally {
+      client.release();
+    }
     
   } catch (error) {
     console.error('❌ Error verificando índices:', error);
@@ -143,27 +161,32 @@ const monitorIndexUsage = async (req, res) => {
   try {
     console.log('📊 Monitoreando uso de índices...');
     
-    const query = `
-      SELECT 
-        schemaname,
-        tablename,
-        indexname,
-        idx_scan as scans,
-        idx_tup_read as tuples_read,
-        idx_tup_fetch as tuples_fetched
-      FROM pg_stat_user_indexes 
-      WHERE schemaname = 'public'
-        AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
-      ORDER BY idx_scan DESC;
-    `;
-    
-    const usage = await prisma.$queryRawUnsafe(query);
-    
-    res.json({
-      success: true,
-      data: usage,
-      count: usage.length
-    });
+    const client = await pool.connect();
+    try {
+      const query = `
+        SELECT 
+          schemaname,
+          tablename,
+          indexname,
+          idx_scan as scans,
+          idx_tup_read as tuples_read,
+          idx_tup_fetch as tuples_fetched
+        FROM pg_stat_user_indexes 
+        WHERE schemaname = 'public'
+          AND tablename IN ('appointments', 'clients', 'reviews', 'client_scores', 'client_history')
+        ORDER BY idx_scan DESC;
+      `;
+      
+      const result = await client.query(query);
+      
+      res.json({
+        success: true,
+        data: result.rows,
+        count: result.rows.length
+      });
+    } finally {
+      client.release();
+    }
     
   } catch (error) {
     console.error('❌ Error monitoreando índices:', error);
