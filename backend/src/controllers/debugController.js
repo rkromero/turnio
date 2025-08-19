@@ -7,43 +7,84 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+// Verificar estructura de tablas
+const checkTableStructure = async (req, res) => {
+  try {
+    console.log('🔍 Verificando estructura de tablas...');
+    
+    const client = await pool.connect();
+    try {
+      const tables = ['appointments', 'clients', 'reviews', 'client_scores', 'client_history'];
+      const results = {};
+      
+      for (const table of tables) {
+        const query = `
+          SELECT column_name, data_type, is_nullable
+          FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+            AND table_name = $1
+          ORDER BY ordinal_position;
+        `;
+        
+        const result = await client.query(query, [table]);
+        results[table] = result.rows;
+      }
+      
+      res.json({
+        success: true,
+        data: results
+      });
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ Error verificando estructura:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 // Aplicar índices de performance usando conexión directa
 const applyPerformanceIndexes = async (req, res) => {
   try {
     console.log('🚀 Aplicando índices de performance...');
     
+    // Índices corregidos con nombres de columnas exactos
     const indexes = [
       // Índices críticos para appointments
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_business_branch_user_time 
-       ON appointments(businessId, branchId, userId, startTime, status)`,
+       ON appointments("businessId", "branchId", "userId", "startTime", status)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_business_date 
-       ON appointments(businessId, startTime)`,
+       ON appointments("businessId", "startTime")`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_business_status_created 
-       ON appointments(businessId, status, createdAt)`,
+       ON appointments("businessId", status, "createdAt")`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_client 
-       ON appointments(clientId, startTime)`,
+       ON appointments("clientId", "startTime")`,
       
       // Índices para clients
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_email 
-       ON clients(businessId, email)`,
+       ON clients("businessId", email)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_phone 
-       ON clients(businessId, phone)`,
+       ON clients("businessId", phone)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clients_business_name 
-       ON clients(businessId, name)`,
+       ON clients("businessId", name)`,
       
       // Índices para reviews
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_business_rating 
-       ON reviews(businessId, rating)`,
+       ON reviews("businessId", rating)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_business_created 
-       ON reviews(businessId, createdAt)`,
+       ON reviews("businessId", "createdAt")`,
       
-      // Índices para client_scores
+      // Índices para client_scores (solo si la tabla existe)
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_scores_email 
        ON client_scores(email)`,
       
@@ -51,14 +92,14 @@ const applyPerformanceIndexes = async (req, res) => {
        ON client_scores(phone)`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_scores_rating 
-       ON client_scores(starRating)`,
+       ON client_scores("starRating")`,
       
-      // Índices para client_history
+      // Índices para client_history (solo si la tabla existe)
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_history_client_event 
-       ON client_history(clientScoreId, eventType)`,
+       ON client_history("clientScoreId", "eventType")`,
       
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_client_history_business_date 
-       ON client_history(businessId, eventDate)`
+       ON client_history("businessId", "eventDate")`
     ];
     
     const results = [];
@@ -200,5 +241,6 @@ const monitorIndexUsage = async (req, res) => {
 module.exports = {
   applyPerformanceIndexes,
   checkIndexes,
-  monitorIndexUsage
+  monitorIndexUsage,
+  checkTableStructure
 };
