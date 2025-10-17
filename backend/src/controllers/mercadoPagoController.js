@@ -240,6 +240,8 @@ const createSubscriptionPayment = async (req, res) => {
     const { subscriptionId } = req.body;
     const { user } = req;
 
+    console.log('💳 [create-payment] Iniciando creación de pago para subscriptionId:', subscriptionId);
+
     if (!user || !user.businessId) {
       return res.status(403).json({
         success: false,
@@ -254,16 +256,44 @@ const createSubscriptionPayment = async (req, res) => {
     });
 
     if (!subscription) {
+      console.log('❌ Suscripción no encontrada:', subscriptionId);
       return res.status(404).json({
         success: false,
         message: 'Suscripción no encontrada'
       });
     }
 
+    console.log('📋 Suscripción encontrada:', {
+      id: subscription.id,
+      planType: subscription.planType,
+      priceAmount: subscription.priceAmount,
+      billingCycle: subscription.billingCycle,
+      hasMetadata: !!subscription.metadata
+    });
+
     if (subscription.businessId !== user.businessId) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para esta suscripción'
+      });
+    }
+
+    // Determinar el monto a cobrar
+    let amountToPay = subscription.priceAmount;
+    
+    // Si hay upgrade pendiente, usar ese monto
+    const pendingUpgrade = subscription.metadata?.pendingUpgrade;
+    if (pendingUpgrade && pendingUpgrade.amount) {
+      amountToPay = pendingUpgrade.amount;
+      console.log('💰 Usando monto de upgrade pendiente:', amountToPay);
+    }
+
+    // Validar que tenemos un monto válido
+    if (!amountToPay || amountToPay === 0) {
+      console.log('❌ No se pudo determinar el monto a pagar');
+      return res.status(400).json({
+        success: false,
+        message: 'No se pudo determinar el monto a pagar'
       });
     }
 
@@ -282,11 +312,13 @@ const createSubscriptionPayment = async (req, res) => {
     const payment = await prisma.payment.create({
       data: {
         subscriptionId: subscription.id,
-        amount: subscription.priceAmount,
+        amount: amountToPay,
         billingCycle: subscription.billingCycle,
         status: 'PENDING'
       }
     });
+
+    console.log('✅ Payment creado:', payment.id, 'con monto:', amountToPay);
 
     // Configurar la preferencia de MercadoPago
     const preference = {
@@ -294,7 +326,7 @@ const createSubscriptionPayment = async (req, res) => {
         {
           title: `${planName} - ${billingCycle}`,
           description: `Suscripción ${planName} (${billingCycle}) para ${subscription.business.name}`,
-          unit_price: subscription.priceAmount,
+          unit_price: amountToPay,
           quantity: 1,
         }
       ],
@@ -327,9 +359,10 @@ const createSubscriptionPayment = async (req, res) => {
 
     console.log('💳 Creando preferencia de MercadoPago:', {
       planType: subscription.planType,
-      amount: subscription.priceAmount,
+      amount: amountToPay,
       billingCycle: subscription.billingCycle,
-      businessName: subscription.business.name
+      businessName: subscription.business.name,
+      hasPendingUpgrade: !!pendingUpgrade
     });
 
     // Crear la preferencia en MercadoPago (SDK v2)
@@ -360,7 +393,7 @@ const createSubscriptionPayment = async (req, res) => {
           id: subscription.id,
           planType: subscription.planType,
           billingCycle: subscription.billingCycle,
-          amount: subscription.priceAmount
+          amount: amountToPay
         }
       }
     });
