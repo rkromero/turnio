@@ -1,18 +1,42 @@
 const { prisma } = require('../config/database');
+const {
+  isValidPlanType,
+  validatePaymentData,
+  validateSubscriptionData,
+  VALID_PLAN_TYPES
+} = require('../utils/subscriptionValidators');
+
+// Constantes de planes
+const PLAN_PRICES = {
+  'FREE': 0,
+  'BASIC': 18900,
+  'PREMIUM': 24900,
+  'ENTERPRISE': 90900
+};
+
+const PLAN_HIERARCHY = ['FREE', 'BASIC', 'PREMIUM', 'ENTERPRISE'];
 
 class PlanChangeService {
   
+  // Helper: Obtener precio de un plan
+  static getPlanPrice(planType) {
+    return PLAN_PRICES[planType] || 0;
+  }
+
+  // Helper: Determinar tipo de cambio
+  static getChangeType(currentPlan, newPlan) {
+    const currentIndex = PLAN_HIERARCHY.indexOf(currentPlan);
+    const newIndex = PLAN_HIERARCHY.indexOf(newPlan);
+    
+    if (currentIndex === newIndex) return 'SAME';
+    if (newIndex > currentIndex) return 'UPGRADE';
+    return 'DOWNGRADE';
+  }
+
   // Calcular diferencia pro-rata entre planes
   static calculateProRataDifference(currentPlan, newPlan, daysRemaining) {
-    const planPrices = {
-      'FREE': 0,
-      'BASIC': 18900,
-      'PREMIUM': 24900,
-      'ENTERPRISE': 90900
-    };
-
-    const currentPrice = planPrices[currentPlan] || 0;
-    const newPrice = planPrices[newPlan] || 0;
+    const currentPrice = PLAN_PRICES[currentPlan] || 0;
+    const newPrice = PLAN_PRICES[newPlan] || 0;
     
     // Calcular precio por día
     const currentPricePerDay = currentPrice / 30;
@@ -35,7 +59,122 @@ class PlanChangeService {
     };
   }
 
-  // Cambiar plan de suscripción
+  // Procesar UPGRADE de plan
+  static async processUpgrade(currentSubscription, currentPlan, newPlanType) {
+    console.log('📈 Procesando UPGRADE...');
+    
+    // Validar plan
+    if (!isValidPlanType(newPlanType)) {
+      throw new Error(`Plan ${newPlanType} no válido. Válidos: ${VALID_PLAN_TYPES.join(', ')}`);
+    }
+
+    const newPlanPrice = this.getPlanPrice(newPlanType);
+    if (newPlanPrice === 0) {
+      throw new Error(`Plan ${newPlanType} no válido para upgrade`);
+    }
+
+    // Preparar datos de pago y validar
+    const paymentData = {
+      subscriptionId: currentSubscription.id,
+      amount: newPlanPrice,
+      currency: 'ARS',
+      status: 'PENDING',
+      billingCycle: currentSubscription.billingCycle,
+      paymentMethod: `plan_upgrade_${currentPlan}_to_${newPlanType}`
+    };
+
+    const validation = validatePaymentData(paymentData);
+    if (!validation.valid) {
+      throw new Error(`Datos de pago inválidos: ${validation.errors.join(', ')}`);
+    }
+
+    // Crear pago por el plan completo
+    const upgradePayment = await prisma.payment.create({ data: paymentData });
+
+    // Actualizar metadata de suscripción para marcar upgrade pendiente
+    // Mantener status ACTIVE hasta que se complete el pago
+    await prisma.subscription.update({
+      where: { id: currentSubscription.id },
+      data: {
+        metadata: {
+          ...currentSubscription.metadata,
+          pendingUpgrade: {
+            paymentId: upgradePayment.id,
+            fromPlan: currentPlan,
+            toPlan: newPlanType,
+            amount: newPlanPrice,
+            requestedAt: new Date().toISOString()
+          }
+        }
+      }
+    });
+
+    // Registrar cambio de plan
+    await prisma.planChange.create({
+      data: {
+        businessId: currentSubscription.businessId,
+        fromPlan: currentPlan,
+        toPlan: newPlanType,
+        changeReason: 'upgrade',
+        effectiveDate: new Date()
+      }
+    });
+
+    return {
+      success: true,
+      message: `Plan actualizado a ${newPlanType}. Debes pagar $${newPlanPrice} para activar el nuevo plan.`,
+      requiresPayment: true,
+      paymentId: upgradePayment.id,
+      amount: newPlanPrice,
+      changeType: 'upgrade'
+    };
+  }
+
+  // Procesar DOWNGRADE de plan
+  static async processDowngrade(currentSubscription, currentPlan, newPlanType) {
+    console.log('📉 Procesando DOWNGRADE...');
+    
+    const newPlanPrice = this.getPlanPrice(newPlanType);
+
+    // Actualizar suscripción para cambiar automáticamente cuando venza
+    await prisma.subscription.update({
+      where: { id: currentSubscription.id },
+      data: {
+        metadata: {
+          ...currentSubscription.metadata,
+          pendingDowngrade: {
+            fromPlan: currentPlan,
+            toPlan: newPlanType,
+            effectiveDate: currentSubscription.nextBillingDate,
+            requestedAt: new Date().toISOString(),
+            newPlanPrice: newPlanPrice
+          }
+        }
+      }
+    });
+
+    // Registrar cambio de plan
+    await prisma.planChange.create({
+      data: {
+        businessId: currentSubscription.businessId,
+        fromPlan: currentPlan,
+        toPlan: newPlanType,
+        changeReason: 'downgrade',
+        effectiveDate: new Date()
+      }
+    });
+
+    return {
+      success: true,
+      message: `Plan programado para cambiar a ${newPlanType} el ${currentSubscription.nextBillingDate.toLocaleDateString()}. Mantienes acceso al plan actual hasta esa fecha${newPlanPrice > 0 ? `. El día del cambio se cobrará $${newPlanPrice} por el nuevo plan.` : '.'}`,
+      requiresPayment: false,
+      effectiveDate: currentSubscription.nextBillingDate,
+      changeType: 'downgrade',
+      newPlanPrice: newPlanPrice
+    };
+  }
+
+  // Cambiar plan de suscripción (orquestador principal)
   static async changeSubscriptionPlan(subscriptionId, newPlanType, userId) {
     try {
       console.log(`🔄 Cambiando plan de suscripción: ${subscriptionId} → ${newPlanType}`);
@@ -62,144 +201,26 @@ class PlanChangeService {
         return {
           success: true,
           message: 'Ya tienes este plan activo',
-          requiresPayment: false
+          requiresPayment: false,
+          changeType: 'SAME'
         };
       }
 
-      // Determinar si es upgrade o downgrade
-      const planHierarchy = ['FREE', 'BASIC', 'PREMIUM', 'ENTERPRISE'];
-      const currentIndex = planHierarchy.indexOf(currentPlan);
-      const newIndex = planHierarchy.indexOf(newPlanType);
-      const isUpgrade = newIndex > currentIndex;
-      const isDowngrade = newIndex < currentIndex;
+      // Determinar tipo de cambio
+      const changeType = this.getChangeType(currentPlan, newPlanType);
+      console.log(`📊 Cambio de plan: ${currentPlan} → ${newPlanType} (${changeType})`);
 
-      console.log(`📊 Cambio de plan: ${currentPlan} (${currentIndex}) → ${newPlanType} (${newIndex})`);
-      console.log(`🔍 Tipo de cambio: ${isUpgrade ? 'UPGRADE' : isDowngrade ? 'DOWNGRADE' : 'SAME'}`);
-
-      if (isUpgrade) {
-        // 📈 UPGRADE: Cobrar plan completo y reiniciar ciclo
-        console.log('📈 Procesando UPGRADE...');
-        
-        const planPrices = {
-          'BASIC': 18900,
-          'PREMIUM': 24900,
-          'ENTERPRISE': 90900
-        };
-
-        const newPlanPrice = planPrices[newPlanType];
-        if (!newPlanPrice) {
-          throw new Error('Plan no válido');
-        }
-
-        // Crear pago por el plan completo
-        const upgradePayment = await prisma.payment.create({
-          data: {
-            subscriptionId: subscriptionId,
-            amount: newPlanPrice,
-            currency: 'ARS',
-            status: 'PENDING',
-            billingCycle: currentSubscription.billingCycle,
-            paymentMethod: `plan_upgrade_${currentPlan}_to_${newPlanType}`
-          }
-        });
-
-        // Actualizar metadata de suscripción para marcar upgrade pendiente
-        // Mantener status ACTIVE hasta que se complete el pago
-        await prisma.subscription.update({
-          where: { id: subscriptionId },
-          data: {
-            metadata: {
-              ...currentSubscription.metadata,
-              pendingUpgrade: {
-                paymentId: upgradePayment.id,
-                fromPlan: currentPlan,
-                toPlan: newPlanType,
-                amount: newPlanPrice,
-                requestedAt: new Date().toISOString()
-              }
-            }
-          }
-        });
-
-        // Registrar cambio de plan
-        await prisma.planChange.create({
-          data: {
-            businessId: currentSubscription.businessId,
-            fromPlan: currentPlan,
-            toPlan: newPlanType,
-            changeReason: 'upgrade',
-            effectiveDate: new Date()
-          }
-        });
-
-        return {
-          success: true,
-          message: `Plan actualizado a ${newPlanType}. Debes pagar $${newPlanPrice} para activar el nuevo plan.`,
-          requiresPayment: true,
-          paymentId: upgradePayment.id,
-          amount: newPlanPrice,
-          changeType: 'upgrade'
-        };
-
-      } else if (isDowngrade) {
-        // 📉 DOWNGRADE: Mantener acceso hasta vencimiento, cambiar automáticamente y cobrar nuevo plan
-        console.log('📉 Procesando DOWNGRADE...');
-        
-        const planPrices = {
-          'BASIC': 18900,
-          'PREMIUM': 24900,
-          'ENTERPRISE': 90900
-        };
-
-        const newPlanPrice = planPrices[newPlanType];
-        if (!newPlanPrice) {
-          throw new Error('Plan no válido');
-        }
-
-        // Actualizar suscripción para cambiar automáticamente cuando venza
-        await prisma.subscription.update({
-          where: { id: subscriptionId },
-          data: {
-            metadata: {
-              ...currentSubscription.metadata,
-              pendingDowngrade: {
-                fromPlan: currentPlan,
-                toPlan: newPlanType,
-                effectiveDate: currentSubscription.nextBillingDate,
-                requestedAt: new Date(),
-                newPlanPrice: newPlanPrice // Precio del nuevo plan a cobrar
-              }
-            }
-          }
-        });
-
-        // Registrar cambio de plan
-        await prisma.planChange.create({
-          data: {
-            businessId: currentSubscription.businessId,
-            fromPlan: currentPlan,
-            toPlan: newPlanType,
-            changeReason: 'downgrade',
-            effectiveDate: new Date()
-          }
-        });
-
-        return {
-          success: true,
-          message: `Plan programado para cambiar a ${newPlanType} el ${currentSubscription.nextBillingDate.toLocaleDateString()}. Mantienes acceso al plan actual hasta esa fecha. El día del cambio se cobrará $${newPlanPrice} por el nuevo plan.`,
-          requiresPayment: false,
-          effectiveDate: currentSubscription.nextBillingDate,
-          changeType: 'downgrade',
-          newPlanPrice: newPlanPrice
-        };
-
+      // Delegar según tipo de cambio
+      if (changeType === 'UPGRADE') {
+        return await this.processUpgrade(currentSubscription, currentPlan, newPlanType);
+      } else if (changeType === 'DOWNGRADE') {
+        return await this.processDowngrade(currentSubscription, currentPlan, newPlanType);
       } else {
-        // Mismo nivel de plan
         return {
           success: true,
           message: 'No hay cambio en el nivel del plan',
           requiresPayment: false,
-          changeType: 'none'
+          changeType: 'SAME'
         };
       }
 

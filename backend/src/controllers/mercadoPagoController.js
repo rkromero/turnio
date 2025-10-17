@@ -432,16 +432,33 @@ const handleWebhook = async (req, res) => {
         data: { status: newStatus }
       });
 
-      // Si el pago fue aprobado, actualizar el plan del negocio y la suscripción
+      // Si el pago fue aprobado, verificar si es upgrade y procesarlo
       if (newStatus === 'APPROVED') {
-        await prisma.subscription.update({
-          where: { id: payment.subscription.id },
-          data: { status: 'ACTIVE' }
-        });
-        await prisma.business.update({
-          where: { id: payment.subscription.businessId },
-          data: { planType: payment.subscription.planType }
-        });
+        const pendingUpgrade = payment.subscription.metadata?.pendingUpgrade;
+        
+        if (pendingUpgrade && pendingUpgrade.paymentId === payment.id) {
+          // Es un pago de upgrade, procesarlo con el servicio especializado
+          console.log('🔄 Procesando upgrade pendiente:', {
+            fromPlan: pendingUpgrade.fromPlan,
+            toPlan: pendingUpgrade.toPlan,
+            amount: pendingUpgrade.amount
+          });
+          
+          const PlanChangeService = require('../services/planChangeService');
+          await PlanChangeService.processUpgradePayment(payment.id);
+          console.log('✅ Upgrade procesado exitosamente');
+        } else {
+          // Pago regular (nueva suscripción o renovación)
+          console.log('💳 Procesando pago regular de suscripción');
+          await prisma.subscription.update({
+            where: { id: payment.subscription.id },
+            data: { status: 'ACTIVE' }
+          });
+          await prisma.business.update({
+            where: { id: payment.subscription.businessId },
+            data: { planType: payment.subscription.planType }
+          });
+        }
       }
 
       res.json({ received: true });
