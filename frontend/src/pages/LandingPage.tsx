@@ -170,12 +170,20 @@ const LandingPage: React.FC = () => {
             </nav>
 
             {/* CTA Header */}
-            <Link 
-              to="/register"
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Empezar ahora
-            </Link>
+            <div className="flex gap-3">
+              <Link 
+                to="/login"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Acceder
+              </Link>
+              <Link 
+                to="/register"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Empezar ahora
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -202,6 +210,12 @@ const LandingPage: React.FC = () => {
                 >
                   Probar gratis
                   <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+                <Link 
+                  to="/login"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors inline-flex items-center justify-center"
+                >
+                  Acceder
                 </Link>
                 <a 
                   href="#planes"
