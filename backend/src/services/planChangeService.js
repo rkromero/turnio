@@ -99,13 +99,7 @@ class PlanChangeService {
             currency: 'ARS',
             status: 'PENDING',
             billingCycle: currentSubscription.billingCycle,
-            paymentMethod: 'plan_upgrade',
-            metadata: {
-              type: 'plan_upgrade',
-              fromPlan: currentPlan,
-              toPlan: newPlanType,
-              reason: 'upgrade_full_cycle'
-            }
+            paymentMethod: `plan_upgrade_${currentPlan}_to_${newPlanType}`
           }
         });
 
