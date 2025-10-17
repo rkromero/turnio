@@ -125,6 +125,19 @@ async function startServer() {
     await connectDatabase();
     console.log('✅ Conectado a la base de datos');
     
+    // 3. Ejecutar optimizaciones de performance en producción
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        console.log('🚀 Ejecutando optimizaciones de performance...');
+        const { deployOptimization } = require('../scripts/deploy-optimization');
+        await deployOptimization();
+        console.log('✅ Optimizaciones de performance completadas');
+      } catch (error) {
+        console.error('⚠️ Error en optimizaciones de performance:', error.message);
+        console.log('⚠️ Continuando sin optimizaciones...');
+      }
+    }
+    
     // Inicializar servicio de notificaciones de reseñas
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_REVIEW_NOTIFICATIONS === 'true') {
       startReviewNotificationService();
@@ -683,6 +696,10 @@ async function startServer() {
     
     // Rutas de debug para índices de performance
     app.use('/api/debug', debugRoutes);
+    
+    // Rutas de optimización de performance
+    const performanceRoutes = require('./routes/performanceRoutes');
+    app.use('/api/performance', performanceRoutes);
     
     // Rutas de testing (solo para desarrollo y testing)
     const testingRoutes = require('./routes/testingRoutes');

@@ -662,37 +662,67 @@ const getAvailableSlots = async (req, res) => {
     let totalSlotsCount = 0; // Contador total de slots para el día
     let availableSlotsCount = 0; // Contador de slots disponibles
 
-    for (const user of business.users) {
+    // OPTIMIZACIÓN: Obtener horarios de descanso de todas las sucursales de una vez
+    const allBreakTimes = await prisma.branchBreakTime.findMany({
+      where: {
+        branchId: { in: branchIds },
+        dayOfWeek: dayOfWeek,
+        isActive: true
+      },
+      select: {
+        branchId: true,
+        startTime: true,
+        endTime: true,
+        name: true
+      }
+    });
+
+    // OPTIMIZACIÓN: Agrupar citas ocupadas por usuario para acceso más rápido
+    const occupiedByUser = {};
+    occupiedSlots.forEach(slot => {
+      if (!occupiedByUser[slot.userId]) {
+        occupiedByUser[slot.userId] = [];
+      }
+      occupiedByUser[slot.userId].push({
+        start: new Date(slot.startTime),
+        end: new Date(slot.endTime)
+      });
+    });
+
+    // OPTIMIZACIÓN: Procesar usuarios en paralelo
+    const userPromises = business.users.map(async (user) => {
       const workingHour = user.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
       
-      if (!workingHour) continue;
+      if (!workingHour) return null;
 
-              // Generar slots para este profesional
-        const userSlots = await generateAvailableSlots(
-          user.id,
-          targetDate,
-          workingHour,
-          service?.duration || business.defaultAppointmentDuration || 60,
-          business.defaultAppointmentDuration || 30,
-          branchId || user.branchId // Usar branchId del query o del usuario
-        );
+      // OPTIMIZACIÓN: Usar horarios de descanso específicos del usuario
+      const userBranchId = branchId || user.branchId;
+      const userBreakTimes = allBreakTimes.filter(bt => bt.branchId === userBranchId);
 
-      // Filtrar slots ocupados
+      // Generar slots para este profesional con break times pre-cargados
+      const userSlots = await generateAvailableSlotsOptimized(
+        user.id,
+        targetDate,
+        workingHour,
+        service?.duration || business.defaultAppointmentDuration || 60,
+        business.defaultAppointmentDuration || 30,
+        userBranchId,
+        userBreakTimes
+      );
+
+      // OPTIMIZACIÓN: Filtrar slots ocupados usando datos pre-cargados
+      const userOccupiedSlots = occupiedByUser[user.id] || [];
       const availableUserSlots = userSlots.filter(slot => {
         const slotStart = new Date(slot.datetime);
         const slotEnd = new Date(slotStart.getTime() + (service?.duration || 60) * 60000);
         
-        return !occupiedSlots.some(occupied => {
-          return occupied.userId === user.id &&
-                 ((occupied.startTime <= slotStart && occupied.endTime > slotStart) ||
-                  (occupied.startTime < slotEnd && occupied.endTime >= slotEnd));
+        return !userOccupiedSlots.some(occupied => {
+          return (occupied.start <= slotStart && occupied.end > slotStart) ||
+                 (occupied.start < slotEnd && occupied.end >= slotEnd);
         });
       });
 
-      totalSlotsCount += userSlots.length;
-      availableSlotsCount += availableUserSlots.length;
-
-      availableSlots.push({
+      return {
         professional: {
           id: user.id,
           name: user.name,
@@ -704,9 +734,23 @@ const getAvailableSlots = async (req, res) => {
         workingHours: {
           start: workingHour.startTime,
           end: workingHour.endTime
-        }
-      });
-    }
+        },
+        totalSlots: userSlots.length,
+        availableSlots: availableUserSlots.length
+      };
+    });
+
+    // Esperar a que todos los usuarios se procesen
+    const userResults = await Promise.all(userPromises);
+    
+    // Filtrar resultados nulos y agregar a la respuesta
+    userResults.forEach(result => {
+      if (result) {
+        availableSlots.push(result);
+        totalSlotsCount += result.totalSlots;
+        availableSlotsCount += result.availableSlots;
+      }
+    });
 
     // Calcular estadísticas de urgencia
     const urgencyStats = {
@@ -932,7 +976,121 @@ const getAvailableProfessionals = async (req, res) => {
   }
 };
 
-// Función auxiliar para generar slots disponibles
+// Función auxiliar optimizada para generar slots disponibles
+async function generateAvailableSlotsOptimized(professionalId, date, workingHour, serviceDuration, businessSlotDuration = 30, branchId = null, preloadedBreakTimes = []) {
+  const slots = [];
+  
+  // Parsear horarios de trabajo
+  const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
+  const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
+  
+  // Crear fechas de inicio y fin para el día
+  const startTime = new Date(date);
+  startTime.setHours(startHour, startMin, 0, 0);
+  
+  const endTime = new Date(date);
+  endTime.setHours(endHour, endMin, 0, 0);
+  
+  // OPTIMIZACIÓN: Obtener citas existentes de una vez
+  const existingAppointments = await prisma.appointment.findMany({
+    where: {
+      userId: professionalId,
+      startTime: {
+        gte: startTime,
+        lt: new Date(date.getTime() + 24 * 60 * 60 * 1000)
+      },
+      status: {
+        in: ['CONFIRMED', 'COMPLETED']
+      }
+    },
+    select: {
+      startTime: true,
+      endTime: true
+    }
+  });
+
+  // OPTIMIZACIÓN: Usar break times pre-cargados
+  let breakTimes = preloadedBreakTimes;
+  
+  // Si no se pasaron break times, cargarlos (fallback)
+  if (!breakTimes || breakTimes.length === 0) {
+    const dayOfWeek = date.getDay();
+    breakTimes = await prisma.branchBreakTime.findMany({
+      where: {
+        branchId: branchId,
+        dayOfWeek: dayOfWeek,
+        isActive: true
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+        name: true
+      }
+    });
+  }
+
+  // Generar slots
+  let currentTime = new Date(startTime);
+  
+  while (currentTime < endTime) {
+    const slotEnd = new Date(currentTime.getTime() + serviceDuration * 60000);
+    
+    // Solo considerar slots que caben completamente antes del fin del horario laboral
+    if (slotEnd > endTime) {
+      break;
+    }
+    
+    // OPTIMIZACIÓN: Verificar conflictos con citas existentes
+    const isAvailableAppointments = !existingAppointments.some(appointment => {
+      const appointmentStart = new Date(appointment.startTime);
+      const appointmentEnd = new Date(appointment.endTime);
+      
+      return (
+        (currentTime >= appointmentStart && currentTime < appointmentEnd) ||
+        (slotEnd > appointmentStart && slotEnd <= appointmentEnd) ||
+        (currentTime <= appointmentStart && slotEnd >= appointmentEnd)
+      );
+    });
+
+    // OPTIMIZACIÓN: Verificar conflictos con break times
+    const isAvailableBreakTimes = !breakTimes.some(breakTime => {
+      const [breakStartHour, breakStartMin] = breakTime.startTime.split(':').map(Number);
+      const [breakEndHour, breakEndMin] = breakTime.endTime.split(':').map(Number);
+      
+      const breakStart = new Date(date);
+      breakStart.setHours(breakStartHour, breakStartMin, 0, 0);
+      
+      const breakEnd = new Date(date);
+      breakEnd.setHours(breakEndHour, breakEndMin, 0, 0);
+      
+      return (
+        (currentTime >= breakStart && currentTime < breakEnd) ||
+        (slotEnd > breakStart && slotEnd <= breakEnd) ||
+        (currentTime <= breakStart && slotEnd >= breakEnd)
+      );
+    });
+
+    // Agregar slot si está disponible
+    if (isAvailableAppointments && isAvailableBreakTimes) {
+      slots.push({
+        datetime: currentTime.toISOString(),
+        time: currentTime.toLocaleTimeString('es-AR', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZone: 'America/Argentina/Buenos_Aires'
+        }),
+        available: true
+      });
+    }
+
+    // Avanzar al siguiente slot
+    currentTime = new Date(currentTime.getTime() + businessSlotDuration * 60000);
+  }
+
+  return slots;
+}
+
+// Función auxiliar para generar slots disponibles (versión original - mantenida para compatibilidad)
 async function generateAvailableSlots(professionalId, date, workingHour, serviceDuration, businessSlotDuration = 30, branchId = null) {
   const slots = [];
   

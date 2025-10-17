@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const getDashboardMetrics = async (req, res) => {
   try {
     const { user } = req;
-    const { period = 30 } = req.query;
+    const { period = 30, page = 1, limit = 50 } = req.query;
 
     if (!user || !user.businessId) {
       return res.status(403).json({
@@ -22,98 +22,137 @@ const getDashboardMetrics = async (req, res) => {
 
     console.log(`📊 Generando reportes para businessId: ${businessId}, período: ${periodDays} días`);
 
-    // 1. Obtener todas las citas del período
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        businessId: businessId,
-        startTime: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      include: {
-        service: {
-          select: {
-            id: true,
-            name: true,
-            price: true
+    // OPTIMIZACIÓN: Usar consultas agregadas en lugar de cargar todos los datos en memoria
+    console.log(`📊 Generando reportes para businessId: ${businessId}, período: ${periodDays} días`);
+
+    // 1. Obtener métricas básicas con consultas agregadas
+    const [basicStats, statusStats, revenueStats, clientStats] = await Promise.all([
+      // Estadísticas básicas
+      prisma.appointment.aggregate({
+        where: {
+          businessId: businessId,
+          startTime: { gte: startDate, lte: endDate }
+        },
+        _count: { id: true }
+      }),
+      
+      // Citas por estado
+      prisma.appointment.groupBy({
+        by: ['status'],
+        where: {
+          businessId: businessId,
+          startTime: { gte: startDate, lte: endDate }
+        },
+        _count: { id: true }
+      }),
+      
+      // Ingresos totales
+      prisma.appointment.findMany({
+        where: {
+          businessId: businessId,
+          startTime: { gte: startDate, lte: endDate },
+          status: 'COMPLETED'
+        },
+        select: {
+          service: {
+            select: { price: true }
           }
         }
-      }
+      }),
+      
+      // Clientes únicos
+      prisma.appointment.findMany({
+        where: {
+          businessId: businessId,
+          startTime: { gte: startDate, lte: endDate }
+        },
+        select: {
+          client: {
+            select: { email: true, phone: true }
+          }
+        }
+      })
+    ]);
+
+    console.log(`📅 Encontradas ${basicStats._count.id} citas en el período`);
+
+    // 2. Procesar métricas básicas
+    const totalAppointments = basicStats._count.id;
+    
+    // 3. Procesar estados
+    const statusCounts = {};
+    statusStats.forEach(stat => {
+      statusCounts[stat.status] = stat._count.id;
     });
-
-    console.log(`📅 Encontradas ${appointments.length} citas en el período`);
-
-    // 2. Calcular métricas básicas
-    const totalAppointments = appointments.length;
-    const completedAppointments = appointments.filter(a => a.status === 'COMPLETED');
-    const revenue = completedAppointments.reduce((sum, appointment) => {
+    
+    const completedAppointments = statusCounts['COMPLETED'] || 0;
+    
+    // 4. Calcular ingresos
+    const revenue = revenueStats.reduce((sum, appointment) => {
       return sum + (appointment.service?.price || 0);
     }, 0);
 
-    // 3. Clientes únicos
+    // 5. Calcular clientes únicos
     const uniqueClientEmails = new Set();
     const uniqueClientPhones = new Set();
-    appointments.forEach(appointment => {
-      if (appointment.clientEmail) uniqueClientEmails.add(appointment.clientEmail);
-      if (appointment.clientPhone) uniqueClientPhones.add(appointment.clientPhone);
+    clientStats.forEach(appointment => {
+      if (appointment.client?.email) uniqueClientEmails.add(appointment.client.email);
+      if (appointment.client?.phone) uniqueClientPhones.add(appointment.client.phone);
     });
     const uniqueClients = Math.max(uniqueClientEmails.size, uniqueClientPhones.size);
 
-    // 4. Citas por estado
-    const statusCounts = {};
-    appointments.forEach(appointment => {
-      statusCounts[appointment.status] = (statusCounts[appointment.status] || 0) + 1;
+    // 6. Obtener servicios populares con consulta optimizada
+    const popularServicesData = await prisma.appointment.groupBy({
+      by: ['serviceId'],
+      where: {
+        businessId: businessId,
+        startTime: { gte: startDate, lte: endDate }
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 5
     });
 
-    const appointmentsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
-      status,
-      count
+    // Obtener detalles de servicios
+    const serviceIds = popularServicesData.map(s => s.serviceId);
+    const servicesDetails = await prisma.service.findMany({
+      where: { id: { in: serviceIds } },
+      select: { id: true, name: true, price: true }
+    });
+
+    const popularServices = popularServicesData.map(serviceData => ({
+      serviceId: serviceData.serviceId,
+      _count: { id: serviceData._count.id },
+      service: servicesDetails.find(s => s.id === serviceData.serviceId)
     }));
 
-    // 5. Servicios populares
-    const serviceCounts = {};
-    appointments.forEach(appointment => {
-      if (appointment.service) {
-        const serviceId = appointment.service.id;
-        if (!serviceCounts[serviceId]) {
-          serviceCounts[serviceId] = {
-            serviceId,
-            service: appointment.service,
-            count: 0
-          };
-        }
-        serviceCounts[serviceId].count++;
-      }
-    });
-
-    const popularServices = Object.values(serviceCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(service => ({
-        serviceId: service.serviceId,
-        _count: { id: service.count },
-        service: service.service
-      }));
-
-    // 6. Ingresos diarios
+    // 7. Ingresos diarios con consulta optimizada
     const dailyRevenue = [];
     for (let i = periodDays - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
       
-      const dayAppointments = appointments.filter(appointment => {
-        const appointmentDate = appointment.startTime.toISOString().split('T')[0];
-        return appointmentDate === dateString && appointment.status === 'COMPLETED';
+      const dayRevenueData = await prisma.appointment.findMany({
+        where: {
+          businessId: businessId,
+          startTime: { gte: startOfDay, lte: endOfDay },
+          status: 'COMPLETED'
+        },
+        select: {
+          service: { select: { price: true } }
+        }
       });
       
-      const dayRevenue = dayAppointments.reduce((sum, appointment) => {
+      const dayRevenue = dayRevenueData.reduce((sum, appointment) => {
         return sum + (appointment.service?.price || 0);
       }, 0);
       
       dailyRevenue.push({
-        date: dateString,
+        date: date.toISOString().split('T')[0],
         amount: dayRevenue
       });
     }
