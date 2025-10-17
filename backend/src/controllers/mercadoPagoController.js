@@ -305,7 +305,14 @@ const createSubscriptionPayment = async (req, res) => {
       'ENTERPRISE': 'Plan Empresa'
     };
 
-    const planName = planNames[subscription.planType] || subscription.planType;
+    // Si hay upgrade pendiente, usar el plan de destino para el título
+    let planTypeToShow = subscription.planType;
+    if (pendingUpgrade && pendingUpgrade.toPlan) {
+      planTypeToShow = pendingUpgrade.toPlan;
+      console.log('📝 Usando nombre del plan de upgrade:', planTypeToShow);
+    }
+
+    const planName = planNames[planTypeToShow] || planTypeToShow;
     const billingCycle = subscription.billingCycle === 'YEARLY' ? 'Anual' : 'Mensual';
     
     // Crear el registro de pago en nuestra base de datos
