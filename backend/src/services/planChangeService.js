@@ -103,19 +103,19 @@ class PlanChangeService {
           }
         });
 
-        // Actualizar suscripción para esperar pago
+        // Actualizar metadata de suscripción para marcar upgrade pendiente
+        // Mantener status ACTIVE hasta que se complete el pago
         await prisma.subscription.update({
           where: { id: subscriptionId },
           data: {
-            planType: newPlanType,
-            status: 'PENDING_UPGRADE',
             metadata: {
               ...currentSubscription.metadata,
               pendingUpgrade: {
                 paymentId: upgradePayment.id,
                 fromPlan: currentPlan,
                 toPlan: newPlanType,
-                amount: newPlanPrice
+                amount: newPlanPrice,
+                requestedAt: new Date().toISOString()
               }
             }
           }
