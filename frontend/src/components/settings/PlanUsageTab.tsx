@@ -221,8 +221,20 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
         return;
       }
       
+      // Obtener suscripción actual si existe
+      let currentSubscriptionId = null;
+      try {
+        const currentSub = await subscriptionService.getCurrentSubscription();
+        if (currentSub?.data?.subscription) {
+          currentSubscriptionId = currentSub.data.subscription.id;
+          console.log(`📋 Suscripción actual encontrada: ${currentSubscriptionId}`);
+        }
+      } catch (error) {
+        console.log('ℹ️ No se encontró suscripción actual, creando nueva');
+      }
+      
       // Para planes pagados, usar el sistema de suscripciones
-      const response = await subscriptionService.changePlan(null, newPlanKey);
+      const response = await subscriptionService.changePlan(currentSubscriptionId, newPlanKey);
       
       if (response.success) {
         if (response.data.requiresPayment) {
