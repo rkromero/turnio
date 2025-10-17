@@ -572,6 +572,7 @@ const changeSubscriptionPlan = async (req, res) => {
     }
 
     console.log(`🔄 Usuario ${user.email} solicitando cambio de plan a: ${newPlanType}`);
+    console.log(`📋 Datos recibidos:`, { subscriptionId, newPlanType, businessId: user.businessId });
 
     // Si no hay subscriptionId, es un usuario en plan gratuito que quiere crear suscripción
     if (!subscriptionId) {
@@ -584,13 +585,18 @@ const changeSubscriptionPlan = async (req, res) => {
       });
 
       if (!business) {
+        console.log('❌ Negocio no encontrado:', user.businessId);
         return res.status(404).json({
           success: false,
           message: 'Negocio no encontrado'
         });
       }
 
+      console.log(`🏢 Negocio encontrado: ${business.name}, plan actual: ${business.planType}`);
+      console.log(`🔍 Suscripción existente:`, business.subscription ? 'SÍ' : 'NO');
+
       if (business.subscription) {
+        console.log('❌ Ya tiene suscripción activa:', business.subscription.id);
         return res.status(400).json({
           success: false,
           message: 'Ya tienes una suscripción activa. Usa el endpoint de cambio de plan.'
@@ -598,10 +604,12 @@ const changeSubscriptionPlan = async (req, res) => {
       }
 
       // Verificar que el plan sea válido
+      console.log(`🔍 Verificando si plan '${newPlanType}' existe en AVAILABLE_PLANS:`, Object.keys(AVAILABLE_PLANS));
       if (!AVAILABLE_PLANS[newPlanType]) {
+        console.log(`❌ Plan '${newPlanType}' no válido. Planes disponibles:`, Object.keys(AVAILABLE_PLANS));
         return res.status(400).json({
           success: false,
-          message: 'Plan no válido'
+          message: `Plan no válido: ${newPlanType}. Planes disponibles: ${Object.keys(AVAILABLE_PLANS).join(', ')}`
         });
       }
 
