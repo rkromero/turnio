@@ -239,8 +239,9 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
       if (response.success) {
         if (response.data.requiresPayment) {
           // Crear el pago de MercadoPago
+          // Usar el subscriptionId que ya tenemos, no el de la respuesta
           const paymentResponse = await subscriptionService.createPayment({
-            subscriptionId: response.data.subscription.id
+            subscriptionId: currentSubscriptionId
           });
           
           if (paymentResponse.success) {
