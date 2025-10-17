@@ -87,6 +87,11 @@ const getDashboardMetrics = async (req, res) => {
     
     const completedAppointments = statusCounts['COMPLETED'] || 0;
     
+    const appointmentsByStatus = statusStats.map(stat => ({
+      status: stat.status,
+      count: stat._count.id
+    }));
+    
     // 4. Calcular ingresos
     const revenue = revenueStats.reduce((sum, appointment) => {
       return sum + (appointment.service?.price || 0);
@@ -157,9 +162,19 @@ const getDashboardMetrics = async (req, res) => {
       });
     }
 
-    // 7. Estadísticas por hora
+    // 8. Estadísticas por hora con consulta optimizada
+    const hourlyAppointments = await prisma.appointment.findMany({
+      where: {
+        businessId: businessId,
+        startTime: { gte: startDate, lte: endDate }
+      },
+      select: {
+        startTime: true
+      }
+    });
+
     const hourlyCounts = {};
-    appointments.forEach(appointment => {
+    hourlyAppointments.forEach(appointment => {
       const hour = appointment.startTime.getHours();
       const hourString = `${hour.toString().padStart(2, '0')}:00`;
       hourlyCounts[hourString] = (hourlyCounts[hourString] || 0) + 1;
