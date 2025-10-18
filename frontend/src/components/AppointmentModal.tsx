@@ -96,19 +96,34 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       setSelectedDate(formattedDate);
       setSelectedTime(formattedTime);
     } else {
+      // Pre-cargar fecha y hora inicial si se proporcionaron
+      const preloadedDate = initialDate || '';
+      const preloadedTime = initialTime || '';
+      
+      // Si hay fecha Y hora pre-cargadas, combinarlas en startTime
+      const preloadedStartTime = (preloadedDate && preloadedTime) 
+        ? `${preloadedDate}T${preloadedTime}` 
+        : '';
+      
+      console.log('🔄 [INIT MODAL] Pre-loading:', { 
+        preloadedDate, 
+        preloadedTime, 
+        preloadedStartTime 
+      });
+      
       setFormData({
         clientName: '',
         clientEmail: '',
         clientPhone: '',
         serviceId: '',
         userId: '',
-        startTime: '',
+        startTime: preloadedStartTime,
         notes: '',
         status: 'CONFIRMED'
       });
-      // Pre-cargar fecha y hora inicial si se proporcionaron
-      setSelectedDate(initialDate || '');
-      setSelectedTime(initialTime || '');
+      
+      setSelectedDate(preloadedDate);
+      setSelectedTime(preloadedTime);
       setAvailableTimes([]);
     }
     setErrors({});
