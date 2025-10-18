@@ -242,6 +242,21 @@ const createAppointment = async (req, res) => {
     const startDateTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
+    // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
+    const minutes = startDateTime.getMinutes();
+    if (minutes !== 0 && minutes !== 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se permiten horarios en punto (00) o y media (30)',
+        error: 'INVALID_TIME_INTERVAL',
+        details: {
+          providedMinutes: minutes,
+          allowedMinutes: [0, 30],
+          note: 'Los turnos deben comenzar en horarios de 30 minutos (en punto o y media)'
+        }
+      });
+    }
+
     // Verificar disponibilidad (no hay otro turno en el mismo horario)
     const conflictingAppointment = await prisma.appointment.findFirst({
       where: {
@@ -501,6 +516,21 @@ const updateAppointment = async (req, res) => {
         // Agregar la zona horaria de Argentina para evitar conversiones incorrectas
         const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
         newStartTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
+        
+        // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
+        const minutes = newStartTime.getMinutes();
+        if (minutes !== 0 && minutes !== 30) {
+          return res.status(400).json({
+            success: false,
+            message: 'Solo se permiten horarios en punto (00) o y media (30)',
+            error: 'INVALID_TIME_INTERVAL',
+            details: {
+              providedMinutes: minutes,
+              allowedMinutes: [0, 30],
+              note: 'Los turnos deben comenzar en horarios de 30 minutos (en punto o y media)'
+            }
+          });
+        }
       } else {
         newStartTime = existingAppointment.startTime;
       }

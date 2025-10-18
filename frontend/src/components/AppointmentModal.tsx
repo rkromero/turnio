@@ -110,7 +110,18 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         const selectedDate = new Date(value);
         const now = new Date();
         const minFutureTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutos en el futuro
-        return selectedDate < minFutureTime ? 'La fecha debe ser al menos 5 minutos en el futuro' : '';
+        
+        if (selectedDate < minFutureTime) {
+          return 'La fecha debe ser al menos 5 minutos en el futuro';
+        }
+        
+        // Validar que los minutos sean 00 o 30
+        const minutes = selectedDate.getMinutes();
+        if (minutes !== 0 && minutes !== 30) {
+          return 'Solo se permiten horarios en punto (00) o y media (30)';
+        }
+        
+        return '';
       }
       case 'clientEmail':
         return value && !value.includes('@') ? 'Email inválido' : '';
@@ -425,8 +436,12 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       onChange={handleInputChange}
                       onBlur={() => handleBlur('startTime')}
                       min={getMinDateTime()}
+                      step="1800"
                       className={`input-field ${errors.startTime ? 'input-error' : ''}`}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Solo horarios en punto (00) o y media (30)
+                    </p>
                     {errors.startTime && (
                       <p className="error-message">{errors.startTime}</p>
                     )}
