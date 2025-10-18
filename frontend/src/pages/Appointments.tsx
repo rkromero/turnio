@@ -423,52 +423,52 @@ const Appointments: React.FC = () => {
 
         {/* Stats Cards - Grid responsive */}
         <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-6">
-          <div className="stats-card">
+          <div className="stats-card overflow-hidden">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-blue-600" />
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs md:text-sm font-medium text-gray-600">
-                  {isMobile ? 'Hoy' : 'Hoy'}
+              <div className="ml-2 md:ml-3 min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">
+                  Hoy
                 </p>
-                <p className="text-lg md:text-2xl font-semibold text-gray-900">
+                <p className="text-lg md:text-2xl font-semibold text-gray-900 truncate">
                   {getTodayAppointments().length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="stats-card">
+          <div className="stats-card overflow-hidden">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                   <Clock className="w-4 h-4 text-green-600" />
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs md:text-sm font-medium text-gray-600">
-                  {isMobile ? 'Próximas' : 'Próximas'}
+              <div className="ml-2 md:ml-3 min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">
+                  Próximas
                 </p>
-                <p className="text-lg md:text-2xl font-semibold text-gray-900">
+                <p className="text-lg md:text-2xl font-semibold text-gray-900 truncate">
                   {getUpcomingAppointments().length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="stats-card">
+          <div className="stats-card overflow-hidden">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <User className="w-4 h-4 text-purple-600" />
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs md:text-sm font-medium text-gray-600">Total</p>
-                <p className="text-lg md:text-2xl font-semibold text-gray-900">
+              <div className="ml-2 md:ml-3 min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">Total</p>
+                <p className="text-lg md:text-2xl font-semibold text-gray-900 truncate">
                   {appointments.length}
                 </p>
               </div>

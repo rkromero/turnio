@@ -195,82 +195,82 @@ const Dashboard: React.FC = () => {
 
         {/* Estadísticas principales - Grid responsive */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          <div className="stats-card group">
+          <div className="stats-card group overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">
                   {isMobile ? 'Hoy' : 'Turnos Hoy'}
                 </p>
-                <p className="text-xl md:text-3xl font-bold text-gray-900">
+                <p className="text-xl md:text-3xl font-bold text-gray-900 truncate">
                   {stats?.todayAppointments || 0}
                 </p>
                 {!isMobile && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 truncate">
                     {new Date().toLocaleDateString('es-AR')}
                   </p>
                 )}
               </div>
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
                 <Calendar className="w-4 h-4 md:w-6 md:h-6 text-purple-600" />
               </div>
             </div>
           </div>
 
-          <div className="stats-card group">
+          <div className="stats-card group overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">
                   {isMobile ? 'Clientes' : 'Total Clientes'}
                 </p>
-                <p className="text-xl md:text-3xl font-bold text-gray-900">
+                <p className="text-xl md:text-3xl font-bold text-gray-900 truncate">
                   {stats?.totalClients || 0}
                 </p>
                 {!isMobile && (
-                  <p className="text-xs text-gray-500 mt-1">Registrados</p>
+                  <p className="text-xs text-gray-500 mt-1 truncate">Registrados</p>
                 )}
               </div>
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
                 <Users className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="stats-card group">
+          <div className="stats-card group overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">
                   {isMobile ? 'Ingresos' : 'Ingresos Mes'}
                 </p>
-                <p className="text-lg md:text-2xl font-bold text-gray-900">
+                <p className="text-lg md:text-2xl font-bold text-gray-900 truncate">
                   {isMobile 
                     ? `$${Math.round((stats?.monthRevenue || 0) / 1000)}k`
                     : formatCurrency(stats?.monthRevenue || 0)
                   }
                 </p>
                 {!isMobile && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 truncate">
                     {new Date().toLocaleDateString('es-AR', { month: 'long' })}
                   </p>
                 )}
               </div>
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
                 <DollarSign className="w-4 h-4 md:w-6 md:h-6 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="stats-card group">
+          <div className="stats-card group overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Servicios</p>
-                <p className="text-xl md:text-3xl font-bold text-gray-900">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">Servicios</p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900 truncate">
                   {stats?.totalServices || 0}
                 </p>
                 {!isMobile && (
-                  <p className="text-xs text-gray-500 mt-1">Activos</p>
+                  <p className="text-xs text-gray-500 mt-1 truncate">Activos</p>
                 )}
               </div>
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
                 <Settings className="w-4 h-4 md:w-6 md:h-6 text-orange-600" />
               </div>
             </div>

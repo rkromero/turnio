@@ -11,7 +11,8 @@ import {
   UserCog,
   Building2,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Briefcase
 } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -86,6 +87,12 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ className = '' }) =
           }
         ],
         more: [
+          {
+            name: 'Servicios',
+            href: '/dashboard/services',
+            icon: Briefcase,
+            exactMatch: false
+          },
           {
             name: 'Reseñas',
             href: '/dashboard/reviews',
