@@ -4,8 +4,11 @@ import type { Service, ServiceForm } from '../types';
 import ServiceModal from '../components/ServiceModal';
 import PlanLimitModal, { PlanLimitDetails } from '../components/PlanLimitModal';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const Services: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,16 +137,18 @@ const Services: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Gestiona los servicios que ofreces a tus clientes
+            {isAdmin ? 'Gestiona los servicios que ofreces a tus clientes' : 'Servicios disponibles'}
           </p>
         </div>
-        <button
-          onClick={handleCreateService}
-          className="btn-primary"
-        >
-          <span className="mr-2">+</span>
-          Nuevo Servicio
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleCreateService}
+            className="btn-primary"
+          >
+            <span className="mr-2">+</span>
+            Nuevo Servicio
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -171,15 +176,17 @@ const Services: React.FC = () => {
             No hay servicios
           </h3>
           <p className="text-gray-600 mb-6">
-            Comienza creando tu primer servicio para que los clientes puedan reservar
+            {isAdmin ? 'Comienza creando tu primer servicio para que los clientes puedan reservar' : 'Aún no hay servicios disponibles'}
           </p>
-          <button
-            onClick={handleCreateService}
-            className="btn-primary"
-          >
-            <span className="mr-2">+</span>
-            Crear Primer Servicio
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleCreateService}
+              className="btn-primary"
+            >
+              <span className="mr-2">+</span>
+              Crear Primer Servicio
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -206,22 +213,24 @@ const Services: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => handleEditService(service)}
-                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteService(service)}
-                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Eliminar"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleEditService(service)}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Editar"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteService(service)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Eliminar"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Descripción */}
