@@ -121,6 +121,16 @@ export const appointmentService = {
     return response.data.data || [];
   },
 
+  getAvailableTimes: async (params: {
+    date: string;
+    serviceId: string;
+    userId?: string;
+    branchId?: string;
+  }): Promise<Array<{time: string, datetime: string}>> => {
+    const response = await api.get<ApiResponse<Array<{time: string, datetime: string}>>>('/appointments/available-times', { params });
+    return response.data.data || [];
+  },
+
   createAppointment: async (data: AppointmentForm): Promise<Appointment> => {
     const response = await api.post<ApiResponse<Appointment>>('/appointments', data);
     return response.data.data!;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Appointment, AppointmentForm, Service } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
+import { appointmentService } from '../services/api';
 import { 
   X, 
   ArrowLeft, 
@@ -120,28 +121,16 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
       setLoadingTimes(true);
       try {
-        const params = new URLSearchParams({
+        const times = await appointmentService.getAvailableTimes({
           date: selectedDate,
           serviceId: formData.serviceId,
           ...(formData.userId && { userId: formData.userId })
         });
-
-        const response = await fetch(
-          `https://turnio-backend-production.up.railway.app/api/appointments/available-times?${params}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        const data = await response.json();
-        if (data.success) {
-          setAvailableTimes(data.data);
-        }
+        
+        setAvailableTimes(times);
       } catch (error) {
         console.error('Error cargando horarios disponibles:', error);
+        setAvailableTimes([]);
       } finally {
         setLoadingTimes(false);
       }
