@@ -5,7 +5,7 @@ const { getActiveBranchIds } = require('../utils/branchUtils');
 // Obtener todos los turnos del negocio
 const getAppointments = async (req, res) => {
   try {
-    const { date, status, serviceId, userId } = req.query;
+    const { date, status, serviceId, userId, clientId } = req.query;
     const businessId = req.businessId;
     const currentUser = req.user; // Usuario autenticado
 
@@ -52,6 +52,7 @@ const getAppointments = async (req, res) => {
 
     if (status) where.status = status;
     if (serviceId) where.serviceId = serviceId;
+    if (clientId) where.clientId = clientId;
 
     const appointments = await prisma.appointment.findMany({
       where,
