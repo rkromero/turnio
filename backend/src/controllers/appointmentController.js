@@ -663,18 +663,23 @@ const getAvailableTimes = async (req, res) => {
     }
 
     // Parsear la fecha (formato YYYY-MM-DD desde frontend)
+    // IMPORTANTE: Trabajar todo en hora de Argentina (GMT-3)
     const [year, month, day] = date.split('-').map(Number);
-    const targetDate = new Date(year, month - 1, day); // month - 1 porque los meses son 0-indexed
-    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    
+    // Crear fechas en hora de Argentina agregando el offset -03:00
+    // Esto asegura que se interpreten como hora Argentina y se conviertan a UTC automáticamente
+    const startOfDay = new Date(`${date}T00:00:00-03:00`);
+    const endOfDay = new Date(`${date}T23:59:59-03:00`);
 
     console.log('📅 [AVAILABLE TIMES] Buscando horarios para:', {
       date,
-      parsedDate: targetDate.toISOString(),
       startOfDay: startOfDay.toISOString(),
       endOfDay: endOfDay.toISOString(),
+      startOfDayLocal: startOfDay.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
+      endOfDayLocal: endOfDay.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
       serviceId,
-      userId
+      userId,
+      timezone: 'America/Argentina/Buenos_Aires (GMT-3)'
     });
 
     // Obtener turnos existentes para ese día
@@ -711,7 +716,9 @@ const getAvailableTimes = async (req, res) => {
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
-        const slotStart = new Date(year, month - 1, day, hour, minute, 0, 0);
+        // Crear slots en hora de Argentina (GMT-3)
+        const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+        const slotStart = new Date(`${date}T${timeString}-03:00`);
         const slotEnd = new Date(slotStart.getTime() + service.duration * 60000);
 
         // Verificar si el slot está en el pasado
@@ -728,8 +735,8 @@ const getAvailableTimes = async (req, res) => {
           
           if (conflict) {
             console.log(`❌ [CONFLICT DETECTED]`);
-            console.log(`   Slot: ${slotStart.toISOString()} - ${slotEnd.toISOString()}`);
-            console.log(`   Turno existente: ${aptStart.toISOString()} - ${aptEnd.toISOString()}`);
+            console.log(`   Slot: ${slotStart.toISOString()} (${slotStart.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}) - ${slotEnd.toISOString()}`);
+            console.log(`   Turno existente: ${aptStart.toISOString()} (${aptStart.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}) - ${aptEnd.toISOString()}`);
             console.log(`   Comparison: slotStart (${slotStart.getTime()}) < aptEnd (${aptEnd.getTime()}) = ${slotStart < aptEnd}`);
             console.log(`   Comparison: slotEnd (${slotEnd.getTime()}) > aptStart (${aptStart.getTime()}) = ${slotEnd > aptStart}`);
           }
@@ -738,9 +745,10 @@ const getAvailableTimes = async (req, res) => {
         });
 
         if (!hasConflict) {
+          // Devolver la hora en formato HH:mm (el frontend la interpretará en su zona horaria)
           availableTimes.push({
             time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-            datetime: slotStart.toISOString()
+            datetime: slotStart.toISOString() // ISO string incluye zona horaria UTC
           });
         }
       }
