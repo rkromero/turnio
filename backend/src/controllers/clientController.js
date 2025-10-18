@@ -102,14 +102,22 @@ const createClient = async (req, res) => {
     // Log temporal para debug
     console.log('🔍 [CLIENT DEBUG] Datos recibidos:', req.body);
     console.log('🔍 [CLIENT DEBUG] BusinessId:', req.businessId);
+    console.log('🔍 [CLIENT DEBUG] Usuario:', req.user?.name, '- Rol:', req.user?.role);
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('❌ [CLIENT DEBUG] Errores de validación:', errors.array());
+      
+      // Log más detallado de cada error
+      errors.array().forEach(error => {
+        console.log(`   ❌ Campo: ${error.path || error.param}, Error: ${error.msg}`);
+      });
+      
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: errors.array()
+        errors: errors.array(),
+        details: errors.array().map(e => `${e.path}: ${e.msg}`) // Más legible
       });
     }
     
