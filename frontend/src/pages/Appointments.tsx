@@ -413,7 +413,7 @@ const Appointments: React.FC = () => {
 
             {/* Desktop: Botón crear (movido aquí) */}
             {!isMobile && (
-              <button onClick={handleCreateAppointment} className="btn-primary">
+              <button onClick={() => handleCreateAppointment()} className="btn-primary">
                 <Plus className="w-4 h-4 mr-2" />
                 Nueva Cita
               </button>
@@ -584,7 +584,7 @@ const Appointments: React.FC = () => {
                   : 'Aún no tienes citas programadas'
                 }
               </p>
-              <button onClick={handleCreateAppointment} className="btn-primary">
+              <button onClick={() => handleCreateAppointment()} className="btn-primary">
                 <Plus className="w-4 h-4 mr-2" />
                 {hasActiveFilters ? 'Crear Cita' : 'Crear Primera Cita'}
               </button>
@@ -860,7 +860,7 @@ const Appointments: React.FC = () => {
       {isMobile && (
         <FloatingActionButton
           icon={Plus}
-          onClick={handleCreateAppointment}
+          onClick={() => handleCreateAppointment()}
           ariaLabel="Nueva cita"
         />
       )}

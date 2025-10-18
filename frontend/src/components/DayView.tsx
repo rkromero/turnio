@@ -165,7 +165,7 @@ const DayView: React.FC<DayViewProps> = ({
           </div>
           
           <button
-            onClick={onCreateAppointment}
+            onClick={() => onCreateAppointment()}
             className="btn-primary text-sm py-2 px-4"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -271,7 +271,7 @@ const DayView: React.FC<DayViewProps> = ({
                     {isToday() ? 'para hoy' : `para el ${currentDate.toLocaleDateString('es-AR')}`}
                   </p>
                   <button
-                    onClick={onCreateAppointment}
+                    onClick={() => onCreateAppointment()}
                     className="btn-primary"
                   >
                     <Plus className="w-4 h-4 mr-2" />
