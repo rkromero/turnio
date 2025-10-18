@@ -125,7 +125,7 @@ const PlanCard: React.FC<{
   const colorKey = features.color as keyof typeof colorClasses;
 
   return (
-    <div className={`relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg ${
+    <div className={`relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg flex flex-col h-full ${
       plan.isCurrent 
         ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 scale-105 shadow-lg ring-4 ring-purple-200' 
         : `bg-gradient-to-br ${colorClasses[colorKey]} hover:shadow-md`
@@ -151,7 +151,7 @@ const PlanCard: React.FC<{
         </div>
       </div>
 
-      <ul className="space-y-3 mb-6">
+      <ul className="space-y-3 mb-6 flex-grow">
         {plan.features.slice(0, 5).map((feature, index) => (
           <li key={index} className="flex items-start text-sm">
             <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
@@ -164,17 +164,17 @@ const PlanCard: React.FC<{
         <button
           onClick={() => onSelect(plan.key)}
           disabled={isChanging}
-          className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
             buttonClasses[colorKey]
           }`}
         >
           {isChanging ? (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center whitespace-nowrap">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
               Cambiando...
             </div>
           ) : (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center whitespace-nowrap">
               <Sparkles className="w-4 h-4 mr-2" />
               Seleccionar Plan
             </div>
@@ -501,7 +501,7 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
       {/* Modal de cambio de plan */}
       {showPlanModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content max-w-6xl">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -517,14 +517,14 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[70vh]">
+            <div className="p-6">
               {isLoadingPlans ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mx-auto"></div>
                   <p className="mt-4 text-gray-600">Cargando planes...</p>
                 </div>
               ) : availablePlans ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                   {availablePlans.plans.map((plan) => (
                     <PlanCard
                       key={plan.key}
