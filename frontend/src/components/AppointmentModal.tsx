@@ -211,6 +211,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    console.log('📝 [INPUT CHANGE]', { name, value });
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -219,6 +220,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     // Validación en tiempo real
     if (touched[name]) {
       const error = validateField(name, value);
+      console.log('✔️ [VALIDATION]', { name, error });
       setErrors(prev => ({ 
         ...prev, 
         [name]: error 
@@ -228,6 +230,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = e.target.value;
+    console.log('📅 [DATE CHANGE]', { date });
     setSelectedDate(date);
     setSelectedTime(''); // Resetear hora al cambiar fecha
     setFormData(prev => ({ ...prev, startTime: '' }));
@@ -235,15 +238,20 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const time = e.target.value;
+    console.log('⏰ [TIME CHANGE]', { time, selectedDate });
     setSelectedTime(time);
     
     if (selectedDate && time) {
       const combinedDateTime = `${selectedDate}T${time}`;
+      console.log('🔗 [COMBINED DATETIME]', { combinedDateTime });
       setFormData(prev => ({ ...prev, startTime: combinedDateTime }));
       
       // Validar
       const error = validateField('startTime', combinedDateTime);
+      console.log('✔️ [VALIDATION]', { error, combinedDateTime });
       setErrors(prev => ({ ...prev, startTime: error }));
+    } else {
+      console.log('⚠️ [TIME CHANGE] Missing date or time', { selectedDate, time });
     }
   };
 
@@ -295,14 +303,44 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const canGoToNextStep = () => {
     if (currentStep === 1) {
-      return formData.serviceId && formData.startTime && !errors.serviceId && !errors.startTime;
+      const hasService = !!formData.serviceId;
+      const hasTime = !!formData.startTime;
+      const noServiceError = !errors.serviceId;
+      const noTimeError = !errors.startTime;
+      
+      console.log('🔍 [CAN GO TO NEXT STEP]', {
+        hasService,
+        hasTime,
+        noServiceError,
+        noTimeError,
+        formData,
+        errors,
+        selectedDate,
+        selectedTime,
+        canContinue: hasService && hasTime && noServiceError && noTimeError
+      });
+      
+      return hasService && hasTime && noServiceError && noTimeError;
     }
     return true;
   };
 
   const handleNextStep = () => {
+    console.log('🎯 [HANDLE NEXT STEP] Clicked!', { 
+      canGo: canGoToNextStep(), 
+      currentStep 
+    });
+    
     if (canGoToNextStep() && currentStep < 2) {
+      console.log('✅ [HANDLE NEXT STEP] Moving to step 2');
       setCurrentStep(currentStep + 1);
+    } else {
+      console.log('❌ [HANDLE NEXT STEP] Cannot proceed', {
+        canGoToNextStep: canGoToNextStep(),
+        currentStep,
+        formData,
+        errors
+      });
     }
   };
 
