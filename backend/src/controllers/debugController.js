@@ -238,9 +238,104 @@ const monitorIndexUsage = async (req, res) => {
   }
 };
 
+// Cambiar plan de un usuario (para pruebas)
+const changePlanForUser = async (req, res) => {
+  try {
+    const { email, planType } = req.body;
+    
+    if (!email || !planType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere email y planType'
+      });
+    }
+
+    const validPlans = ['FREE', 'BASIC', 'PREMIUM', 'ENTERPRISE'];
+    if (!validPlans.includes(planType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Plan inválido. Debe ser uno de: ${validPlans.join(', ')}`
+      });
+    }
+
+    console.log(`🔄 Cambiando plan de ${email} a ${planType}...`);
+
+    // 1. Buscar el usuario y su negocio
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        business: {
+          select: {
+            id: true,
+            name: true,
+            planType: true,
+            maxAppointments: true
+          }
+        }
+      }
+    });
+
+    if (!user || !user.business) {
+      return res.status(404).json({
+        success: false,
+        message: `Usuario con email ${email} no encontrado o sin negocio asociado`
+      });
+    }
+
+    const oldPlan = user.business.planType;
+
+    // 2. Determinar los límites del nuevo plan
+    const planLimits = {
+      FREE: 30,
+      BASIC: 100,
+      PREMIUM: 500,
+      ENTERPRISE: 999999
+    };
+
+    // 3. Actualizar el negocio
+    const updatedBusiness = await prisma.business.update({
+      where: { id: user.business.id },
+      data: {
+        planType: planType,
+        maxAppointments: planLimits[planType]
+      }
+    });
+
+    console.log(`✅ Plan actualizado: ${oldPlan} → ${planType} para ${user.business.name}`);
+
+    res.json({
+      success: true,
+      message: `Plan cambiado exitosamente de ${oldPlan} a ${planType}`,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name
+        },
+        business: {
+          id: updatedBusiness.id,
+          name: updatedBusiness.name,
+          oldPlan: oldPlan,
+          newPlan: updatedBusiness.planType,
+          maxAppointments: updatedBusiness.maxAppointments
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error cambiando plan:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   applyPerformanceIndexes,
   checkIndexes,
   monitorIndexUsage,
-  checkTableStructure
+  checkTableStructure,
+  changePlanForUser
 };

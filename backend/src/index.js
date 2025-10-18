@@ -143,15 +143,20 @@ async function startServer() {
       startReviewNotificationService();
     }
     
-    // 🚀 Inicializar scheduler de suscripciones automáticas
+    // 🚀 Inicializar schedulers de suscripciones
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SUBSCRIPTION_SCHEDULER === 'true') {
       try {
         const schedulerService = require('../schedulerService');
         schedulerService.startValidationScheduler();
-        console.log('✅ Scheduler de suscripciones automáticas iniciado');
+        schedulerService.startRenewalScheduler();
+        console.log('✅ Scheduler de validaciones iniciado');
+        console.log('✅ Scheduler de recordatorios de renovación iniciado');
       } catch (error) {
-        console.error('❌ Error iniciando scheduler de suscripciones:', error.message);
+        console.error('❌ Error iniciando schedulers:', error.message);
       }
+    } else {
+      console.log('ℹ️  Schedulers deshabilitados (no está en producción)');
+      console.log('ℹ️  Para habilitar, configura: ENABLE_SUBSCRIPTION_SCHEDULER=true');
     }
     
     // 3. Configurar rutas
