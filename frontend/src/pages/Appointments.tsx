@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { appointmentService, serviceService } from '../services/api';
+import { userService } from '../services/userService';
 import type { Appointment, Service, AppointmentForm } from '../types';
 import AppointmentModal from '../components/AppointmentModal';
 import ClientStarRating from '../components/ClientStarRating';
@@ -35,9 +36,16 @@ interface AppointmentWithScoring extends Appointment {
   };
 }
 
+interface Professional {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const Appointments: React.FC = () => {
   const [appointments, setAppointments] = useState<AppointmentWithScoring[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
@@ -91,16 +99,27 @@ const Appointments: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsData, servicesData] = await Promise.all([
+      const [appointmentsData, servicesData, usersData] = await Promise.all([
         appointmentService.getAppointments(filters),
-        serviceService.getServices()
+        serviceService.getServices(),
+        userService.getUsers({ includeInactive: false })
       ]);
       
       // Cargar scoring para cada cita
       const appointmentsWithScoring = await loadClientScoring(appointmentsData);
       
+      // Filtrar solo usuarios activos para el selector
+      const activeProfessionals = usersData
+        .filter(user => user.isActive)
+        .map(user => ({
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }));
+      
       setAppointments(appointmentsWithScoring);
       setServices(servicesData);
+      setProfessionals(activeProfessionals);
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -842,6 +861,7 @@ const Appointments: React.FC = () => {
           onSubmit={handleSubmitAppointment}
           appointment={editingAppointment}
           services={services}
+          professionals={professionals}
           isLoading={isSubmitting}
         />
       )}

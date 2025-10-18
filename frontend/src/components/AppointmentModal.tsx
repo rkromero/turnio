@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Appointment, AppointmentForm, Service } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
+import { useAuth } from '../context/AuthContext';
 import { 
   X, 
   ArrowLeft, 
@@ -12,8 +13,15 @@ import {
   FileText,
   DollarSign,
   Timer,
-  Check
+  Check,
+  Users
 } from 'lucide-react';
+
+interface Professional {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -21,6 +29,7 @@ interface AppointmentModalProps {
   onSubmit: (data: AppointmentForm) => Promise<void>;
   appointment?: Appointment | null;
   services: Service[];
+  professionals?: Professional[];
   isLoading?: boolean;
 }
 
@@ -30,13 +39,18 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   onSubmit,
   appointment,
   services,
+  professionals = [],
   isLoading = false
 }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  
   const [formData, setFormData] = useState<AppointmentForm>({
     clientName: '',
     clientEmail: '',
     clientPhone: '',
     serviceId: '',
+    userId: '',
     startTime: '',
     notes: '',
     status: 'CONFIRMED'
@@ -63,6 +77,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         clientEmail: appointment.client?.email || '',
         clientPhone: appointment.client?.phone || '',
         serviceId: appointment.serviceId,
+        userId: appointment.userId || '',
         startTime: formattedDateTime,
         notes: appointment.notes || '',
         status: appointment.status
@@ -73,6 +88,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         clientEmail: '',
         clientPhone: '',
         serviceId: '',
+        userId: '',
         startTime: '',
         notes: '',
         status: 'CONFIRMED'
@@ -367,6 +383,32 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           )}
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Profesional (solo para ADMIN) */}
+                  {isAdmin && professionals.length > 0 && (
+                    <div>
+                      <label className="label flex items-center">
+                        <Users className="w-4 h-4 mr-2 text-purple-600" />
+                        Profesional
+                      </label>
+                      <select
+                        name="userId"
+                        value={formData.userId}
+                        onChange={handleInputChange}
+                        className="input-field"
+                      >
+                        <option value="">Sin asignar</option>
+                        {professionals.map((professional) => (
+                          <option key={professional.id} value={professional.id}>
+                            {professional.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Si no seleccionás ninguno, el turno quedará sin asignar
+                      </p>
                     </div>
                   )}
 
