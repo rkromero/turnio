@@ -131,6 +131,14 @@ const createAppointment = async (req, res) => {
 
     const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes, branchId, paymentMethod, ignoreScoreWarning } = req.body;
     const businessId = req.businessId;
+    const currentUser = req.user;
+
+    // 👤 AUTO-ASIGNACIÓN: Si es EMPLOYEE y no se especifica userId, asignar automáticamente
+    let assignedUserId = userId;
+    if (currentUser.role === 'EMPLOYEE' && !userId) {
+      assignedUserId = currentUser.id;
+      console.log(`👤 [AUTO-ASSIGN] Empleado ${currentUser.name} auto-asignado al turno`);
+    }
 
     // Obtener sucursales activas
     const branchIds = await getActiveBranchIds(businessId);
@@ -209,10 +217,10 @@ const createAppointment = async (req, res) => {
     }
 
     // Verificar que el usuario (profesional) pertenezca al negocio y sucursal si se especifica
-    if (userId) {
+    if (assignedUserId) {
       const user = await prisma.user.findFirst({
         where: {
-          id: userId,
+          id: assignedUserId,
           businessId,
           branchId: { in: branchIds },
           isActive: true
@@ -239,7 +247,7 @@ const createAppointment = async (req, res) => {
       where: {
         businessId,
         branchId: targetBranchId,
-        userId: userId || undefined,
+        userId: assignedUserId || undefined,
         status: { not: 'CANCELLED' },
         OR: [
           {
@@ -355,7 +363,7 @@ const createAppointment = async (req, res) => {
         branchId: targetBranchId,
         clientId: client.id,
         serviceId,
-        userId,
+        userId: assignedUserId,
         startTime: startDateTime,
         endTime: endDateTime,
         notes: finalNotes,
