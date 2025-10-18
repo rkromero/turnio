@@ -129,7 +129,7 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes, branchId, paymentMethod } = req.body;
+    const { clientName, clientEmail, clientPhone, serviceId, userId, startTime, notes, branchId, paymentMethod, ignoreScoreWarning } = req.body;
     const businessId = req.businessId;
 
     // Obtener sucursales activas
@@ -287,9 +287,10 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    // 💳 VALIDAR SCORING Y DETERMINAR ESTADO DE LA CITA
-    let appointmentStatus = 'CONFIRMED'; // Por defecto para admin
-    let requiresPaymentValidation = false;
+    // 💳 VALIDAR SCORING DEL CLIENTE
+    let appointmentStatus = 'CONFIRMED';
+    let clientScoringInfo = null;
+    const finalPaymentMethod = paymentMethod || 'LOCAL'; // Por defecto: Pago en el local
     
     // Evaluar scoring del cliente si tiene email o teléfono
     if (client.email || client.phone) {
@@ -300,52 +301,51 @@ const createAppointment = async (req, res) => {
           client.phone
         );
         
-        console.log('💳 [ADMIN BOOKING] Scoring del cliente:', {
+        console.log('💳 [SCORING CHECK] Validando cliente:', {
           email: client.email,
           scoring: paymentValidation.scoring?.starRating || 'sin historial',
           requiresPayment: paymentValidation.requiresPayment,
-          reason: paymentValidation.reason
+          reason: paymentValidation.reason,
+          paymentMethod: finalPaymentMethod,
+          ignoreWarning: ignoreScoreWarning
         });
         
-        // Si el cliente requiere pago obligatorio, validar paymentMethod
-        if (paymentValidation.requiresPayment) {
-          requiresPaymentValidation = true;
-          console.log('⚠️ [ADMIN BOOKING] Cliente requiere pago obligatorio');
-          
-          // Si no se especifica método de pago o es 'local', advertir al admin
-          if (!paymentMethod || paymentMethod === 'local') {
-            console.log('🚫 [ADMIN BOOKING] Cliente riesgoso sin pago confirmado');
+        clientScoringInfo = paymentValidation;
+        
+        // ⚠️ VALIDACIÓN: Cliente con ranking bajo + Pago en el local
+        if (paymentValidation.requiresPayment && finalPaymentMethod === 'LOCAL') {
+          // Si NO se ignora la advertencia, mostrar diálogo de confirmación
+          if (!ignoreScoreWarning) {
+            console.log('⚠️ [SCORING CHECK] Cliente con ranking bajo - Requiere confirmación');
             return res.status(400).json({
               success: false,
-              message: 'Este cliente tiene un historial deficiente y requiere pago adelantado',
-              error: 'PAYMENT_REQUIRED',
-              details: {
-                clientScoring: paymentValidation.scoring?.starRating || 'bajo',
-                reason: paymentValidation.reason,
-                solution: 'Para crear la cita, especifica paymentMethod: "prepaid" si ya confirmaste el pago, o usa "online" para generar link de pago.',
-                paymentOptions: {
-                  prepaid: 'Ya recibiste el pago por otro medio',
-                  online: 'Generar link de MercadoPago para el cliente'
-                }
-              }
+              error: 'LOW_SCORING_WARNING',
+              message: 'Este cliente tiene un ranking bajo y es posible que no cumpla con el turno. ¿Querés igualmente crear el turno con pago en el local?',
+              clientScoring: {
+                starRating: paymentValidation.scoring?.starRating || 'bajo',
+                totalBookings: paymentValidation.scoring?.totalBookings || 0,
+                attendedCount: paymentValidation.scoring?.attendedCount || 0,
+                noShowCount: paymentValidation.scoring?.noShowCount || 0,
+                reason: paymentValidation.reason
+              },
+              requiresConfirmation: true,
+              confirmationMessage: '¿Querés crear el turno de todas formas?'
             });
           }
           
-          // Si el admin confirma que ya recibió pago (prepaid), proceder
-          if (paymentMethod === 'prepaid') {
-            console.log('✅ [ADMIN BOOKING] Admin confirma pago recibido para cliente riesgoso');
-            appointmentStatus = 'CONFIRMED';
-          }
-          // Si es 'online', crear como PENDING_PAYMENT (implementar después)
-          else if (paymentMethod === 'online') {
-            console.log('💳 [ADMIN BOOKING] Se requerirá pago online para cliente riesgoso');
-            appointmentStatus = 'PENDING_PAYMENT';
-          }
+          // Si se ignora la advertencia, proceder pero agregar nota
+          console.log('✅ [SCORING CHECK] Confirmación recibida - Creando turno a pesar del ranking bajo');
         }
       } catch (error) {
-        console.error('❌ [ADMIN BOOKING] Error evaluando scoring:', error);
+        console.error('❌ [SCORING CHECK] Error evaluando scoring:', error);
         // En caso de error, proceder normalmente (conservador)
       }
+    }
+
+    // Preparar notas adicionales si se ignoró advertencia de scoring
+    let finalNotes = notes;
+    if (clientScoringInfo?.requiresPayment && ignoreScoreWarning && finalPaymentMethod === 'LOCAL') {
+      finalNotes = `${notes ? notes + ' | ' : ''}⚠️ CLIENTE CON RANKING BAJO - Confirmado por ${req.user.role === 'ADMIN' ? 'administrador' : 'empleado'}`;
     }
 
     // Crear el turno
@@ -358,10 +358,9 @@ const createAppointment = async (req, res) => {
         userId,
         startTime: startDateTime,
         endTime: endDateTime,
-        notes: (requiresPaymentValidation && paymentMethod === 'prepaid') ? 
-          `${notes ? notes + ' | ' : ''}💰 PAGO CONFIRMADO POR ADMIN (Cliente con historial bajo)` : 
-          notes,
-        status: appointmentStatus
+        notes: finalNotes,
+        status: appointmentStatus,
+        paymentMethod: finalPaymentMethod
       },
       include: {
         client: {
@@ -401,21 +400,13 @@ const createAppointment = async (req, res) => {
     let responseMessage = 'Turno creado exitosamente';
     let scoringInfo = null;
     
-    if (requiresPaymentValidation && paymentMethod === 'prepaid') {
-      responseMessage = 'Turno creado - Pago confirmado para cliente con historial bajo';
+    if (clientScoringInfo?.requiresPayment && ignoreScoreWarning && finalPaymentMethod === 'LOCAL') {
+      responseMessage = 'Turno creado - Cliente con ranking bajo confirmado';
       scoringInfo = {
         clientHasLowScoring: true,
-        paymentConfirmed: true,
-        message: '✅ Pago confirmado por admin para cliente con historial deficiente.',
-        note: 'El cliente tendrá una nueva oportunidad de mejorar su scoring.'
-      };
-    } else if (appointmentStatus === 'PENDING_PAYMENT') {
-      responseMessage = 'Cita creada - Pendiente de pago online';
-      scoringInfo = {
-        clientHasLowScoring: true,
-        paymentPending: true,
-        message: '💳 Se requiere pago online. La cita se confirmará automáticamente al recibir el pago.',
-        note: 'Envía el link de pago al cliente.'
+        warningIgnored: true,
+        message: '⚠️ Turno creado a pesar del ranking bajo del cliente.',
+        note: 'Se recomienda hacer seguimiento cercano a este turno.'
       };
     }
 

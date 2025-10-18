@@ -51,6 +51,9 @@ const Appointments: React.FC = () => {
   });
   const [showPlanLimitModal, setShowPlanLimitModal] = useState(false);
   const [planLimitData, setPlanLimitData] = useState<PlanLimitDetails | null>(null);
+  const [showLowScoringWarning, setShowLowScoringWarning] = useState(false);
+  const [lowScoringData, setLowScoringData] = useState<any>(null);
+  const [pendingAppointmentData, setPendingAppointmentData] = useState<AppointmentForm | null>(null);
   const isMobile = useIsMobileSimple();
 
   useEffect(() => {
@@ -115,27 +118,43 @@ const Appointments: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmitAppointment = async (data: AppointmentForm) => {
+  const handleSubmitAppointment = async (data: AppointmentForm, ignoreScoreWarning = false) => {
     try {
       setIsSubmitting(true);
       
+      // Agregar flag de ignorar advertencia si es necesario
+      const submitData = ignoreScoreWarning ? { ...data, ignoreScoreWarning: true } : data;
+      
       if (editingAppointment) {
-        await appointmentService.updateAppointment(editingAppointment.id, data);
+        await appointmentService.updateAppointment(editingAppointment.id, submitData);
         toast.success('Cita actualizada exitosamente');
       } else {
-        await appointmentService.createAppointment(data);
+        await appointmentService.createAppointment(submitData);
         toast.success('Cita creada exitosamente');
       }
       
       await loadData();
       setIsModalOpen(false);
       setEditingAppointment(null);
+      setShowLowScoringWarning(false);
+      setPendingAppointmentData(null);
     } catch (error: unknown) {
       console.error('Error guardando cita:', error);
       
-      // Verificar si es un error de límite de plan
+      // Verificar si es un error de scoring bajo
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { error?: string; details?: PlanLimitDetails } } };
+        const axiosError = error as { response?: { data?: { error?: string; message?: string; clientScoring?: any; details?: PlanLimitDetails } } };
+        
+        // Manejar advertencia de scoring bajo
+        if (axiosError.response?.data?.error === 'LOW_SCORING_WARNING') {
+          setLowScoringData(axiosError.response.data);
+          setPendingAppointmentData(data);
+          setShowLowScoringWarning(true);
+          setIsModalOpen(false);
+          return; // No lanzar error, solo mostrar diálogo
+        }
+        
+        // Manejar límite de plan
         if (axiosError.response?.data?.error === 'PLAN_LIMIT_EXCEEDED') {
           const details = axiosError.response.data.details;
           if (details) {
@@ -144,7 +163,7 @@ const Appointments: React.FC = () => {
             setIsModalOpen(false);
           }
         } else {
-          const message = error instanceof Error ? error.message : 'Error guardando cita';
+          const message = axiosError.response?.data?.message || (error instanceof Error ? error.message : 'Error guardando cita');
           toast.error(message);
         }
       } else {
@@ -155,6 +174,19 @@ const Appointments: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleConfirmLowScoring = async () => {
+    if (pendingAppointmentData) {
+      await handleSubmitAppointment(pendingAppointmentData, true);
+    }
+  };
+
+  const handleCancelLowScoring = () => {
+    setShowLowScoringWarning(false);
+    setLowScoringData(null);
+    setPendingAppointmentData(null);
+    toast.info('Creación de cita cancelada');
   };
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
@@ -827,6 +859,93 @@ const Appointments: React.FC = () => {
             feature: 'appointments'
           }}
         />
+      )}
+
+      {/* Low Scoring Warning Modal */}
+      {showLowScoringWarning && lowScoringData && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={handleCancelLowScoring}
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              {/* Header */}
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Cliente con Ranking Bajo</h2>
+                  <p className="text-sm text-gray-500">Se requiere confirmación</p>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">{lowScoringData.message}</p>
+                
+                {lowScoringData.clientScoring && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Historial del cliente:</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Puntuación:</span>
+                        <span className="font-medium text-gray-900">
+                          {lowScoringData.clientScoring.starRating 
+                            ? `${lowScoringData.clientScoring.starRating} ⭐` 
+                            : 'Sin puntuación'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total de citas:</span>
+                        <span className="font-medium text-gray-900">
+                          {lowScoringData.clientScoring.totalBookings}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Asistió:</span>
+                        <span className="font-medium text-green-600">
+                          {lowScoringData.clientScoring.attendedCount}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">No asistió:</span>
+                        <span className="font-medium text-red-600">
+                          {lowScoringData.clientScoring.noShowCount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-gray-600 mt-4 text-sm">
+                  ¿Querés crear el turno de todas formas con pago en el local?
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleCancelLowScoring}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  No, cancelar
+                </button>
+                <button
+                  onClick={handleConfirmLowScoring}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Creando...' : 'Sí, crear turno'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   );
