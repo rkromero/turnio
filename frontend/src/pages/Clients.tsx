@@ -40,6 +40,9 @@ const Clients: React.FC = () => {
   
   // Verificar si el usuario puede eliminar clientes (solo admins)
   const canDeleteClients = user?.role === 'ADMIN';
+  
+  // Verificar si el usuario puede crear clientes directamente (solo admins)
+  const canCreateClients = user?.role === 'ADMIN';
 
   useEffect(() => {
     loadClients();
@@ -409,7 +412,7 @@ const Clients: React.FC = () => {
                 {isMobile ? 'Tu base de clientes' : 'Administra tu base de clientes y su historial'}
               </p>
             </div>
-            {!isMobile && (
+            {!isMobile && canCreateClients && (
               <button onClick={handleCreateClient} className="btn-primary">
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Cliente
@@ -499,10 +502,12 @@ const Clients: React.FC = () => {
                 <p className="text-gray-600 mb-6">
                   {searchTerm 
                     ? 'Intenta con otros términos de búsqueda'
-                    : 'Comienza agregando tu primer cliente'
+                    : canCreateClients
+                      ? 'Comienza agregando tu primer cliente'
+                      : 'Los clientes aparecerán aquí cuando asignes turnos'
                   }
                 </p>
-                {!searchTerm && (
+                {!searchTerm && canCreateClients && (
                   <button onClick={handleCreateClient} className="btn-primary">
                     <Plus className="w-4 h-4 mr-2" />
                     Crear Primer Cliente
@@ -805,7 +810,7 @@ const Clients: React.FC = () => {
       </div>
 
       {/* FAB para móvil */}
-      {isMobile && !showClientDetails && (
+      {isMobile && !showClientDetails && canCreateClients && (
         <FloatingActionButton
           icon={Plus}
           onClick={handleCreateClient}
