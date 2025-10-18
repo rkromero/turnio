@@ -341,6 +341,26 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         formData,
         errors
       });
+      
+      // Mostrar mensaje de debug en pantalla
+      const hasService = !!formData.serviceId;
+      const hasTime = !!formData.startTime;
+      const serviceError = errors.serviceId;
+      const timeError = errors.startTime;
+      
+      let message = 'No se puede continuar:\n';
+      if (!hasService) message += '❌ Falta seleccionar servicio\n';
+      if (!hasTime) message += '❌ Falta seleccionar fecha y hora\n';
+      if (serviceError) message += `❌ Error en servicio: ${serviceError}\n`;
+      if (timeError) message += `❌ Error en hora: ${timeError}\n`;
+      
+      message += `\nDatos actuales:\n`;
+      message += `Servicio: ${formData.serviceId || 'No seleccionado'}\n`;
+      message += `Fecha: ${selectedDate || 'No seleccionada'}\n`;
+      message += `Hora: ${selectedTime || 'No seleccionada'}\n`;
+      message += `StartTime: ${formData.startTime || 'No definido'}\n`;
+      
+      alert(message);
     }
   };
 
