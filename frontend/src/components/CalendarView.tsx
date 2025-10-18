@@ -16,7 +16,7 @@ interface AppointmentWithScoring extends Appointment {
 interface CalendarViewProps {
   appointments: AppointmentWithScoring[];
   onEditAppointment: (appointment: Appointment) => void;
-  onCreateAppointment: () => void;
+  onCreateAppointment: (date?: string, time?: string) => void;
   onStatusChange: (appointmentId: string, newStatus: string) => void;
 }
 
@@ -252,7 +252,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onCreateAppointment();
+                        // Formatear la fecha como YYYY-MM-DD
+                        const dateStr = day.toISOString().split('T')[0];
+                        onCreateAppointment(dateStr);
                       }}
                       className="w-full mt-2 p-1 text-xs text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors flex items-center justify-center"
                     >

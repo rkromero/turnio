@@ -62,6 +62,7 @@ const Appointments: React.FC = () => {
   const [showLowScoringWarning, setShowLowScoringWarning] = useState(false);
   const [lowScoringData, setLowScoringData] = useState<any>(null);
   const [pendingAppointmentData, setPendingAppointmentData] = useState<AppointmentForm | null>(null);
+  const [initialDateTime, setInitialDateTime] = useState<{ date: string; time: string } | null>(null);
   const isMobile = useIsMobileSimple();
 
   useEffect(() => {
@@ -127,8 +128,19 @@ const Appointments: React.FC = () => {
     }
   };
 
-  const handleCreateAppointment = () => {
+  const handleCreateAppointment = (date?: string, time?: string) => {
     setEditingAppointment(null);
+    
+    // Si se proporciona fecha y/u hora, guardarlos para pre-cargar el modal
+    if (date || time) {
+      setInitialDateTime({ 
+        date: date || '', 
+        time: time || '' 
+      });
+    } else {
+      setInitialDateTime(null);
+    }
+    
     setIsModalOpen(true);
   };
 
@@ -857,12 +869,17 @@ const Appointments: React.FC = () => {
       {isModalOpen && (
         <AppointmentModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setInitialDateTime(null); // Limpiar la fecha/hora inicial al cerrar el modal
+          }}
           onSubmit={handleSubmitAppointment}
           appointment={editingAppointment}
           services={services}
           professionals={professionals}
           isLoading={isSubmitting}
+          initialDate={initialDateTime?.date}
+          initialTime={initialDateTime?.time}
         />
       )}
 

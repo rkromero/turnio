@@ -16,7 +16,7 @@ interface AppointmentWithScoring extends Appointment {
 interface DayViewProps {
   appointments: AppointmentWithScoring[];
   onEditAppointment: (appointment: Appointment) => void;
-  onCreateAppointment: () => void;
+  onCreateAppointment: (date?: string, time?: string) => void;
   onStatusChange: (appointmentId: string, newStatus: string) => void;
 }
 
@@ -194,13 +194,20 @@ const DayView: React.FC<DayViewProps> = ({
           {/* Área de citas */}
           <div className="ml-14 md:ml-20 relative">
             {/* Líneas de fondo */}
-            {timeSlots.map((slot) => (
-              <div
-                key={slot.hour}
-                className="h-[60px] border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => onCreateAppointment()}
-              />
-            ))}
+            {timeSlots.map((slot) => {
+              // Formatear la fecha como YYYY-MM-DD
+              const dateStr = currentDate.toISOString().split('T')[0];
+              // Hora en formato HH:mm
+              const timeStr = slot.time;
+              
+              return (
+                <div
+                  key={slot.hour}
+                  className="h-[60px] border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => onCreateAppointment(dateStr, timeStr)}
+                />
+              );
+            })}
 
             {/* Citas */}
             {todayAppointments.map((appointment) => {

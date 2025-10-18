@@ -32,6 +32,8 @@ interface AppointmentModalProps {
   services: Service[];
   professionals?: Professional[];
   isLoading?: boolean;
+  initialDate?: string;
+  initialTime?: string;
 }
 
 const AppointmentModal: React.FC<AppointmentModalProps> = ({
@@ -41,7 +43,9 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   appointment,
   services,
   professionals = [],
-  isLoading = false
+  isLoading = false,
+  initialDate,
+  initialTime
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -102,14 +106,15 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         notes: '',
         status: 'CONFIRMED'
       });
-      setSelectedDate('');
-      setSelectedTime('');
+      // Pre-cargar fecha y hora inicial si se proporcionaron
+      setSelectedDate(initialDate || '');
+      setSelectedTime(initialTime || '');
       setAvailableTimes([]);
     }
     setErrors({});
     setTouched({});
     setCurrentStep(1);
-  }, [appointment, isOpen]);
+  }, [appointment, isOpen, initialDate, initialTime]);
 
   // Cargar horarios disponibles cuando cambian fecha o servicio
   useEffect(() => {
