@@ -7,6 +7,7 @@ const getAppointments = async (req, res) => {
   try {
     const { date, status, serviceId, userId } = req.query;
     const businessId = req.businessId;
+    const currentUser = req.user; // Usuario autenticado
 
     // Obtener sucursales activas (auto-crea si no existen)
     const branchIds = await getActiveBranchIds(businessId);
@@ -16,6 +17,27 @@ const getAppointments = async (req, res) => {
       businessId,
       branchId: { in: branchIds }
     };
+
+    // 🔒 FILTRO POR ROL: Si es EMPLOYEE, solo ver sus propios turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      where.userId = currentUser.id;
+      console.log(`👤 Empleado ${currentUser.name} (${currentUser.id}) - Filtrando solo sus turnos`);
+    } else {
+      // Si es ADMIN, puede filtrar por userId desde query params
+      if (userId) {
+        const user = await prisma.user.findFirst({
+          where: {
+            id: userId,
+            businessId,
+            branchId: { in: branchIds }
+          }
+        });
+        
+        if (user) {
+          where.userId = userId;
+        }
+      }
+    }
 
     if (date) {
       const startDate = new Date(date);
@@ -30,21 +52,6 @@ const getAppointments = async (req, res) => {
 
     if (status) where.status = status;
     if (serviceId) where.serviceId = serviceId;
-
-    // Para usuarios específicos, verificar que pertenezcan a una sucursal activa
-    if (userId) {
-      const user = await prisma.user.findFirst({
-        where: {
-          id: userId,
-          businessId,
-          branchId: { in: branchIds }
-        }
-      });
-      
-      if (user) {
-        where.userId = userId;
-      }
-    }
 
     const appointments = await prisma.appointment.findMany({
       where,

@@ -15,12 +15,25 @@ const getDashboardMetrics = async (req, res) => {
     }
 
     const businessId = user.businessId;
+    const currentUser = user; // Usuario autenticado
     const periodDays = parseInt(period);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - periodDays);
     const endDate = new Date();
 
     console.log(`📊 Generando reportes para businessId: ${businessId}, período: ${periodDays} días`);
+
+    // 🔒 Construir filtro base según rol
+    const baseFilter = {
+      businessId: businessId,
+      startTime: { gte: startDate, lte: endDate }
+    };
+    
+    // Si es EMPLOYEE, filtrar solo sus turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      baseFilter.userId = currentUser.id;
+      console.log(`👤 Empleado ${currentUser.name} - Generando reportes solo de sus turnos`);
+    }
 
     // OPTIMIZACIÓN: Usar consultas agregadas en lugar de cargar todos los datos en memoria
     console.log(`📊 Generando reportes para businessId: ${businessId}, período: ${periodDays} días`);
@@ -29,28 +42,21 @@ const getDashboardMetrics = async (req, res) => {
     const [basicStats, statusStats, revenueStats, clientStats] = await Promise.all([
       // Estadísticas básicas
       prisma.appointment.aggregate({
-        where: {
-          businessId: businessId,
-          startTime: { gte: startDate, lte: endDate }
-        },
+        where: baseFilter,
         _count: { id: true }
       }),
       
       // Citas por estado
       prisma.appointment.groupBy({
         by: ['status'],
-        where: {
-          businessId: businessId,
-          startTime: { gte: startDate, lte: endDate }
-        },
+        where: baseFilter,
         _count: { id: true }
       }),
       
       // Ingresos totales
       prisma.appointment.findMany({
         where: {
-          businessId: businessId,
-          startTime: { gte: startDate, lte: endDate },
+          ...baseFilter,
           status: 'COMPLETED'
         },
         select: {
@@ -62,10 +68,7 @@ const getDashboardMetrics = async (req, res) => {
       
       // Clientes únicos
       prisma.appointment.findMany({
-        where: {
-          businessId: businessId,
-          startTime: { gte: startDate, lte: endDate }
-        },
+        where: baseFilter,
         select: {
           client: {
             select: { email: true, phone: true }

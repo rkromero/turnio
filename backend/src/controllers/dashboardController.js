@@ -5,6 +5,7 @@ const { getActiveBranchIds } = require('../utils/branchUtils');
 const getDashboardStats = async (req, res) => {
   try {
     const businessId = req.businessId;
+    const currentUser = req.user; // Usuario autenticado
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
@@ -14,6 +15,17 @@ const getDashboardStats = async (req, res) => {
 
     // Obtener sucursales activas (auto-crea si no existen)
     const branchIds = await getActiveBranchIds(businessId);
+
+    // 🔒 Construir filtro base según rol
+    const baseFilter = { 
+      businessId,
+      branchId: { in: branchIds }
+    };
+    
+    // Si es EMPLOYEE, filtrar solo sus turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      baseFilter.userId = currentUser.id;
+    }
 
     // Estadísticas paralelas
     const [
@@ -26,8 +38,7 @@ const getDashboardStats = async (req, res) => {
       // Turnos de hoy
       prisma.appointment.count({
         where: {
-          businessId,
-          branchId: { in: branchIds },
+          ...baseFilter,
           startTime: {
             gte: startOfDay,
             lt: endOfDay
@@ -36,16 +47,15 @@ const getDashboardStats = async (req, res) => {
         }
       }),
 
-      // Total de clientes
-      prisma.client.count({
-        where: { businessId }
-      }),
+      // Total de clientes (solo si es ADMIN, empleados no ven totales de clientes)
+      currentUser.role === 'ADMIN' 
+        ? prisma.client.count({ where: { businessId } })
+        : Promise.resolve(0),
 
       // Ingresos del mes (aproximado basado en servicios)
       prisma.appointment.findMany({
         where: {
-          businessId,
-          branchId: { in: branchIds },
+          ...baseFilter,
           startTime: {
             gte: startOfMonth,
             lt: endOfMonth
@@ -70,8 +80,7 @@ const getDashboardStats = async (req, res) => {
       // Próximos turnos (siguientes 5)
       prisma.appointment.findMany({
         where: {
-          businessId,
-          branchId: { in: branchIds },
+          ...baseFilter,
           startTime: { gte: new Date() },
           status: { not: 'CANCELLED' }
         },
