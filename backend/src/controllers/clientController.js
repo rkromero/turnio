@@ -139,6 +139,19 @@ const createClient = async (req, res) => {
       });
 
       if (existingClient) {
+        // 🔓 Si es EMPLOYEE y el cliente ya existe, devolverlo en lugar de dar error
+        // Esto permite que los empleados puedan "agregar" clientes existentes
+        if (req.user?.role === 'EMPLOYEE') {
+          console.log('✅ [CLIENT DEBUG] Cliente ya existe, devolviéndolo al empleado:', existingClient.id);
+          return res.status(200).json({
+            success: true,
+            message: 'Cliente encontrado y agregado a tu lista',
+            data: existingClient,
+            wasExisting: true // Flag para que el frontend sepa que no es nuevo
+          });
+        }
+        
+        // Para ADMIN, mantener el error original
         return res.status(400).json({
           success: false,
           message: 'Ya existe un cliente con ese email o teléfono'
