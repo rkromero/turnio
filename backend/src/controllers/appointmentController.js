@@ -677,24 +677,32 @@ const getAvailableTimes = async (req, res) => {
       userId
     });
 
-    // Obtener turnos existentes para ese día y profesional
+    // Obtener turnos existentes para ese día
+    // Si se especifica userId, solo buscamos turnos de ese profesional
+    // Si NO se especifica, buscamos TODOS los turnos (cualquier profesional)
+    const appointmentQuery = {
+      businessId,
+      branchId: targetBranchId,
+      status: { not: 'CANCELLED' },
+      startTime: { gte: startOfDay, lte: endOfDay }
+    };
+    
+    // Solo filtrar por userId si está definido Y no es vacío
+    if (userId && userId !== '') {
+      appointmentQuery.userId = userId;
+    }
+    
     const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        businessId,
-        branchId: targetBranchId,
-        ...(userId && { userId }),
-        status: { not: 'CANCELLED' },
-        startTime: { gte: startOfDay, lte: endOfDay }
-      },
-      select: { startTime: true, endTime: true }
+      where: appointmentQuery,
+      select: { id: true, startTime: true, endTime: true, userId: true },
+      orderBy: { startTime: 'asc' }
     });
 
-    console.log('📊 [AVAILABLE TIMES] Turnos existentes:', existingAppointments.length, 
-      existingAppointments.map(apt => ({
-        start: apt.startTime,
-        end: apt.endTime
-      }))
-    );
+    console.log('📊 [AVAILABLE TIMES] Query params:', { date, serviceId, userId, branchId: targetBranchId });
+    console.log('📊 [AVAILABLE TIMES] Turnos existentes encontrados:', existingAppointments.length);
+    existingAppointments.forEach(apt => {
+      console.log(`   - ${new Date(apt.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - ${new Date(apt.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} (Professional: ${apt.userId})`);
+    });
 
     // Generar slots de 30 minutos desde las 8:00 hasta las 20:00
     const availableTimes = [];
@@ -719,7 +727,11 @@ const getAvailableTimes = async (req, res) => {
           const conflict = (slotStart < aptEnd && slotEnd > aptStart);
           
           if (conflict) {
-            console.log(`❌ [CONFLICT] ${hour}:${String(minute).padStart(2, '0')} - Conflicto con turno ${aptStart.toLocaleTimeString('es-AR')} - ${aptEnd.toLocaleTimeString('es-AR')}`);
+            console.log(`❌ [CONFLICT DETECTED]`);
+            console.log(`   Slot: ${slotStart.toISOString()} - ${slotEnd.toISOString()}`);
+            console.log(`   Turno existente: ${aptStart.toISOString()} - ${aptEnd.toISOString()}`);
+            console.log(`   Comparison: slotStart (${slotStart.getTime()}) < aptEnd (${aptEnd.getTime()}) = ${slotStart < aptEnd}`);
+            console.log(`   Comparison: slotEnd (${slotEnd.getTime()}) > aptStart (${aptStart.getTime()}) = ${slotEnd > aptStart}`);
           }
           
           return conflict;
