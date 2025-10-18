@@ -662,10 +662,20 @@ const getAvailableTimes = async (req, res) => {
       });
     }
 
-    // Parsear la fecha
-    const targetDate = new Date(date);
-    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+    // Parsear la fecha (formato YYYY-MM-DD desde frontend)
+    const [year, month, day] = date.split('-').map(Number);
+    const targetDate = new Date(year, month - 1, day); // month - 1 porque los meses son 0-indexed
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+    console.log('📅 [AVAILABLE TIMES] Buscando horarios para:', {
+      date,
+      parsedDate: targetDate.toISOString(),
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString(),
+      serviceId,
+      userId
+    });
 
     // Obtener turnos existentes para ese día y profesional
     const existingAppointments = await prisma.appointment.findMany({
@@ -679,6 +689,13 @@ const getAvailableTimes = async (req, res) => {
       select: { startTime: true, endTime: true }
     });
 
+    console.log('📊 [AVAILABLE TIMES] Turnos existentes:', existingAppointments.length, 
+      existingAppointments.map(apt => ({
+        start: apt.startTime,
+        end: apt.endTime
+      }))
+    );
+
     // Generar slots de 30 minutos desde las 8:00 hasta las 20:00
     const availableTimes = [];
     const startHour = 8;
@@ -686,24 +703,26 @@ const getAvailableTimes = async (req, res) => {
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
-        const slotStart = new Date(date);
-        slotStart.setHours(hour, minute, 0, 0);
-        
+        const slotStart = new Date(year, month - 1, day, hour, minute, 0, 0);
         const slotEnd = new Date(slotStart.getTime() + service.duration * 60000);
 
         // Verificar si el slot está en el pasado
         if (slotStart < new Date()) continue;
 
         // Verificar si hay conflicto con turnos existentes
+        // Hay conflicto si el slot se superpone de cualquier forma con un turno existente
         const hasConflict = existingAppointments.some(apt => {
           const aptStart = new Date(apt.startTime);
           const aptEnd = new Date(apt.endTime);
           
-          return (
-            (slotStart >= aptStart && slotStart < aptEnd) ||
-            (slotEnd > aptStart && slotEnd <= aptEnd) ||
-            (slotStart <= aptStart && slotEnd >= aptEnd)
-          );
+          // Superposición: el slot comienza antes de que termine la cita Y termina después de que comienza la cita
+          const conflict = (slotStart < aptEnd && slotEnd > aptStart);
+          
+          if (conflict) {
+            console.log(`❌ [CONFLICT] ${hour}:${String(minute).padStart(2, '0')} - Conflicto con turno ${aptStart.toLocaleTimeString('es-AR')} - ${aptEnd.toLocaleTimeString('es-AR')}`);
+          }
+          
+          return conflict;
         });
 
         if (!hasConflict) {
@@ -714,6 +733,8 @@ const getAvailableTimes = async (req, res) => {
         }
       }
     }
+
+    console.log(`✅ [AVAILABLE TIMES] ${availableTimes.length} horarios disponibles para ${date}`);
 
     res.json({
       success: true,
