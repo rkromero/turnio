@@ -5,9 +5,44 @@ const { validationResult } = require('express-validator');
 const getClients = async (req, res) => {
   try {
     const businessId = req.businessId;
+    const currentUser = req.user;
+
+    let clientIds = [];
+
+    // 🔒 Si es EMPLOYEE, solo ver clientes de sus propios turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      // Obtener IDs de clientes únicos de turnos del empleado
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          businessId,
+          userId: currentUser.id
+        },
+        select: {
+          clientId: true
+        },
+        distinct: ['clientId']
+      });
+
+      clientIds = appointments.map(apt => apt.clientId);
+
+      // Si no tiene turnos asignados, devolver lista vacía
+      if (clientIds.length === 0) {
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+    }
+
+    const whereClause = { businessId };
+    
+    // Si es EMPLOYEE, filtrar por los IDs de sus clientes
+    if (currentUser.role === 'EMPLOYEE') {
+      whereClause.id = { in: clientIds };
+    }
 
     const clients = await prisma.client.findMany({
-      where: { businessId },
+      where: whereClause,
       orderBy: {
         createdAt: 'desc'
       }
@@ -144,6 +179,7 @@ const updateClient = async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, notes } = req.body;
     const businessId = req.businessId;
+    const currentUser = req.user;
 
     // Verificar que el cliente pertenezca al negocio
     const existingClient = await prisma.client.findFirst({
@@ -158,6 +194,24 @@ const updateClient = async (req, res) => {
         success: false,
         message: 'Cliente no encontrado'
       });
+    }
+
+    // 🔒 Si es EMPLOYEE, solo puede editar clientes de sus propios turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      const hasAppointmentWithClient = await prisma.appointment.findFirst({
+        where: {
+          businessId,
+          userId: currentUser.id,
+          clientId: id
+        }
+      });
+
+      if (!hasAppointmentWithClient) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permiso para editar este cliente'
+        });
+      }
     }
 
     // Verificar si ya existe otro cliente con el mismo email o teléfono

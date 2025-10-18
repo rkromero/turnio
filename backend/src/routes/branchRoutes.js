@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
 const branchController = require('../controllers/branchController');
-const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
 
 // Validaciones
 const createBranchValidation = [
@@ -198,10 +198,10 @@ router.get('/', authenticateTokenOnly, branchController.getBranches);
 router.get('/:branchId', authenticateTokenOnly, branchController.getBranchById);
 router.get('/:branchId/services', authenticateTokenOnly, branchController.getBranchServices);
 
-// Rutas de modificación (verifican token + suscripción)
-router.post('/', authenticateToken, createBranchValidation, branchController.createBranch);
-router.put('/:branchId', authenticateToken, updateBranchValidation, branchController.updateBranch);
-router.delete('/:branchId', authenticateToken, branchController.deleteBranch);
-router.post('/:branchId/services', authenticateToken, assignServiceValidation, branchController.assignServiceToBranch);
+// Rutas de modificación (verifican token + suscripción + solo ADMIN)
+router.post('/', authenticateToken, requireAdmin, createBranchValidation, branchController.createBranch);
+router.put('/:branchId', authenticateToken, requireAdmin, updateBranchValidation, branchController.updateBranch);
+router.delete('/:branchId', authenticateToken, requireAdmin, branchController.deleteBranch);
+router.post('/:branchId/services', authenticateToken, requireAdmin, assignServiceValidation, branchController.assignServiceToBranch);
 
 module.exports = router; 

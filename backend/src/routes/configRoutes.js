@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, param } = require('express-validator');
-const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
 const {
   getBusinessConfig,
   updateBusinessConfig,
@@ -122,28 +122,28 @@ const updateHolidayValidation = [
 // GET /api/config/business - Obtener configuración del negocio (solo lectura, permitido con problemas de suscripción)
 router.get('/business', authenticateTokenOnly, getBusinessConfig);
 
-// PUT /api/config/business - Actualizar configuración del negocio (requiere suscripción activa)
-router.put('/business', authenticateToken, updateBusinessValidation, updateBusinessConfig);
+// PUT /api/config/business - Actualizar configuración del negocio (requiere suscripción activa + solo ADMIN)
+router.put('/business', authenticateToken, requireAdmin, updateBusinessValidation, updateBusinessConfig);
 
 // === RUTAS DE HORARIOS DE TRABAJO ===
 // GET /api/config/working-hours - Obtener horarios de trabajo (solo lectura, permitido con problemas de suscripción)
 router.get('/working-hours', authenticateTokenOnly, getWorkingHours);
 
-// PUT /api/config/working-hours/:userId - Actualizar horarios de un usuario (requiere suscripción activa)
+// PUT /api/config/working-hours/:userId - Actualizar horarios de un usuario (ADMIN actualiza cualquiera, EMPLOYEE solo sus propios horarios)
 router.put('/working-hours/:userId', authenticateToken, updateWorkingHoursValidation, updateWorkingHours);
 
 // === RUTAS DE FERIADOS ===
 // GET /api/config/holidays - Obtener feriados (solo lectura, permitido con problemas de suscripción)
 router.get('/holidays', authenticateTokenOnly, getHolidays);
 
-// POST /api/config/holidays - Crear feriado (requiere suscripción activa)
-router.post('/holidays', authenticateToken, createHolidayValidation, createHoliday);
+// POST /api/config/holidays - Crear feriado (requiere suscripción activa + solo ADMIN)
+router.post('/holidays', authenticateToken, requireAdmin, createHolidayValidation, createHoliday);
 
-// PUT /api/config/holidays/:id - Actualizar feriado (requiere suscripción activa)
-router.put('/holidays/:id', authenticateToken, updateHolidayValidation, updateHoliday);
+// PUT /api/config/holidays/:id - Actualizar feriado (requiere suscripción activa + solo ADMIN)
+router.put('/holidays/:id', authenticateToken, requireAdmin, updateHolidayValidation, updateHoliday);
 
-// DELETE /api/config/holidays/:id - Eliminar feriado (requiere suscripción activa)
-router.delete('/holidays/:id', authenticateToken, deleteHoliday);
+// DELETE /api/config/holidays/:id - Eliminar feriado (requiere suscripción activa + solo ADMIN)
+router.delete('/holidays/:id', authenticateToken, requireAdmin, deleteHoliday);
 
 // === RUTAS DE PLAN Y ESTADÍSTICAS ===
 // GET /api/config/plan-usage - Obtener estadísticas de uso del plan (solo lectura, permitido con problemas de suscripción)

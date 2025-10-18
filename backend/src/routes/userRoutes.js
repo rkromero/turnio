@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
 const {
   getUsers,
   getUser,
@@ -122,25 +122,25 @@ const toggleStatusValidation = [
 
 // Rutas
 
-// GET /api/users - Obtener todos los usuarios/empleados (con filtro opcional por sucursal)
+// GET /api/users - Obtener todos los usuarios/empleados (ADMIN puede ver todos, EMPLOYEE solo se ve a sí mismo)
 router.get('/', authenticateTokenOnly, getUsers);
 
-// GET /api/users/stats - Obtener estadísticas de usuarios
-router.get('/stats', authenticateTokenOnly, getUserStats);
+// GET /api/users/stats - Obtener estadísticas de usuarios (solo ADMIN)
+router.get('/stats', authenticateToken, requireAdmin, getUserStats);
 
-// GET /api/users/:id - Obtener un usuario específico
+// GET /api/users/:id - Obtener un usuario específico (ADMIN ve cualquiera, EMPLOYEE solo su propio perfil)
 router.get('/:id', authenticateTokenOnly, getUser);
 
-// POST /api/users - Crear nuevo usuario/empleado (con asignación automática de sucursal)
-router.post('/', authenticateTokenOnly, createUserValidation, createUser);
+// POST /api/users - Crear nuevo usuario/empleado (solo ADMIN)
+router.post('/', authenticateToken, requireAdmin, createUserValidation, createUser);
 
-// PUT /api/users/:id - Actualizar usuario (incluye cambio de sucursal)
+// PUT /api/users/:id - Actualizar usuario (ADMIN actualiza cualquiera, EMPLOYEE solo su propio perfil)
 router.put('/:id', authenticateTokenOnly, updateUserValidation, updateUser);
 
-// PATCH /api/users/:id/status - Activar/desactivar usuario
-router.patch('/:id/status', authenticateTokenOnly, toggleStatusValidation, toggleUserStatus);
+// PATCH /api/users/:id/status - Activar/desactivar usuario (solo ADMIN)
+router.patch('/:id/status', authenticateToken, requireAdmin, toggleStatusValidation, toggleUserStatus);
 
-// DELETE /api/users/:id - Eliminar usuario (desactivar)
-router.delete('/:id', authenticateTokenOnly, deleteUser);
+// DELETE /api/users/:id - Eliminar usuario (solo ADMIN)
+router.delete('/:id', authenticateToken, requireAdmin, deleteUser);
 
 module.exports = router; 

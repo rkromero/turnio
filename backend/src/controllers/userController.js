@@ -7,6 +7,7 @@ const { getActiveBranchIds, getMainBranch } = require('../utils/branchUtils');
 const getUsers = async (req, res) => {
   try {
     const businessId = req.businessId;
+    const currentUser = req.user;
     const { includeInactive, search, role, branchId } = req.query;
 
     // Obtener sucursales activas
@@ -16,6 +17,11 @@ const getUsers = async (req, res) => {
       businessId,
       branchId: { in: branchIds }
     };
+
+    // 🔒 Si es EMPLOYEE, solo puede ver su propio usuario
+    if (currentUser.role === 'EMPLOYEE') {
+      whereClause.id = currentUser.id;
+    }
 
     // Filtrar por sucursal específica
     if (branchId && branchIds.includes(branchId)) {
@@ -94,6 +100,15 @@ const getUser = async (req, res) => {
   try {
     const { id } = req.params;
     const businessId = req.businessId;
+    const currentUser = req.user;
+
+    // 🔒 Si es EMPLOYEE, solo puede ver su propio perfil
+    if (currentUser.role === 'EMPLOYEE' && id !== currentUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permiso para ver este perfil'
+      });
+    }
 
     // Obtener sucursales activas
     const branchIds = await getActiveBranchIds(businessId);
@@ -311,7 +326,16 @@ const updateUser = async (req, res) => {
 
     const { id } = req.params;
     const businessId = req.businessId;
+    const currentUser = req.user;
     const { name, email, role, phone, avatar, password, branchId } = req.body;
+
+    // 🔒 Si es EMPLOYEE, solo puede actualizar su propio perfil
+    if (currentUser.role === 'EMPLOYEE' && id !== currentUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permiso para modificar este perfil'
+      });
+    }
 
     // Obtener sucursales activas
     const branchIds = await getActiveBranchIds(businessId);
@@ -329,6 +353,14 @@ const updateUser = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
+      });
+    }
+
+    // 🔒 EMPLOYEE no puede cambiar su propio rol
+    if (currentUser.role === 'EMPLOYEE' && id === currentUser.id && role && role !== currentUser.role) {
+      return res.status(403).json({
+        success: false,
+        message: 'No puedes cambiar tu propio rol'
       });
     }
 

@@ -214,6 +214,15 @@ const updateWorkingHours = async (req, res) => {
     const { userId } = req.params;
     const { workingHours } = req.body; // Array de horarios por día
     const businessId = req.businessId;
+    const currentUser = req.user;
+
+    // 🔒 Si es EMPLOYEE, solo puede editar sus propios horarios
+    if (currentUser.role === 'EMPLOYEE' && userId !== currentUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permiso para modificar los horarios de otros usuarios'
+      });
+    }
 
     // Verificar que el usuario pertenece al negocio
     const user = await prisma.user.findFirst({
