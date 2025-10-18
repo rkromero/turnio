@@ -170,18 +170,18 @@ const LandingPage: React.FC = () => {
             </nav>
 
             {/* CTA Header */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
               <Link 
                 to="/login"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 md:px-6 md:py-2 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap"
               >
                 Acceder
               </Link>
               <Link 
                 to="/register"
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 md:px-6 md:py-2 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap"
               >
-                Empezar ahora
+                Empezar
               </Link>
             </div>
           </div>
