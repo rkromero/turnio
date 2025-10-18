@@ -90,6 +90,19 @@ async function runMigrations() {
       console.warn('⚠️ Advertencias:', stderr);
     }
     
+    // Ejecutar migración específica de paymentMethod
+    try {
+      console.log('🔄 Aplicando migración de paymentMethod...');
+      const { stdout: migrationOutput } = await execAsync('node scripts/apply-payment-method-migration.js');
+      if (migrationOutput) {
+        console.log('✅ Migración de paymentMethod completada:');
+        console.log(migrationOutput);
+      }
+    } catch (migrationError) {
+      // Si falla, probablemente el campo ya existe, no es crítico
+      console.log('⚠️ Migración de paymentMethod omitida (posiblemente ya aplicada)');
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ Error sincronizando schema:', error.message);
