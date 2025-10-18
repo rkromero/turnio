@@ -186,7 +186,7 @@ const Appointments: React.FC = () => {
     setShowLowScoringWarning(false);
     setLowScoringData(null);
     setPendingAppointmentData(null);
-    toast.info('Creación de cita cancelada');
+    toast('Creación de cita cancelada', { icon: 'ℹ️' });
   };
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
