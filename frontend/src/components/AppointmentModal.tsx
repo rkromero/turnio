@@ -59,6 +59,10 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [availableTimes, setAvailableTimes] = useState<Array<{time: string, datetime: string}>>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
   const isMobile = useIsMobileSimple();
 
   useEffect(() => {
@@ -71,6 +75,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       const hours = String(startDateTime.getHours()).padStart(2, '0');
       const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
       const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+      const formattedDate = `${year}-${month}-${day}`;
+      const formattedTime = `${hours}:${minutes}`;
 
       setFormData({
         clientName: appointment.client?.name || '',
@@ -82,6 +88,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         notes: appointment.notes || '',
         status: appointment.status
       });
+      setSelectedDate(formattedDate);
+      setSelectedTime(formattedTime);
     } else {
       setFormData({
         clientName: '',
@@ -93,11 +101,54 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         notes: '',
         status: 'CONFIRMED'
       });
+      setSelectedDate('');
+      setSelectedTime('');
+      setAvailableTimes([]);
     }
     setErrors({});
     setTouched({});
     setCurrentStep(1);
   }, [appointment, isOpen]);
+
+  // Cargar horarios disponibles cuando cambian fecha o servicio
+  useEffect(() => {
+    const loadAvailableTimes = async () => {
+      if (!selectedDate || !formData.serviceId) {
+        setAvailableTimes([]);
+        return;
+      }
+
+      setLoadingTimes(true);
+      try {
+        const params = new URLSearchParams({
+          date: selectedDate,
+          serviceId: formData.serviceId,
+          ...(formData.userId && { userId: formData.userId })
+        });
+
+        const response = await fetch(
+          `https://turnio-backend-production.up.railway.app/api/appointments/available-times?${params}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const data = await response.json();
+        if (data.success) {
+          setAvailableTimes(data.data);
+        }
+      } catch (error) {
+        console.error('Error cargando horarios disponibles:', error);
+      } finally {
+        setLoadingTimes(false);
+      }
+    };
+
+    loadAvailableTimes();
+  }, [selectedDate, formData.serviceId, formData.userId]);
 
   const validateField = (name: string, value: string): string => {
     switch (name) {
@@ -178,6 +229,27 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         ...prev, 
         [name]: error 
       }));
+    }
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value;
+    setSelectedDate(date);
+    setSelectedTime(''); // Resetear hora al cambiar fecha
+    setFormData(prev => ({ ...prev, startTime: '' }));
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const time = e.target.value;
+    setSelectedTime(time);
+    
+    if (selectedDate && time) {
+      const combinedDateTime = `${selectedDate}T${time}`;
+      setFormData(prev => ({ ...prev, startTime: combinedDateTime }));
+      
+      // Validar
+      const error = validateField('startTime', combinedDateTime);
+      setErrors(prev => ({ ...prev, startTime: error }));
     }
   };
 
@@ -423,25 +495,51 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </div>
                   )}
 
-                  {/* Fecha y Hora */}
+                  {/* Fecha */}
+                  <div>
+                    <label className="label flex items-center">
+                      <Calendar className="w-4 h-4 mr-2 text-purple-600" />
+                      Fecha *
+                    </label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={handleDateChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="input-field"
+                    />
+                  </div>
+
+                  {/* Hora */}
                   <div>
                     <label className="label flex items-center">
                       <Clock className="w-4 h-4 mr-2 text-purple-600" />
-                      Fecha y Hora *
+                      Hora *
                     </label>
-                    <input
-                      type="datetime-local"
-                      name="startTime"
-                      value={formData.startTime}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur('startTime')}
-                      min={getMinDateTime()}
-                      step="1800"
+                    <select
+                      value={selectedTime}
+                      onChange={handleTimeChange}
+                      disabled={!selectedDate || !formData.serviceId || loadingTimes}
                       className={`input-field ${errors.startTime ? 'input-error' : ''}`}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Solo horarios en punto (00) o y media (30)
-                    </p>
+                    >
+                      <option value="">
+                        {loadingTimes ? 'Cargando horarios...' : 
+                         !selectedDate ? 'Primero selecciona una fecha' : 
+                         !formData.serviceId ? 'Primero selecciona un servicio' :
+                         availableTimes.length === 0 ? 'No hay horarios disponibles' :
+                         'Selecciona un horario'}
+                      </option>
+                      {availableTimes.map((slot) => (
+                        <option key={slot.time} value={slot.time}>
+                          {slot.time}
+                        </option>
+                      ))}
+                    </select>
+                    {availableTimes.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {availableTimes.length} {availableTimes.length === 1 ? 'horario disponible' : 'horarios disponibles'}
+                      </p>
+                    )}
                     {errors.startTime && (
                       <p className="error-message">{errors.startTime}</p>
                     )}

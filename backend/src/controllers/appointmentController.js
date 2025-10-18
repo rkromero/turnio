@@ -633,6 +633,102 @@ const cancelAppointment = async (req, res) => {
   }
 };
 
+// Obtener horarios disponibles para el dashboard (uso interno)
+const getAvailableTimes = async (req, res) => {
+  try {
+    const { date, serviceId, userId, branchId } = req.query;
+    const businessId = req.businessId;
+
+    if (!date || !serviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere fecha y servicio'
+      });
+    }
+
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+    const targetBranchId = branchId || branchIds[0];
+
+    // Obtener el servicio
+    const service = await prisma.service.findFirst({
+      where: { id: serviceId, businessId, isActive: true }
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Parsear la fecha
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+
+    // Obtener turnos existentes para ese día y profesional
+    const existingAppointments = await prisma.appointment.findMany({
+      where: {
+        businessId,
+        branchId: targetBranchId,
+        ...(userId && { userId }),
+        status: { not: 'CANCELLED' },
+        startTime: { gte: startOfDay, lte: endOfDay }
+      },
+      select: { startTime: true, endTime: true }
+    });
+
+    // Generar slots de 30 minutos desde las 8:00 hasta las 20:00
+    const availableTimes = [];
+    const startHour = 8;
+    const endHour = 20;
+
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const slotStart = new Date(date);
+        slotStart.setHours(hour, minute, 0, 0);
+        
+        const slotEnd = new Date(slotStart.getTime() + service.duration * 60000);
+
+        // Verificar si el slot está en el pasado
+        if (slotStart < new Date()) continue;
+
+        // Verificar si hay conflicto con turnos existentes
+        const hasConflict = existingAppointments.some(apt => {
+          const aptStart = new Date(apt.startTime);
+          const aptEnd = new Date(apt.endTime);
+          
+          return (
+            (slotStart >= aptStart && slotStart < aptEnd) ||
+            (slotEnd > aptStart && slotEnd <= aptEnd) ||
+            (slotStart <= aptStart && slotEnd >= aptEnd)
+          );
+        });
+
+        if (!hasConflict) {
+          availableTimes.push({
+            time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+            datetime: slotStart.toISOString()
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: availableTimes
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo horarios disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 // Obtener turnos disponibles para reserva pública
 const getAvailableSlots = async (req, res) => {
   try {
@@ -1660,6 +1756,7 @@ module.exports = {
   createAppointment,
   updateAppointment,
   cancelAppointment,
+  getAvailableTimes,
   getAvailableSlots,
   getAvailableProfessionals,
   getAllProfessionals,

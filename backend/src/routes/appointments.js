@@ -5,6 +5,7 @@ const {
   createAppointment, 
   updateAppointment, 
   cancelAppointment,
+  getAvailableTimes,
   getAvailableSlots,
   getAvailableProfessionals,
   getAllProfessionals,
@@ -55,6 +56,7 @@ router.get('/public/:businessSlug/available-slots', getAvailableSlots);
 
 // Rutas de lectura (solo verifican token)
 router.get('/', authenticateTokenOnly, getAppointments);
+router.get('/available-times', authenticateTokenOnly, getAvailableTimes);
 
 // Rutas de modificación (requieren suscripción válida)
 router.post('/', authenticateToken, createAppointmentValidation, createAppointment);
