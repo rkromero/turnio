@@ -1214,7 +1214,11 @@ async function startServer() {
           }
         } else {
           // Asignación automática: buscar profesional disponible
-          const startDateTime = new Date(startTime);
+          // Parsear como hora local sin conversión
+          const [datePart, timePart] = startTime.split('T');
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hours, minutes] = timePart.split(':').map(Number);
+          const startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
           const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
           const dayOfWeek = startDateTime.getDay();
 
@@ -1355,8 +1359,17 @@ async function startServer() {
         }
 
         // 💳 MANEJAR FLUJO DE PAGO
-        const startDateTime = new Date(startTime);
+        // Para booking público: parsear como hora local sin conversión a UTC
+        // El frontend envía "2025-10-19T15:00" y queremos guardar exactamente 15:00 en PostgreSQL
+        console.log('🕐 [PUBLIC BOOKING] Hora recibida del frontend:', startTime);
+        const [datePart, timePart] = startTime.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
         const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
+        console.log('🕐 [PUBLIC BOOKING] Fecha parseada:', startDateTime.toString());
+        console.log('🕐 [PUBLIC BOOKING] ISO (para PostgreSQL):', startDateTime.toISOString());
+        console.log('🕐 [PUBLIC BOOKING] Hora que se guardará:', `${hours}:${minutes}`);
 
         if (paymentMethod === 'online') {
           console.log('💳 [BOOKING] Iniciando flujo de pago online');
