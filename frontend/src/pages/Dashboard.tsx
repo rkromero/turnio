@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, appointmentService, serviceService } from '../services/api';
+import { userService } from '../services/userService';
+import type { Service, AppointmentForm } from '../types';
 import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink, ChevronRight } from 'lucide-react';
 import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
+import AppointmentModal from '../components/AppointmentModal';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import toast from 'react-hot-toast';
 
@@ -31,10 +34,20 @@ interface DashboardStats {
   }>;
 }
 
+interface Professional {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const Dashboard: React.FC = () => {
   const { business } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isMobile = useIsMobileSimple();
 
   useEffect(() => {
@@ -117,6 +130,49 @@ const Dashboard: React.FC = () => {
       } catch {
         toast.error('Error al copiar la URL');
       }
+    }
+  };
+
+  const loadServicesAndProfessionals = async () => {
+    try {
+      const [servicesData, usersData] = await Promise.all([
+        serviceService.getServices(),
+        userService.getUsers({ includeInactive: false })
+      ]);
+      
+      setServices(servicesData);
+      
+      const activeProfessionals = usersData
+        .filter(user => user.isActive)
+        .map(user => ({
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }));
+      setProfessionals(activeProfessionals);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+      toast.error('Error al cargar servicios y profesionales');
+    }
+  };
+
+  const handleCreateAppointment = async () => {
+    await loadServicesAndProfessionals();
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitAppointment = async (data: AppointmentForm) => {
+    try {
+      setIsSubmitting(true);
+      await appointmentService.createAppointment(data);
+      toast.success('Turno creado exitosamente');
+      setIsModalOpen(false);
+      loadDashboardData(); // Recargar datos del dashboard
+    } catch (error: any) {
+      console.error('Error creando turno:', error);
+      toast.error(error.response?.data?.message || 'Error al crear el turno');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -438,8 +494,20 @@ const Dashboard: React.FC = () => {
       {isMobile && (
         <FloatingActionButton
           icon={Plus}
-          onClick={() => window.location.href = '/dashboard/appointments'}
+          onClick={handleCreateAppointment}
           ariaLabel="Nuevo turno"
+        />
+      )}
+
+      {/* Modal de creación de turno */}
+      {isModalOpen && (
+        <AppointmentModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmitAppointment}
+          services={services}
+          professionals={professionals}
+          isLoading={isSubmitting}
         />
       )}
     </>
