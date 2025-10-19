@@ -240,7 +240,12 @@ const createAppointment = async (req, res) => {
     // El frontend envía "2025-01-17T17:00" (sin zona horaria)
     // Necesitamos tratarlo como hora local argentina
     const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
+    console.log('🕐 [TIMEZONE DEBUG] Input:', startTime);
+    console.log('🕐 [TIMEZONE DEBUG] With timezone:', dateWithTimezone + '-03:00');
     const startDateTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
+    console.log('🕐 [TIMEZONE DEBUG] Parsed Date:', startDateTime);
+    console.log('🕐 [TIMEZONE DEBUG] ISO String:', startDateTime.toISOString());
+    console.log('🕐 [TIMEZONE DEBUG] Local String:', startDateTime.toString());
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
     // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
@@ -419,6 +424,13 @@ const createAppointment = async (req, res) => {
         }
       }
     });
+
+    console.log('✅ [APPOINTMENT CREATED]');
+    console.log('   📅 Start Time (saved):', appointment.startTime);
+    console.log('   📅 Start Time (ISO):', appointment.startTime.toISOString());
+    console.log('   📅 Start Time (Local):', appointment.startTime.toString());
+    console.log('   📅 End Time (saved):', appointment.endTime);
+    console.log('   📅 End Time (ISO):', appointment.endTime.toISOString());
 
     // Preparar respuesta con información de scoring
     let responseMessage = 'Turno creado exitosamente';
