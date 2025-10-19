@@ -217,7 +217,8 @@ const Clients: React.FC = () => {
     return new Date(dateString).toLocaleDateString('es-AR', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 
@@ -227,7 +228,8 @@ const Clients: React.FC = () => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 

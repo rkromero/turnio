@@ -309,14 +309,16 @@ const Appointments: React.FC = () => {
       weekday: isMobile ? 'short' : 'long',
       year: 'numeric',
       month: isMobile ? 'short' : 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('es-AR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 

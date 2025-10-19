@@ -111,7 +111,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('es-AR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 

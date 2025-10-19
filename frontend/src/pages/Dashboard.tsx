@@ -109,7 +109,8 @@ const Dashboard: React.FC = () => {
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('es-AR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 
@@ -117,7 +118,8 @@ const Dashboard: React.FC = () => {
     return new Date(dateString).toLocaleDateString('es-AR', {
       weekday: 'short',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires'
     });
   };
 
@@ -262,7 +264,7 @@ const Dashboard: React.FC = () => {
                 </p>
                 {!isMobile && (
                   <p className="text-xs text-gray-500 mt-1 truncate">
-                    {new Date().toLocaleDateString('es-AR')}
+                    {new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
                   </p>
                 )}
               </div>
@@ -305,7 +307,7 @@ const Dashboard: React.FC = () => {
                 </p>
                 {!isMobile && (
                   <p className="text-xs text-gray-500 mt-1 truncate">
-                    {new Date().toLocaleDateString('es-AR', { month: 'long' })}
+                    {new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' })}
                   </p>
                 )}
               </div>
