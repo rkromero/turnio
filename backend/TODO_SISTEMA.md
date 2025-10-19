@@ -430,3 +430,4 @@ Antes de implementar, necesito que decidas:
 **Total de items:** 27 funcionalidades/mejoras identificadas
 **Estimación total:** 12-16 semanas de desarrollo
 
+

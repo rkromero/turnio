@@ -538,13 +538,21 @@ const BookingPage: React.FC = () => {
 
       // Usar la fecha y hora seleccionada directamente
       const selectedDateTime = new Date(booking.selectedTime);
+      
+      // Formatear fecha como string local (sin zona horaria) para que el backend agregue GMT-3
+      const year = selectedDateTime.getFullYear();
+      const month = String(selectedDateTime.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDateTime.getDate()).padStart(2, '0');
+      const hours = String(selectedDateTime.getHours()).padStart(2, '0');
+      const minutes = String(selectedDateTime.getMinutes()).padStart(2, '0');
+      const localDateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
 
       const bookingData: BookingFormData = {
         clientName: booking.clientData.name,
         clientEmail: booking.clientData.email,
         clientPhone: booking.clientData.phone,
         serviceId: booking.selectedService.id,
-        startTime: selectedDateTime.toISOString(),
+        startTime: localDateTimeString,  // Enviar sin zona horaria para que backend agregue GMT-3
         notes: booking.clientData.notes,
         professionalId: booking.selectedProfessional || undefined,
         paymentMethod: booking.paymentMethod || 'local'

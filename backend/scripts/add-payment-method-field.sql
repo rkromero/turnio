@@ -11,3 +11,4 @@ CREATE INDEX IF NOT EXISTS idx_appointments_payment_method ON appointments("paym
 -- Comentario de la columna
 COMMENT ON COLUMN appointments."paymentMethod" IS 'Método de pago: LOCAL (pago en el local) o ADELANTADO (pago anticipado)';
 
+
