@@ -75,4 +75,56 @@ router.get('/scheduler-status', async (req, res) => {
 // Cambiar plan de un usuario (para pruebas)
 router.post('/change-user-plan', changePlanForUser);
 
+// Verificar zona horaria del servidor
+router.get('/server-timezone', async (req, res) => {
+  try {
+    const now = new Date();
+    const testDate = '2025-10-19T15:00';
+    const testDateWithTZ = new Date(testDate + '-03:00');
+    
+    const timezoneInfo = {
+      // Fecha y hora actual del servidor
+      serverDateTime: now.toISOString(),
+      serverDateTimeLocal: now.toString(),
+      
+      // Zona horaria del sistema
+      timezoneOffset: now.getTimezoneOffset(), // en minutos (negativo = adelantado respecto a UTC)
+      timezoneOffsetHours: now.getTimezoneOffset() / 60,
+      
+      // Variables de entorno
+      TZ_ENV: process.env.TZ || 'No configurada',
+      NODE_ENV: process.env.NODE_ENV,
+      
+      // Prueba de parseo de fecha
+      test: {
+        input: testDate,
+        withTimezone: testDate + '-03:00',
+        parsedDate: testDateWithTZ.toISOString(),
+        parsedDateLocal: testDateWithTZ.toString()
+      },
+      
+      // Formateo en diferentes locales
+      formatting: {
+        'es-AR': now.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
+        'en-US': now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }),
+        UTC: now.toUTCString()
+      }
+    };
+    
+    console.log('🌍 [TIMEZONE INFO]', JSON.stringify(timezoneInfo, null, 2));
+    
+    res.json({
+      success: true,
+      data: timezoneInfo
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo información de zona horaria:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo información',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
