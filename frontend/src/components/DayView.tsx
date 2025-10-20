@@ -83,11 +83,10 @@ const DayView: React.FC<DayViewProps> = ({
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-AR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Argentina/Buenos_Aires'
-    });
+    // Parsear manualmente para mostrar hora exacta sin conversión de zona horaria
+    const [datePart, timePart] = dateString.includes('T') ? dateString.split('T') : [dateString, '00:00:00'];
+    const [hours, minutes] = timePart.split(':').map(Number);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
   const getStatusColor = (status: string) => {

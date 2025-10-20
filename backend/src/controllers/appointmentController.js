@@ -237,15 +237,21 @@ const createAppointment = async (req, res) => {
     }
 
     // Calcular hora de fin basada en la duración del servicio
-    // El frontend envía "2025-01-17T17:00" (sin zona horaria)
-    // Necesitamos tratarlo como hora local argentina
-    const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
+    // El frontend envía "2025-01-17T17:00" (hora local sin zona horaria)
+    // Parseamos manualmente para guardar exactamente esos valores en UTC sin conversión
     console.log('🕐 [TIMEZONE DEBUG] Input:', startTime);
-    console.log('🕐 [TIMEZONE DEBUG] With timezone:', dateWithTimezone + '-03:00');
-    const startDateTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
+    
+    const [datePart, timePart] = startTime.includes('T') 
+      ? startTime.split('T') 
+      : [startTime, '00:00'];
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
+    // Crear Date en UTC con los valores exactos (sin conversión de zona horaria)
+    const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
     console.log('🕐 [TIMEZONE DEBUG] Parsed Date:', startDateTime);
     console.log('🕐 [TIMEZONE DEBUG] ISO String:', startDateTime.toISOString());
-    console.log('🕐 [TIMEZONE DEBUG] Local String:', startDateTime.toString());
+    
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
     // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
@@ -524,21 +530,26 @@ const updateAppointment = async (req, res) => {
 
       let newStartTime;
       if (startTime) {
-        // El frontend envía "2025-01-17T17:00" (sin zona horaria)
-        // Necesitamos tratarlo como hora local argentina
-        // Agregar la zona horaria de Argentina para evitar conversiones incorrectas
-        const dateWithTimezone = startTime.includes('T') ? startTime : startTime + 'T00:00:00';
-        newStartTime = new Date(dateWithTimezone + '-03:00'); // GMT-3 (Argentina)
+        // El frontend envía "2025-01-17T17:00" (hora local sin zona horaria)
+        // Parseamos manualmente para guardar exactamente esos valores en UTC sin conversión
+        const [datePart, timePart] = startTime.includes('T') 
+          ? startTime.split('T') 
+          : [startTime, '00:00'];
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        
+        // Crear Date en UTC con los valores exactos (sin conversión de zona horaria)
+        newStartTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
         
         // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
-        const minutes = newStartTime.getMinutes();
-        if (minutes !== 0 && minutes !== 30) {
+        const minutesValue = newStartTime.getMinutes();
+        if (minutesValue !== 0 && minutesValue !== 30) {
           return res.status(400).json({
             success: false,
             message: 'Solo se permiten horarios en punto (00) o y media (30)',
             error: 'INVALID_TIME_INTERVAL',
             details: {
-              providedMinutes: minutes,
+              providedMinutes: minutesValue,
               allowedMinutes: [0, 30],
               note: 'Los turnos deben comenzar en horarios de 30 minutos (en punto o y media)'
             }

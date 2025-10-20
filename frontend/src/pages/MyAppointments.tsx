@@ -89,14 +89,18 @@ const MyAppointments: React.FC = () => {
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Parsear manualmente para mostrar hora exacta sin conversión de zona horaria
+    const [datePart, timePart] = dateString.includes('T') ? dateString.split('T') : [dateString, '00:00:00'];
+    const [hours, minutes] = timePart.split(':').map(Number);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    // Parsear manualmente para mostrar fecha exacta sin conversión de zona horaria
+    const [datePart] = dateString.includes('T') ? dateString.split('T') : [dateString, ''];
+    const [year, month, day] = datePart.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
