@@ -1,68 +1,48 @@
-const nodemailer = require('nodemailer');
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
 const { prisma } = require('../config/database');
 
 /**
  * Servicio Centralizado de Emails
- * Configurado para usar Mailgun SMTP
+ * Configurado para usar Mailgun API
  */
 class EmailService {
   constructor() {
-    this.transporter = null;
+    this.mg = null;
     this.isConfigured = false;
-    this.initializeTransporter();
+    this.domain = null;
+    this.fromEmail = null;
+    this.initialize();
   }
 
   /**
-   * Inicializa el transporter de nodemailer con configuración de Mailgun
+   * Inicializa el cliente de Mailgun
    */
-  initializeTransporter() {
+  initialize() {
     try {
       // Validar configuración
-      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-        console.warn('⚠️ SMTP no configurado. Variables faltantes: SMTP_HOST, SMTP_USER o SMTP_PASS');
+      if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN || !process.env.EMAIL_FROM) {
+        console.warn('⚠️ Mailgun no configurado. Variables faltantes: MAILGUN_API_KEY, MAILGUN_DOMAIN o EMAIL_FROM');
         return;
       }
 
-      // Configuración para Mailgun SMTP
-      this.transporter = nodemailer.createTransporter({
-        host: process.env.SMTP_HOST, // smtp.mailgun.org para US, smtp.eu.mailgun.org para EU
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false, // true para 465, false para otros puertos
-        auth: {
-          user: process.env.SMTP_USER, // postmaster@tu-dominio.mailgun.org
-          pass: process.env.SMTP_PASS  // Tu API Key de Mailgun
-        },
-        // Configuraciones adicionales para Mailgun
-        tls: {
-          ciphers: 'SSLv3',
-          rejectUnauthorized: false
-        }
+      const mailgun = new Mailgun(formData);
+      this.mg = mailgun.client({
+        username: 'api',
+        key: process.env.MAILGUN_API_KEY,
+        url: process.env.MAILGUN_API_BASE_URL || 'https://api.mailgun.net' // 'https://api.eu.mailgun.net' para EU
       });
 
+      this.domain = process.env.MAILGUN_DOMAIN;
+      this.fromEmail = process.env.EMAIL_FROM;
       this.isConfigured = true;
+
       console.log('✅ EmailService configurado correctamente con Mailgun');
-      
-      // Verificar configuración al iniciar
-      this.verifyConnection();
+      console.log(`   📧 Dominio: ${this.domain}`);
+      console.log(`   ✉️  From: ${this.fromEmail}`);
     } catch (error) {
       console.error('❌ Error inicializando EmailService:', error.message);
       this.isConfigured = false;
-    }
-  }
-
-  /**
-   * Verifica la conexión SMTP
-   */
-  async verifyConnection() {
-    if (!this.transporter) return false;
-
-    try {
-      await this.transporter.verify();
-      console.log('✅ Conexión SMTP verificada correctamente');
-      return true;
-    } catch (error) {
-      console.error('❌ Error verificando conexión SMTP:', error.message);
-      return false;
     }
   }
 
@@ -78,11 +58,11 @@ class EmailService {
    * @returns {Promise<Object>} Resultado del envío
    */
   async sendEmail({ to, subject, html, text, from, replyTo }) {
-    if (!this.isConfigured || !this.transporter) {
-      console.error('❌ EmailService no configurado. Verifica variables de entorno SMTP.');
+    if (!this.isConfigured || !this.mg) {
+      console.error('❌ EmailService no configurado. Verifica variables de entorno Mailgun.');
       return {
         success: false,
-        error: 'SMTP_NOT_CONFIGURED',
+        error: 'MAILGUN_NOT_CONFIGURED',
         message: 'Servicio de email no configurado'
       };
     }
@@ -98,33 +78,34 @@ class EmailService {
 
     try {
       const fromName = process.env.EMAIL_FROM_NAME || 'TurnIO';
-      const fromEmail = from || process.env.SMTP_USER;
+      const fromAddress = from || this.fromEmail;
       
-      const mailOptions = {
-        from: `"${fromName}" <${fromEmail}>`,
-        to,
+      const messageData = {
+        from: `${fromName} <${fromAddress}>`,
+        to: [to],
         subject,
         html,
-        text: text || this.stripHtml(html), // Fallback a texto plano
-        replyTo: replyTo || process.env.EMAIL_REPLY_TO || fromEmail
+        text: text || this.stripHtml(html),
+        'h:Reply-To': replyTo || process.env.EMAIL_REPLY_TO || fromAddress
       };
 
       console.log(`📧 Enviando email a ${to} - Asunto: ${subject}`);
-      const info = await this.transporter.sendMail(mailOptions);
       
-      console.log(`✅ Email enviado exitosamente - MessageID: ${info.messageId}`);
+      const response = await this.mg.messages.create(this.domain, messageData);
+      
+      console.log(`✅ Email enviado exitosamente - ID: ${response.id}`);
       
       return {
         success: true,
-        messageId: info.messageId,
-        response: info.response
+        messageId: response.id,
+        response: response.message
       };
     } catch (error) {
       console.error('❌ Error enviando email:', {
         to,
         subject,
         error: error.message,
-        stack: error.stack
+        details: error.details || error
       });
       
       return {
@@ -321,4 +302,3 @@ class EmailService {
 const emailService = new EmailService();
 
 module.exports = emailService;
-
