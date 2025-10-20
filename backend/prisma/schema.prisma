@@ -51,6 +51,8 @@ model Business {
   planChanges  PlanChange[]
   appointmentPayments AppointmentPayment[] // Pagos de citas individuales
   paymentSettings PaymentSettings?
+  notificationLogs NotificationLog[] // Historial de notificaciones
+  notificationSettings NotificationSettings? // Configuración de notificaciones
 
   @@map("businesses")
 }
@@ -161,6 +163,7 @@ model Client {
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointments Appointment[]
   reviews      Review[]
+  notificationLogs NotificationLog[] // Notificaciones enviadas a este cliente
 
   @@map("clients")
 }
@@ -195,6 +198,7 @@ model Appointment {
   user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   review   Review?
   payment  AppointmentPayment? @relation(fields: [payment_id], references: [id])
+  notificationLogs NotificationLog[] // Notificaciones enviadas para esta cita
 
   @@map("appointments")
 }
@@ -532,4 +536,81 @@ model PaymentSettings {
   business              Business @relation(fields: [business_id], references: [id], onDelete: Cascade)
   
   @@map("payment_settings")
+}
+
+// Sistema de Notificaciones
+model NotificationLog {
+  id            String              @id @default(cuid())
+  businessId    String
+  appointmentId String?
+  clientId      String?
+  type          NotificationType
+  channel       NotificationChannel @default(EMAIL)
+  status        NotificationStatus  @default(PENDING)
+  recipient     String              // Email o teléfono
+  subject       String?
+  content       String?             // Template usado
+  sentAt        DateTime?
+  failureReason String?
+  retryCount    Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relaciones
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@map("notification_logs")
+}
+
+model NotificationSettings {
+  id                        String   @id @default(cuid())
+  businessId                String   @unique
+  
+  // Configuración de emails
+  sendConfirmationEmail     Boolean  @default(true)
+  sendReminderEmail         Boolean  @default(true)
+  reminderHoursBefore       Int      @default(24)
+  sendCancellationEmail     Boolean  @default(true)
+  sendModificationEmail     Boolean  @default(true)
+  sendReviewRequestEmail    Boolean  @default(true)
+  
+  // Configuración personalizada
+  fromName                  String?  // "Mi Negocio"
+  replyToEmail              String?  // email@negocio.com
+  
+  // Metadata
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  // Relaciones
+  business                  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  @@map("notification_settings")
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_MODIFIED
+  REVIEW_REQUEST
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_EXPIRED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRY
 }

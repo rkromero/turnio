@@ -9,6 +9,7 @@ const { connectDatabase, disconnectDatabase } = require('./config/database');
 const { exec } = require('child_process');
 const util = require('util');
 const { startReviewNotificationService } = require('./services/reviewNotificationService');
+const appointmentReminderService = require('./services/appointmentReminderService');
 const { errorHandler, notFoundHandler, handleUncaughtExceptions } = require('./middleware/errorHandler');
 const { logInfo, logError } = require('./utils/logger');
 
@@ -155,6 +156,14 @@ async function startServer() {
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_REVIEW_NOTIFICATIONS === 'true') {
       startReviewNotificationService();
     }
+
+    // 📧 Inicializar servicio de recordatorios de citas
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_APPOINTMENT_REMINDERS === 'true') {
+      console.log('🚀 Iniciando servicio de recordatorios de citas...');
+      appointmentReminderService.start(60); // Cada 60 minutos
+    } else {
+      console.log('⚠️ Servicio de recordatorios deshabilitado en desarrollo');
+    }
     
     // 🚀 Inicializar schedulers de suscripciones
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SUBSCRIPTION_SCHEDULER === 'true') {
@@ -190,6 +199,7 @@ async function startServer() {
     const subscriptionRoutes = require('./routes/subscriptionRoutes');
     const mercadoPagoRoutes = require('./routes/mercadoPagoRoutes');
     const debugRoutes = require('./routes/debugRoutes');
+    const notificationRoutes = require('./routes/notificationRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -711,6 +721,9 @@ async function startServer() {
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
+    
+    // Rutas de notificaciones (protegidas)
+    app.use('/api/notifications', notificationRoutes);
     
     // Rutas de debug para índices de performance
     app.use('/api/debug', debugRoutes);

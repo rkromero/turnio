@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { validationResult } = require('express-validator');
 const { getActiveBranchIds } = require('../utils/branchUtils');
+const notificationService = require('../services/notificationService');
 
 // Obtener todos los turnos del negocio
 const getAppointments = async (req, res) => {
@@ -255,14 +256,14 @@ const createAppointment = async (req, res) => {
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
     // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
-    const minutes = startDateTime.getMinutes();
-    if (minutes !== 0 && minutes !== 30) {
+    const minutesValue = startDateTime.getMinutes();
+    if (minutesValue !== 0 && minutesValue !== 30) {
       return res.status(400).json({
         success: false,
         message: 'Solo se permiten horarios en punto (00) o y media (30)',
         error: 'INVALID_TIME_INTERVAL',
         details: {
-          providedMinutes: minutes,
+          providedMinutes: minutesValue,
           allowedMinutes: [0, 30],
           note: 'Los turnos deben comenzar en horarios de 30 minutos (en punto o y media)'
         }
@@ -452,6 +453,19 @@ const createAppointment = async (req, res) => {
       };
     }
 
+    // 📧 ENVIAR NOTIFICACIÓN DE CONFIRMACIÓN (no bloqueante)
+    notificationService.sendAppointmentConfirmation(appointment)
+      .then(result => {
+        if (result.success) {
+          console.log(`✅ Email de confirmación enviado para cita ${appointment.id}`);
+        } else {
+          console.warn(`⚠️ No se pudo enviar email de confirmación: ${result.error}`);
+        }
+      })
+      .catch(error => {
+        console.error(`❌ Error enviando email de confirmación:`, error);
+      });
+
     res.status(201).json({
       success: true,
       message: responseMessage,
@@ -568,6 +582,7 @@ const updateAppointment = async (req, res) => {
       where: { id },
       data: updateData,
       include: {
+        business: true,
         client: {
           select: {
             id: true,
@@ -595,11 +610,28 @@ const updateAppointment = async (req, res) => {
           select: {
             id: true,
             name: true,
+            address: true,
+            phone: true,
             isMain: true
           }
         }
       }
     });
+
+    // 📧 ENVIAR NOTIFICACIÓN DE MODIFICACIÓN si cambió fecha/hora (no bloqueante)
+    if (startTime || serviceId) {
+      notificationService.sendAppointmentModification(appointment, existingAppointment)
+        .then(result => {
+          if (result.success) {
+            console.log(`✅ Email de modificación enviado para cita ${appointment.id}`);
+          } else {
+            console.warn(`⚠️ No se pudo enviar email de modificación: ${result.error}`);
+          }
+        })
+        .catch(error => {
+          console.error(`❌ Error enviando email de modificación:`, error);
+        });
+    }
 
     res.json({
       success: true,
@@ -620,28 +652,68 @@ const updateAppointment = async (req, res) => {
 const cancelAppointment = async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body; // Razón opcional de cancelación
     const businessId = req.businessId;
 
     // Obtener sucursales activas
     const branchIds = await getActiveBranchIds(businessId);
 
-    const appointment = await prisma.appointment.updateMany({
+    // Primero obtener los datos completos de la cita para el email
+    const appointmentData = await prisma.appointment.findFirst({
       where: {
         id,
         businessId,
         branchId: { in: branchIds }
       },
-      data: {
-        status: 'CANCELLED'
+      include: {
+        business: true,
+        client: true,
+        service: true,
+        user: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            isMain: true
+          }
+        }
       }
     });
 
-    if (appointment.count === 0) {
+    if (!appointmentData) {
       return res.status(404).json({
         success: false,
         message: 'Turno no encontrado'
       });
     }
+
+    // Cancelar el turno
+    const appointment = await prisma.appointment.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED'
+      }
+    });
+
+    // 📧 ENVIAR NOTIFICACIÓN DE CANCELACIÓN (no bloqueante)
+    notificationService.sendAppointmentCancellation(appointmentData, reason)
+      .then(result => {
+        if (result.success) {
+          console.log(`✅ Email de cancelación enviado para cita ${appointmentData.id}`);
+        } else {
+          console.warn(`⚠️ No se pudo enviar email de cancelación: ${result.error}`);
+        }
+      })
+      .catch(error => {
+        console.error(`❌ Error enviando email de cancelación:`, error);
+      });
 
     res.json({
       success: true,
