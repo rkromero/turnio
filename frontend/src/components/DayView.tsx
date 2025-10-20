@@ -195,8 +195,11 @@ const DayView: React.FC<DayViewProps> = ({
           <div className="ml-14 md:ml-20 relative">
             {/* Líneas de fondo */}
             {timeSlots.map((slot) => {
-              // Formatear la fecha como YYYY-MM-DD
-              const dateStr = currentDate.toISOString().split('T')[0];
+              // Formatear la fecha como YYYY-MM-DD SIN conversión a UTC
+              const year = currentDate.getFullYear();
+              const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+              const day = String(currentDate.getDate()).padStart(2, '0');
+              const dateStr = `${year}-${month}-${day}`;
               // Hora en formato HH:mm
               const timeStr = slot.time;
               

@@ -252,8 +252,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Formatear la fecha como YYYY-MM-DD
-                        const dateStr = day.toISOString().split('T')[0];
+                        // Formatear la fecha como YYYY-MM-DD SIN conversión a UTC
+                        const year = day.getFullYear();
+                        const month = String(day.getMonth() + 1).padStart(2, '0');
+                        const dayNum = String(day.getDate()).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${dayNum}`;
                         onCreateAppointment(dateStr);
                       }}
                       className="w-full mt-2 p-1 text-xs text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors flex items-center justify-center"
