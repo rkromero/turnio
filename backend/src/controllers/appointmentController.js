@@ -399,6 +399,7 @@ const createAppointment = async (req, res) => {
         paymentMethod: finalPaymentMethod
       },
       include: {
+        business: true,
         client: {
           select: {
             id: true,
@@ -426,6 +427,8 @@ const createAppointment = async (req, res) => {
           select: {
             id: true,
             name: true,
+            address: true,
+            phone: true,
             isMain: true
           }
         }
