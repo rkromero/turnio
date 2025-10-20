@@ -39,10 +39,16 @@ const DayView: React.FC<DayViewProps> = ({
 
   // Filtrar citas del día actual
   const todayAppointments = useMemo(() => {
-    const today = currentDate.toISOString().split('T')[0];
+    // Formatear fecha sin conversión de zona horaria
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+    
     return appointments
       .filter(appointment => {
-        const appointmentDate = new Date(appointment.startTime).toISOString().split('T')[0];
+        // Parsear fecha sin conversión de zona horaria
+        const appointmentDate = appointment.startTime.split('T')[0];
         return appointmentDate === today;
       })
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
@@ -100,10 +106,13 @@ const DayView: React.FC<DayViewProps> = ({
   };
 
   const getAppointmentPosition = (appointment: AppointmentWithScoring) => {
+    // Parsear manualmente sin conversión de zona horaria
     const startTime = new Date(appointment.startTime);
     const endTime = new Date(appointment.endTime);
-    const startHour = startTime.getHours();
-    const startMinutes = startTime.getMinutes();
+    
+    // Usar UTC para evitar conversión de zona horaria
+    const startHour = startTime.getUTCHours();
+    const startMinutes = startTime.getUTCMinutes();
     const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60); // en minutos
     
     const topPosition = ((startHour - 6) * 60 + startMinutes) * (60 / 60); // 60px por hora
