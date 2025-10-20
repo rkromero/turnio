@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const notificationController = require('../controllers/notificationController');
 
 // Todas las rutas requieren autenticación
@@ -18,28 +18,28 @@ router.get('/settings', notificationController.getNotificationSettings);
  * @desc    Actualizar configuración de notificaciones
  * @access  Private (ADMIN only)
  */
-router.put('/settings', requireRole(['ADMIN']), notificationController.updateNotificationSettings);
+router.put('/settings', requireAdmin, notificationController.updateNotificationSettings);
 
 /**
  * @route   GET /api/notifications/history
  * @desc    Obtener historial de notificaciones
  * @access  Private (ADMIN only)
  */
-router.get('/history', requireRole(['ADMIN']), notificationController.getNotificationHistory);
+router.get('/history', requireAdmin, notificationController.getNotificationHistory);
 
 /**
  * @route   GET /api/notifications/stats
  * @desc    Obtener estadísticas de notificaciones
  * @access  Private (ADMIN only)
  */
-router.get('/stats', requireRole(['ADMIN']), notificationController.getNotificationStats);
+router.get('/stats', requireAdmin, notificationController.getNotificationStats);
 
 /**
  * @route   POST /api/notifications/test-email
  * @desc    Enviar email de prueba
  * @access  Private (ADMIN only)
  */
-router.post('/test-email', requireRole(['ADMIN']), notificationController.sendTestEmail);
+router.post('/test-email', requireAdmin, notificationController.sendTestEmail);
 
 /**
  * @route   POST /api/notifications/send-reminder/:appointmentId
