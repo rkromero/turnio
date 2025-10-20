@@ -1214,13 +1214,14 @@ async function startServer() {
           }
         } else {
           // Asignación automática: buscar profesional disponible
-          // Parsear como hora local sin conversión
+          // Parsear como hora exacta sin conversión de zona horaria
           const [datePart, timePart] = startTime.split('T');
           const [year, month, day] = datePart.split('-').map(Number);
           const [hours, minutes] = timePart.split(':').map(Number);
-          const startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+          // Usar Date.UTC para parsear la hora exacta
+          const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
           const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
-          const dayOfWeek = startDateTime.getDay();
+          const dayOfWeek = startDateTime.getUTCDay(); // Usar getUTCDay() para consistencia
 
           // Buscar profesionales que trabajen este día y estén disponibles
           const availableProfessionals = await prisma.user.findMany({
@@ -1359,13 +1360,14 @@ async function startServer() {
         }
 
         // 💳 MANEJAR FLUJO DE PAGO
-        // Para booking público: parsear como hora local sin conversión a UTC
-        // El frontend envía "2025-10-19T15:00" y queremos guardar exactamente 15:00 en PostgreSQL
+        // Para booking público: parsear como hora exacta sin conversión de zona horaria
+        // El frontend envía "2025-10-20T16:00" y queremos guardar exactamente 16:00 en PostgreSQL
         console.log('🕐 [PUBLIC BOOKING] Hora recibida del frontend:', startTime);
         const [datePart, timePart] = startTime.split('T');
         const [year, month, day] = datePart.split('-').map(Number);
         const [hours, minutes] = timePart.split(':').map(Number);
-        const startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+        // Usar Date.UTC para guardar la hora exacta sin conversión de zona horaria
+        const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
         const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
         console.log('🕐 [PUBLIC BOOKING] Fecha parseada:', startDateTime.toString());
         console.log('🕐 [PUBLIC BOOKING] ISO (para PostgreSQL):', startDateTime.toISOString());
@@ -1413,6 +1415,9 @@ async function startServer() {
             
             console.log('✅ [BOOKING] Preferencia de MercadoPago creada');
             
+            // Formatear startTime sin conversión de zona horaria
+            const startTimeFormatted = appointment.startTime.toISOString().slice(0, 16); // "2025-10-20T16:00"
+            
             return res.status(201).json({
               success: true,
               message: 'Reserva iniciada - proceder con el pago',
@@ -1422,7 +1427,7 @@ async function startServer() {
                 clientName: client.name,
                 serviceName: appointment.service.name,
                 professionalName: appointment.user.name,
-                startTime: appointment.startTime,
+                startTime: startTimeFormatted,
                 duration: appointment.service.duration,
                 businessName: business.name,
                 price: appointment.service.price,
@@ -1481,6 +1486,9 @@ async function startServer() {
             }
           });
 
+          // Formatear startTime sin conversión de zona horaria
+          const startTimeFormatted = appointment.startTime.toISOString().slice(0, 16); // "2025-10-20T16:00"
+
           res.status(201).json({
             success: true,
             message: 'Turno reservado exitosamente',
@@ -1490,7 +1498,7 @@ async function startServer() {
               serviceName: appointment.service.name,
               professionalName: appointment.user.name,
               professionalAvatar: appointment.user.avatar,
-              startTime: appointment.startTime,
+              startTime: startTimeFormatted,
               duration: appointment.service.duration,
               businessName: business.name,
               wasAutoAssigned: !professionalId

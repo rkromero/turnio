@@ -550,24 +550,17 @@ const BookingPage: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
-      // Usar la fecha y hora seleccionada directamente
-      const selectedDateTime = new Date(booking.selectedTime);
-      
-      // Formatear fecha como string local (sin zona horaria)
-      // El backend guardará exactamente esta hora en la base de datos
-      const year = selectedDateTime.getFullYear();
-      const month = String(selectedDateTime.getMonth() + 1).padStart(2, '0');
-      const day = String(selectedDateTime.getDate()).padStart(2, '0');
-      const hours = String(selectedDateTime.getHours()).padStart(2, '0');
-      const minutes = String(selectedDateTime.getMinutes()).padStart(2, '0');
-      const localDateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      // booking.selectedTime ya viene en formato "2025-10-20T16:00" del backend
+      // NO usar new Date() para evitar conversiones de zona horaria
+      // Simplemente enviarlo tal cual está
+      const localDateTimeString = booking.selectedTime;
 
       const bookingData: BookingFormData = {
         clientName: booking.clientData.name,
         clientEmail: booking.clientData.email,
         clientPhone: booking.clientData.phone,
         serviceId: booking.selectedService.id,
-        startTime: localDateTimeString,  // Formato: "2025-10-19T15:00" - se guarda exactamente así
+        startTime: localDateTimeString,  // Formato: "2025-10-20T16:00" - se envía exactamente así
         notes: booking.clientData.notes,
         professionalId: booking.selectedProfessional || undefined,
         paymentMethod: booking.paymentMethod || 'local'

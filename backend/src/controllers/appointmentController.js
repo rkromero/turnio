@@ -1280,13 +1280,17 @@ async function generateAvailableSlotsOptimized(professionalId, date, workingHour
 
     // Agregar slot si está disponible
     if (isAvailableAppointments && isAvailableBreakTimes) {
+      // Formatear datetime sin conversión de zona horaria
+      const year = currentTime.getFullYear();
+      const month = String(currentTime.getMonth() + 1).padStart(2, '0');
+      const day = String(currentTime.getDate()).padStart(2, '0');
+      const hours = String(currentTime.getHours()).padStart(2, '0');
+      const minutes = String(currentTime.getMinutes()).padStart(2, '0');
+      const datetimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      
       slots.push({
-        datetime: currentTime.toISOString(),
-        time: currentTime.toLocaleTimeString('es-AR', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          timeZone: 'America/Argentina/Buenos_Aires'
-        }),
+        datetime: datetimeString, // Formato: "2025-10-20T16:00" sin zona horaria
+        time: `${hours}:${minutes}`, // HH:MM
         available: true
       });
     }
@@ -1403,9 +1407,17 @@ async function generateAvailableSlots(professionalId, date, workingHour, service
 
     // Agregar slot si está disponible (no se superpone con citas ni descansos)
     if (isAvailableAppointments && isAvailableBreakTimes) {
+      // Formatear datetime sin conversión de zona horaria
+      const year = currentTime.getFullYear();
+      const month = String(currentTime.getMonth() + 1).padStart(2, '0');
+      const day = String(currentTime.getDate()).padStart(2, '0');
+      const hours = String(currentTime.getHours()).padStart(2, '0');
+      const minutes = String(currentTime.getMinutes()).padStart(2, '0');
+      const datetimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      
       slots.push({
         time: currentTime.toTimeString().slice(0, 5), // HH:MM
-        datetime: currentTime.toISOString(),
+        datetime: datetimeString, // Formato: "2025-10-20T16:00" sin zona horaria
         available: true
       });
     }
