@@ -13,6 +13,8 @@
   },
   "variables": {
     "NODE_ENV": "production",
-    "FRONTEND_URL": "https://turnio-frontend-production.up.railway.app"
+    "FRONTEND_URL": "https://turnio-frontend-production.up.railway.app",
+    "SMTP_HOST": "smtp.mailgun.org",
+    "SMTP_PORT": "587"
   }
 } 
