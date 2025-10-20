@@ -15,6 +15,7 @@ import ClientStarRating from '../components/ClientStarRating';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import Logo from '../components/Logo';
 import { toast } from 'react-hot-toast';
+import { useIsMobileSimple } from '../hooks/useIsMobile';
 
 interface SuccessData {
   appointmentId: string;
@@ -70,6 +71,7 @@ interface BookingState {
 
 const BookingPage: React.FC = () => {
   const { businessSlug } = useParams<{ businessSlug: string }>();
+  const isMobile = useIsMobileSimple();
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -401,6 +403,18 @@ const BookingPage: React.FC = () => {
       // En modo profesional mantener la lista de profesionales, en modo servicio limpiarla
       professionals: bookingMode === 'professional' ? prev.professionals : []
     }));
+    
+    // En mobile, avanzar automáticamente al siguiente paso después de seleccionar fecha
+    if (isMobile) {
+      // Usar setTimeout para asegurar que el estado se actualice primero
+      setTimeout(() => {
+        if (bookingMode === 'service' && step === 2) {
+          setStep(3);
+        } else if (bookingMode === 'professional' && step === 3) {
+          setStep(4);
+        }
+      }, 100);
+    }
   };
 
   const handleProfessionalSelect = (professionalId: string | null) => {
@@ -1071,7 +1085,7 @@ const BookingPage: React.FC = () => {
                     ))}
                   </div>
 
-                  {booking.selectedDate && (
+                  {booking.selectedDate && !isMobile && (
                     <div className="text-center">
                       <button
                         onClick={goToNextStep}
@@ -1208,7 +1222,7 @@ const BookingPage: React.FC = () => {
                 })}
               </div>
 
-              {booking.selectedDate && (
+              {booking.selectedDate && !isMobile && (
                 <div className="text-center">
                   <button
                     onClick={goToNextStep}
