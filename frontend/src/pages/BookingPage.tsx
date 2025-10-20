@@ -634,7 +634,13 @@ const BookingPage: React.FC = () => {
   };
 
   const formatDateTime = (dateTime: string) => {
-    const date = new Date(dateTime);
+    // Parsear la hora local sin conversión de zona horaria
+    // Si viene "2025-10-20T16:00", queremos mostrar exactamente 16:00
+    const [datePart, timePart] = dateTime.includes('T') ? dateTime.split('T') : [dateTime, '00:00'];
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    const date = new Date(year, month - 1, day, hours, minutes);
+    
     return {
       date: date.toLocaleDateString('es-ES', { 
         weekday: 'long', 
