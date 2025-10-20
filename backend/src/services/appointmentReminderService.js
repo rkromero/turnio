@@ -24,6 +24,8 @@ class AppointmentReminderService {
     this.isRunning = true;
     console.log('🔄 [REMINDERS] Iniciando proceso de recordatorios...');
 
+    const startTime = Date.now(); // Para calcular duración total
+
     try {
       // Obtener todas las configuraciones de notificaciones activas
       const allSettings = await prisma.notificationSettings.findMany({
@@ -143,7 +145,7 @@ class AppointmentReminderService {
         totalSent,
         totalFailed,
         totalSkipped,
-        duration: Date.now() - now.getTime()
+        duration: Date.now() - startTime
       };
 
       console.log('\n✅ [REMINDERS] Proceso completado:');
