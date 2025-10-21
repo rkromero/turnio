@@ -9,6 +9,7 @@ import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import AppointmentModal from '../components/AppointmentModal';
 import PendingEvaluationWidget from '../components/PendingEvaluationWidget';
+import RiskyAppointmentsWidget from '../components/RiskyAppointmentsWidget';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import toast from 'react-hot-toast';
 
@@ -340,6 +341,9 @@ const Dashboard: React.FC = () => {
 
         {/* Widget de Turnos Pendientes de Evaluación */}
         <PendingEvaluationWidget onRefresh={loadDashboardData} />
+
+        {/* Widget de predicción de riesgo */}
+        <RiskyAppointmentsWidget />
 
         {/* Acciones Rápidas - Optimizadas para móvil */}
         <div>

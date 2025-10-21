@@ -287,6 +287,120 @@ class AppointmentReminderService {
       };
     }
   }
+
+  /**
+   * Envía recordatorios extra a citas con alto riesgo de cancelación
+   * @param {string} businessId - ID del negocio (opcional, si no se especifica procesa todos)
+   * @returns {Promise<Object>} Estadísticas del procesamiento
+   */
+  async sendHighRiskReminders(businessId = null) {
+    console.log('🚨 [RISK-REMINDERS] Iniciando recordatorios de alto riesgo...');
+    
+    try {
+      // Construir filtro
+      const where = {
+        status: 'CONFIRMED',
+        startTime: { 
+          gte: new Date(), // Solo futuras
+          lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Próximos 7 días
+        },
+        riskPrediction: {
+          riskLevel: 'HIGH' // Solo alto riesgo
+        }
+      };
+
+      if (businessId) {
+        where.businessId = businessId;
+      }
+
+      // Obtener citas de alto riesgo
+      const riskyAppointments = await prisma.appointment.findMany({
+        where,
+        include: {
+          business: true,
+          client: true,
+          service: true,
+          user: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true,
+              latitude: true,
+              longitude: true,
+              isMain: true
+            }
+          },
+          riskPrediction: true
+        }
+      });
+
+      console.log(`📋 [RISK-REMINDERS] ${riskyAppointments.length} citas de alto riesgo encontradas`);
+
+      let sent = 0;
+      let failed = 0;
+
+      // Enviar recordatorio a cada una
+      for (const appointment of riskyAppointments) {
+        try {
+          // Calcular horas hasta la cita
+          const now = new Date();
+          const hoursUntil = Math.round(
+            (new Date(appointment.startTime) - now) / (1000 * 60 * 60)
+          );
+
+          // Enviar recordatorio con mensaje especial de alto riesgo
+          const result = await notificationService.sendAppointmentReminder(
+            appointment,
+            hoursUntil,
+            { 
+              isHighRisk: true,
+              riskScore: appointment.riskPrediction.riskScore 
+            }
+          );
+
+          if (result.success) {
+            sent++;
+            console.log(`✅ [RISK-REMINDERS] Recordatorio enviado para cita ${appointment.id}`);
+          } else {
+            failed++;
+            console.log(`❌ [RISK-REMINDERS] Error enviando recordatorio para cita ${appointment.id}: ${result.message}`);
+          }
+
+          // Pequeña pausa para no saturar el servicio de email
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (error) {
+          failed++;
+          console.error(`❌ [RISK-REMINDERS] Error procesando cita ${appointment.id}:`, error);
+        }
+      }
+
+      const result = {
+        success: true,
+        total: riskyAppointments.length,
+        sent,
+        failed,
+        message: `Recordatorios de alto riesgo: ${sent} enviados, ${failed} fallidos`
+      };
+
+      console.log(`✅ [RISK-REMINDERS] Proceso completado:`, result);
+
+      return result;
+    } catch (error) {
+      console.error(`❌ [RISK-REMINDERS] Error en proceso:`, error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 // Exportar instancia única (singleton)

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, User, AlertTriangle } from 'lucide-react';
 import type { Appointment } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 
@@ -10,6 +10,10 @@ interface AppointmentWithScoring extends Appointment {
     totalBookings: number;
     attendedCount: number;
     noShowCount: number;
+  };
+  riskPrediction?: {
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    riskScore: number;
   };
 }
 
@@ -224,6 +228,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                           <span className="font-medium">
                             {formatTime(appointment.startTime)}
                           </span>
+                          {/* Risk indicator */}
+                          {appointment.riskPrediction?.riskLevel === 'HIGH' && (
+                            <AlertTriangle className="w-3 h-3 text-red-500 ml-auto" title="Alto riesgo de cancelación" />
+                          )}
+                          {appointment.riskPrediction?.riskLevel === 'MEDIUM' && (
+                            <AlertTriangle className="w-3 h-3 text-yellow-500 ml-auto" title="Riesgo medio de cancelación" />
+                          )}
                         </div>
                         <div className="flex items-center space-x-1 truncate">
                           <User className="w-3 h-3 flex-shrink-0" />

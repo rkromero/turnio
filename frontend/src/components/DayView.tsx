@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, AlertTriangle, AlertCircle } from 'lucide-react';
 import type { Appointment } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 
@@ -10,6 +10,15 @@ interface AppointmentWithScoring extends Appointment {
     totalBookings: number;
     attendedCount: number;
     noShowCount: number;
+  };
+  riskPrediction?: {
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    riskScore: number;
+    clientRisk: number;
+    timeSlotRisk: number;
+    serviceRisk: number;
+    anticipationRisk: number;
+    reminderRisk: number;
   };
 }
 
@@ -102,6 +111,29 @@ const DayView: React.FC<DayViewProps> = ({
       case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200';
       case 'NO_SHOW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getRiskIndicator = (riskLevel?: string) => {
+    if (!riskLevel) return null;
+    
+    switch (riskLevel) {
+      case 'HIGH':
+        return (
+          <div className="flex items-center space-x-1 bg-red-500 text-white px-1.5 py-0.5 rounded text-xs font-medium">
+            <AlertTriangle className="w-3 h-3" />
+            <span className="hidden md:inline">Alto riesgo</span>
+          </div>
+        );
+      case 'MEDIUM':
+        return (
+          <div className="flex items-center space-x-1 bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs font-medium">
+            <AlertCircle className="w-3 h-3" />
+            <span className="hidden md:inline">Riesgo medio</span>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -227,6 +259,13 @@ const DayView: React.FC<DayViewProps> = ({
                 >
                   <div className="p-1.5 md:p-2 h-full flex flex-col justify-start overflow-hidden">
                     <div className="flex-1 min-h-0 space-y-1">
+                      {/* Risk indicator - prominente arriba */}
+                      {appointment.riskPrediction?.riskLevel && (
+                        <div className="mb-1">
+                          {getRiskIndicator(appointment.riskPrediction.riskLevel)}
+                        </div>
+                      )}
+                      
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-medium text-sm leading-tight break-words">
                           {appointment.client?.name}
@@ -288,22 +327,43 @@ const DayView: React.FC<DayViewProps> = ({
 
       {/* Leyenda */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap gap-4 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
-            <span className="text-gray-600">Confirmado</span>
+        <div className="space-y-3">
+          {/* Estados */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">Estados</h4>
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+                <span className="text-gray-600">Confirmado</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+                <span className="text-gray-600">Completado</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
+                <span className="text-gray-600">No asistió</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+                <span className="text-gray-600">Cancelado</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
-            <span className="text-gray-600">Completado</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
-            <span className="text-gray-600">No asistió</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
-            <span className="text-gray-600">Cancelado</span>
+
+          {/* Indicadores de riesgo */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">Predicción de cancelación</h4>
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="w-3 h-3 text-red-500" />
+                <span className="text-gray-600">Alto riesgo de cancelación</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-3 h-3 text-yellow-500" />
+                <span className="text-gray-600">Riesgo medio de cancelación</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

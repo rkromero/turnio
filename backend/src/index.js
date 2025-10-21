@@ -202,6 +202,7 @@ async function startServer() {
     const planRoutes = require('./routes/planRoutes');
     const reviewRoutes = require('./routes/reviewRoutes');
     const clientScoringRoutes = require('./routes/clientScoring');
+    const riskPredictionRoutes = require('./routes/riskPredictionRoutes');
     const branchRoutes = require('./routes/branchRoutes');
     const migrationRoutes = require('./routes/migrationRoutes');
     const breakTimeRoutes = require('./routes/breakTimeRoutes');
@@ -731,6 +732,9 @@ async function startServer() {
     
     // Rutas de client scoring (protegidas)
     app.use('/api/client-scoring', clientScoringRoutes);
+    
+    // Rutas de predicción de riesgo (protegidas)
+    app.use('/api/risk-predictions', riskPredictionRoutes);
     
     // Rutas de notificaciones (protegidas)
     app.use('/api/notifications', notificationRoutes);
