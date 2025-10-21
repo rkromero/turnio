@@ -856,7 +856,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="btn-danger w-full flex items-center justify-center space-x-2"
+                    className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center space-x-2"
                     disabled={isLoading}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -866,45 +866,77 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
               </div>
             ) : (
               // Desktop or edit mode
-              <div className="flex justify-between items-center">
-                {appointment && onDelete && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="btn-danger flex items-center space-x-2"
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Cancelar Turno</span>
-                  </button>
+              <div className="flex justify-between items-center gap-3">
+                {appointment && onDelete ? (
+                  // Modo edición con 3 botones
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center space-x-2"
+                      disabled={isLoading}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Cancelar Turno</span>
+                    </button>
+                    <div className="flex space-x-2 ml-auto">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                        disabled={isLoading}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm flex items-center space-x-2"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="loading-spinner-mobile"></div>
+                            <span>Guardando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>Actualizar Cita</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  // Modo creación con 2 botones
+                  <div className="flex space-x-3 ml-auto">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="btn-secondary"
+                      disabled={isLoading}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={isLoading}
+                      className="btn-primary flex items-center space-x-2"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="loading-spinner-mobile"></div>
+                          <span>Guardando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Crear Cita</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
-                <div className={`flex space-x-3 ${!appointment || !onDelete ? 'ml-auto' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn-secondary"
-                    disabled={isLoading}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                    className="btn-primary flex items-center space-x-2"
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="loading-spinner-mobile"></div>
-                        <span>Guardando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>{appointment ? 'Actualizar' : 'Crear'} Cita</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
             )}
           </div>
