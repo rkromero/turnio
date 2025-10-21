@@ -3,6 +3,7 @@ import type { Appointment, AppointmentForm, Service } from '../types';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
 import { appointmentService } from '../services/api';
+import toast from 'react-hot-toast';
 import { 
   X, 
   ArrowLeft, 
@@ -130,6 +131,30 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     setTouched({});
     setCurrentStep(1);
   }, [appointment, isOpen, initialDate, initialTime]);
+
+  // Limpiar hora seleccionada cuando cambia servicio o profesional (solo al crear, no al editar)
+  // Esto evita que se muestre un horario que ya no está disponible
+  const serviceIdRef = React.useRef(formData.serviceId);
+  const userIdRef = React.useRef(formData.userId);
+  
+  useEffect(() => {
+    // Solo limpiar si realmente cambió (no en mount inicial)
+    const serviceChanged = serviceIdRef.current && serviceIdRef.current !== formData.serviceId;
+    const userChanged = userIdRef.current !== undefined && userIdRef.current !== formData.userId;
+    
+    if (!appointment && (serviceChanged || userChanged) && selectedTime) {
+      setSelectedTime('');
+      setFormData(prev => ({ ...prev, startTime: '' }));
+      toast.info('Los horarios disponibles han cambiado. Por favor, selecciona un nuevo horario.', {
+        duration: 3000,
+        position: 'top-center'
+      });
+    }
+    
+    // Actualizar refs
+    serviceIdRef.current = formData.serviceId;
+    userIdRef.current = formData.userId;
+  }, [formData.serviceId, formData.userId, appointment, selectedTime]);
 
   // Cargar horarios disponibles cuando cambian fecha o servicio
   useEffect(() => {
