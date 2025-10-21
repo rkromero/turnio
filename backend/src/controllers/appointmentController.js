@@ -238,8 +238,8 @@ const createAppointment = async (req, res) => {
     }
 
     // Calcular hora de fin basada en la duración del servicio
-    // El frontend envía "2025-01-17T17:00" (hora local sin zona horaria)
-    // Parseamos manualmente para guardar exactamente esos valores en UTC sin conversión
+    // El frontend envía "2025-01-17T17:00" (hora de Argentina UTC-3)
+    // Debemos ajustar sumando 3 horas para guardar correctamente en UTC
     console.log('🕐 [TIMEZONE DEBUG] Input:', startTime);
     
     const [datePart, timePart] = startTime.includes('T') 
@@ -248,10 +248,12 @@ const createAppointment = async (req, res) => {
     const [year, month, day] = datePart.split('-').map(Number);
     const [hours, minutes] = timePart.split(':').map(Number);
     
-    // Crear Date en UTC con los valores exactos (sin conversión de zona horaria)
-    const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
-    console.log('🕐 [TIMEZONE DEBUG] Parsed Date:', startDateTime);
-    console.log('🕐 [TIMEZONE DEBUG] ISO String:', startDateTime.toISOString());
+    // Crear Date en hora Argentina y convertir a UTC sumando 3 horas
+    // Si el usuario quiere 11:00 AM Argentina, guardamos 14:00 UTC
+    const argentinaOffset = 3; // UTC-3
+    const startDateTime = new Date(Date.UTC(year, month - 1, day, hours + argentinaOffset, minutes));
+    console.log('🕐 [TIMEZONE DEBUG] Parsed Date (Argentina):', `${hours}:${minutes}`);
+    console.log('🕐 [TIMEZONE DEBUG] Saved as UTC:', startDateTime.toISOString());
     
     const endDateTime = new Date(startDateTime.getTime() + service.duration * 60000);
 
@@ -547,16 +549,17 @@ const updateAppointment = async (req, res) => {
 
       let newStartTime;
       if (startTime) {
-        // El frontend envía "2025-01-17T17:00" (hora local sin zona horaria)
-        // Parseamos manualmente para guardar exactamente esos valores en UTC sin conversión
+        // El frontend envía "2025-01-17T17:00" (hora de Argentina UTC-3)
+        // Debemos ajustar sumando 3 horas para guardar correctamente en UTC
         const [datePart, timePart] = startTime.includes('T') 
           ? startTime.split('T') 
           : [startTime, '00:00'];
         const [year, month, day] = datePart.split('-').map(Number);
         const [hours, minutes] = timePart.split(':').map(Number);
         
-        // Crear Date en UTC con los valores exactos (sin conversión de zona horaria)
-        newStartTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+        // Crear Date en hora Argentina y convertir a UTC sumando 3 horas
+        const argentinaOffset = 3; // UTC-3
+        newStartTime = new Date(Date.UTC(year, month - 1, day, hours + argentinaOffset, minutes));
         
         // ⏰ VALIDAR INTERVALOS DE 30 MINUTOS
         const minutesValue = newStartTime.getMinutes();
