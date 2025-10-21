@@ -1,22 +1,22 @@
 # 🔧 Migración de Timezone de Turnos
 
 ## 📋 Problema
-Los turnos fueron guardados sin ajuste de timezone Argentina (UTC-3). Por ejemplo:
-- Un turno creado para las **11:00 AM Argentina**
-- Se guardaba como **11:00 UTC** (debería ser 14:00 UTC)
-- **Diferencia:** 3 horas adelantado
+Los turnos fueron guardados CON un ajuste de +3 horas (incorrecto). Por ejemplo:
+- Un turno creado para las **9:00 AM**
+- Se guardaba como **12:00 PM** (se le sumaban 3 horas incorrectamente)
+- **Diferencia:** 3 horas de más
 
-Esto causaba que los turnos aparecieran como "pendientes de evaluar" antes de tiempo.
+Esto causaba que los turnos aparecieran 3 horas más tarde de lo esperado.
 
 ---
 
 ## 🔧 Solución
-Script que ajusta todos los turnos existentes sumando 3 horas a `startTime` y `endTime`.
+Script que ajusta todos los turnos existentes **restando 3 horas** a `startTime` y `endTime`.
 
 ---
 
 ## ⚠️ IMPORTANTE
-**Este script debe ejecutarse UNA SOLA VEZ antes de hacer deploy del fix de timezone.**
+**Este script debe ejecutarse UNA SOLA VEZ DESPUÉS de hacer deploy del fix de timezone.**
 
 ---
 
@@ -45,7 +45,7 @@ node scripts/fix-timezone-appointments.js
 ## 📊 Qué Hace el Script
 
 1. **Lee todos los turnos** de la base de datos
-2. **Suma 3 horas** a `startTime` y `endTime` de cada turno
+2. **Resta 3 horas** a `startTime` y `endTime` de cada turno (corrige el offset aplicado incorrectamente)
 3. **Actualiza** la base de datos
 4. **Muestra un resumen** de turnos actualizados
 
@@ -67,8 +67,9 @@ git push origin main
 
 Si necesitas revertir los cambios:
 ```bash
-# El script hace lo opuesto: restar 3 horas
-# (Crear un script inverso si es necesario)
+# El script hace lo opuesto: sumar 3 horas
+# Cambia en línea 47 y 48: 
+# - 3 * 60 * 60 * 1000  →  + 3 * 60 * 60 * 1000
 ```
 
 ---
@@ -92,7 +93,7 @@ Si necesitas revertir los cambios:
 ============================================================
 
 🎉 ¡Migración completada exitosamente!
-📝 Todos los turnos ahora tienen el timezone correcto (UTC +3h)
+📝 Todos los turnos ahora tienen la hora correcta (se corrigieron las 3h de más)
 
 ✅ Script finalizado
 ```

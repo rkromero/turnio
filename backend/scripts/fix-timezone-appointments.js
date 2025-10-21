@@ -1,10 +1,10 @@
 /**
- * Script de Migración: Ajustar Timezone de Turnos
+ * Script de Migración: Corregir Timezone de Turnos
  * 
- * Problema: Los turnos fueron guardados sin ajuste de timezone Argentina (UTC-3)
- * Solución: Sumar 3 horas a startTime y endTime de TODOS los turnos
+ * Problema: Los turnos fueron guardados CON ajuste de +3 horas (incorrecto)
+ * Solución: Restar 3 horas a startTime y endTime de TODOS los turnos
  * 
- * IMPORTANTE: Ejecutar UNA SOLA VEZ antes de hacer deploy del fix de timezone
+ * IMPORTANTE: Ejecutar UNA SOLA VEZ después de hacer deploy del fix de timezone
  */
 
 const { PrismaClient } = require('@prisma/client');
@@ -37,15 +37,15 @@ async function fixTimezoneAppointments() {
     let updated = 0;
     let errors = 0;
 
-    // 2. Ajustar cada turno sumando 3 horas (offset de Argentina UTC-3)
+    // 2. Ajustar cada turno RESTANDO 3 horas (corregir el offset aplicado incorrectamente)
     for (const appointment of appointments) {
       try {
         const originalStartTime = new Date(appointment.startTime);
         const originalEndTime = new Date(appointment.endTime);
 
-        // Sumar 3 horas
-        const newStartTime = new Date(originalStartTime.getTime() + 3 * 60 * 60 * 1000);
-        const newEndTime = new Date(originalEndTime.getTime() + 3 * 60 * 60 * 1000);
+        // Restar 3 horas (corregir el offset que se aplicó de más)
+        const newStartTime = new Date(originalStartTime.getTime() - 3 * 60 * 60 * 1000);
+        const newEndTime = new Date(originalEndTime.getTime() - 3 * 60 * 60 * 1000);
 
         // Actualizar en base de datos
         await prisma.appointment.update({
@@ -79,7 +79,7 @@ async function fixTimezoneAppointments() {
 
     if (errors === 0) {
       console.log('\n🎉 ¡Migración completada exitosamente!');
-      console.log('📝 Todos los turnos ahora tienen el timezone correcto (UTC +3h)');
+      console.log('📝 Todos los turnos ahora tienen la hora correcta (se corrigieron las 3h de más)');
     } else {
       console.log(`\n⚠️ Migración completada con ${errors} errores`);
     }
