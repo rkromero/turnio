@@ -808,13 +808,61 @@ const getAvailableTimes = async (req, res) => {
       console.log(`   - ${new Date(apt.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - ${new Date(apt.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} (Professional: ${apt.userId})`);
     });
 
-    // Generar slots de 30 minutos desde las 8:00 hasta las 20:00
-    const availableTimes = [];
-    const startHour = 8;
-    const endHour = 20;
+    // Determinar horarios de trabajo
+    let startHour = 8;
+    let endHour = 20;
+    let startMinute = 0;
+    let endMinute = 0;
 
-    for (let hour = startHour; hour < endHour; hour++) {
+    // Si hay userId, obtener sus horarios de trabajo
+    if (userId && userId !== '') {
+      const dateObj = new Date(date);
+      const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+
+      const workingHours = await prisma.workingHours.findFirst({
+        where: {
+          userId: userId,
+          dayOfWeek: dayOfWeek
+        }
+      });
+
+      if (workingHours) {
+        // Parsear horarios configurados (formato "HH:MM")
+        const [startH, startM] = workingHours.startTime.split(':').map(Number);
+        const [endH, endM] = workingHours.endTime.split(':').map(Number);
+        
+        startHour = startH;
+        startMinute = startM;
+        endHour = endH;
+        endMinute = endM;
+
+        console.log(`⏰ [WORKING HOURS] Profesional ${userId} trabaja los ${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][dayOfWeek]} de ${workingHours.startTime} a ${workingHours.endTime}`);
+      } else {
+        console.log(`⚠️ [WORKING HOURS] No hay horarios configurados para el profesional ${userId} los ${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][dayOfWeek]}`);
+        // Si no tiene horarios configurados para ese día, no hay slots disponibles
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+    }
+
+    // Generar slots de 30 minutos
+    const availableTimes = [];
+    
+    // Convertir horarios a minutos para facilitar comparación
+    const workStartMinutes = startHour * 60 + startMinute;
+    const workEndMinutes = endHour * 60 + endMinute;
+
+    for (let hour = startHour; hour <= endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
+        const slotStartMinutes = hour * 60 + minute;
+        const slotEndMinutes = slotStartMinutes + service.duration;
+        
+        // Verificar que el slot esté completamente dentro del horario de trabajo
+        if (slotStartMinutes < workStartMinutes) continue;
+        if (slotEndMinutes > workEndMinutes) continue;
+        
         // Crear slots en hora de Argentina (GMT-3)
         const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
         const slotStart = new Date(`${date}T${timeString}-03:00`);
