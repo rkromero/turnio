@@ -53,6 +53,7 @@ model Business {
   paymentSettings PaymentSettings?
   notificationLogs NotificationLog[] // Historial de notificaciones
   notificationSettings NotificationSettings? // Configuración de notificaciones
+  inAppNotifications InAppNotification[] // Notificaciones in-app
 
   @@map("businesses")
 }
@@ -103,10 +104,11 @@ model User {
   updatedAt  DateTime @updatedAt
 
   // Relaciones
-  business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branch       Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  appointments Appointment[]
-  workingHours WorkingHours[]
+  business            Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch              Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  appointments        Appointment[]
+  workingHours        WorkingHours[]
+  inAppNotifications  InAppNotification[]
 
   @@map("users")
 }
@@ -199,6 +201,7 @@ model Appointment {
   review   Review?
   payment  AppointmentPayment? @relation(fields: [payment_id], references: [id])
   notificationLogs NotificationLog[] // Notificaciones enviadas para esta cita
+  inAppNotifications InAppNotification[] // Notificaciones in-app para esta cita
 
   @@map("appointments")
 }
@@ -588,6 +591,28 @@ model NotificationSettings {
   business                  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   
   @@map("notification_settings")
+}
+
+// Notificaciones in-app (campanita)
+model InAppNotification {
+  id             String    @id @default(cuid())
+  userId         String    // Usuario que recibe la notificación
+  businessId     String
+  appointmentId  String?
+  type           String    @default("EVALUATE_APPOINTMENT") // Tipo de notificación
+  title          String
+  message        String
+  isRead         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  
+  // Relaciones
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  
+  @@map("in_app_notifications")
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 enum NotificationType {

@@ -10,6 +10,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const { startReviewNotificationService } = require('./services/reviewNotificationService');
 const appointmentReminderService = require('./services/appointmentReminderService');
+const inAppNotificationService = require('./services/inAppNotificationService');
 const { errorHandler, notFoundHandler, handleUncaughtExceptions } = require('./middleware/errorHandler');
 const { logInfo, logError } = require('./utils/logger');
 
@@ -164,6 +165,14 @@ async function startServer() {
     } else {
       console.log('⚠️ Servicio de recordatorios deshabilitado en desarrollo');
     }
+
+    // 🔔 Inicializar servicio de notificaciones in-app
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_IN_APP_NOTIFICATIONS === 'true') {
+      console.log('🚀 Iniciando servicio de notificaciones in-app...');
+      inAppNotificationService.start();
+    } else {
+      console.log('⚠️ Servicio de notificaciones in-app deshabilitado en desarrollo');
+    }
     
     // 🚀 Inicializar schedulers de suscripciones
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SUBSCRIPTION_SCHEDULER === 'true') {
@@ -200,6 +209,7 @@ async function startServer() {
     const mercadoPagoRoutes = require('./routes/mercadoPagoRoutes');
     const debugRoutes = require('./routes/debugRoutes');
     const notificationRoutes = require('./routes/notificationRoutes');
+    const notificationInAppRoutes = require('./routes/notificationInAppRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -724,6 +734,7 @@ async function startServer() {
     
     // Rutas de notificaciones (protegidas)
     app.use('/api/notifications', notificationRoutes);
+    app.use('/api/notifications/in-app', notificationInAppRoutes);
     
     // Rutas de debug para índices de performance
     app.use('/api/debug', debugRoutes);
