@@ -12,7 +12,8 @@ const {
   getProfessionalServices,
   getBusinessServices,
   getProfessionalAvailability,
-  getPublicBranches
+  getPublicBranches,
+  getPendingEvaluation
 } = require('../controllers/appointmentController');
 const { authenticateToken, authenticateTokenOnly, requireBusinessAccess } = require('../middleware/auth');
 
@@ -57,6 +58,7 @@ router.get('/public/:businessSlug/available-slots', getAvailableSlots);
 // Rutas de lectura (solo verifican token)
 router.get('/', authenticateTokenOnly, getAppointments);
 router.get('/available-times', authenticateTokenOnly, getAvailableTimes);
+router.get('/pending-evaluation', authenticateTokenOnly, getPendingEvaluation);
 
 // Rutas de modificación (requieren suscripción válida)
 router.post('/', authenticateToken, createAppointmentValidation, createAppointment);

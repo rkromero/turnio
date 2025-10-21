@@ -1903,6 +1903,82 @@ const getPublicBranches = async (req, res) => {
   }
 };
 
+// Obtener turnos pendientes de evaluación (pasados pero aún en CONFIRMED)
+const getPendingEvaluation = async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const currentUser = req.user;
+    
+    // Obtener sucursales activas
+    const branchIds = await getActiveBranchIds(businessId);
+    
+    const now = new Date();
+    
+    // Construir filtros
+    const where = {
+      businessId,
+      branchId: { in: branchIds },
+      status: 'CONFIRMED', // Solo turnos confirmados
+      endTime: { lt: now } // Que ya hayan terminado
+    };
+    
+    // 🔒 FILTRO POR ROL: Si es EMPLOYEE, solo ver sus propios turnos
+    if (currentUser.role === 'EMPLOYEE') {
+      where.userId = currentUser.id;
+    }
+    
+    const pendingAppointments = await prisma.appointment.findMany({
+      where,
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        service: {
+          select: {
+            id: true,
+            name: true,
+            duration: true,
+            color: true
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        startTime: 'desc' // Más recientes primero
+      },
+      take: 50 // Limitar a 50 para no sobrecargar
+    });
+    
+    return res.json({
+      success: true,
+      data: pendingAppointments,
+      count: pendingAppointments.length
+    });
+  } catch (error) {
+    console.error('Error obteniendo turnos pendientes:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getAppointments,
   createAppointment,
@@ -1915,5 +1991,6 @@ module.exports = {
   getProfessionalServices,
   getBusinessServices,
   getProfessionalAvailability,
-  getPublicBranches
+  getPublicBranches,
+  getPendingEvaluation
 }; 
