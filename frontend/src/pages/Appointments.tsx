@@ -149,6 +149,18 @@ const Appointments: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    try {
+      await appointmentService.cancelAppointment(appointmentId);
+      await loadData();
+      setIsModalOpen(false);
+      setEditingAppointment(null);
+    } catch (error) {
+      console.error('Error eliminando cita:', error);
+      throw error;
+    }
+  };
+
   const handleSubmitAppointment = async (data: AppointmentForm, ignoreScoreWarning = false) => {
     try {
       setIsSubmitting(true);
@@ -878,6 +890,7 @@ const Appointments: React.FC = () => {
             setInitialDateTime(null); // Limpiar la fecha/hora inicial al cerrar el modal
           }}
           onSubmit={handleSubmitAppointment}
+          onDelete={handleDeleteAppointment}
           appointment={editingAppointment}
           services={services}
           professionals={professionals}

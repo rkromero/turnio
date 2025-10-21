@@ -16,7 +16,8 @@ import {
   DollarSign,
   Timer,
   Check,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 
 interface Professional {
@@ -29,6 +30,7 @@ interface AppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AppointmentForm) => Promise<void>;
+  onDelete?: (appointmentId: string) => Promise<void>;
   appointment?: Appointment | null;
   services: Service[];
   professionals?: Professional[];
@@ -41,6 +43,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   appointment,
   services,
   professionals = [],
@@ -260,6 +263,25 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error al guardar cita:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!appointment || !onDelete) return;
+    
+    const confirmed = window.confirm(
+      '¿Estás seguro de que deseas cancelar este turno? Esta acción no se puede deshacer y el espacio quedará libre para otros clientes.'
+    );
+    
+    if (confirmed) {
+      try {
+        await onDelete(appointment.id);
+        onClose();
+        toast.success('Turno cancelado exitosamente');
+      } catch (error) {
+        console.error('Error al cancelar turno:', error);
+        toast.error('Error al cancelar el turno');
+      }
     }
   };
 
@@ -830,35 +852,59 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </button>
                   </div>
                 )}
+                {appointment && onDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="btn-danger w-full flex items-center justify-center space-x-2"
+                    disabled={isLoading}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Cancelar Turno</span>
+                  </button>
+                )}
               </div>
             ) : (
               // Desktop or edit mode
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="btn-secondary"
-                  disabled={isLoading}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="loading-spinner-mobile"></div>
-                      <span>Guardando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>{appointment ? 'Actualizar' : 'Crear'} Cita</span>
-                    </>
-                  )}
-                </button>
+              <div className="flex justify-between items-center">
+                {appointment && onDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="btn-danger flex items-center space-x-2"
+                    disabled={isLoading}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Cancelar Turno</span>
+                  </button>
+                )}
+                <div className={`flex space-x-3 ${!appointment || !onDelete ? 'ml-auto' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn-secondary"
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="loading-spinner-mobile"></div>
+                        <span>Guardando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>{appointment ? 'Actualizar' : 'Crear'} Cita</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>
