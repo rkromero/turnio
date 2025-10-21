@@ -109,16 +109,21 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ onClose }
 
   return (
     <>
-      {/* Overlay para móvil */}
+      {/* Overlay */}
       <div 
-        className="fixed inset-0 z-[998] bg-black bg-opacity-25 backdrop-blur-sm md:hidden"
+        className="fixed inset-0 z-[998] bg-black bg-opacity-25 backdrop-blur-sm"
         onClick={onClose}
       />
       
-      {/* Dropdown */}
+      {/* Dropdown - Desktop: dropdown normal, Mobile: centrado en pantalla */}
       <div 
         ref={dropdownRef}
-        className="notification-dropdown absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-gray-200 z-[999] max-h-[80vh] flex flex-col overflow-hidden"
+        className="notification-dropdown 
+          md:absolute md:right-0 md:top-full md:mt-2 md:w-96
+          fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md
+          md:translate-x-0 md:translate-y-0 md:left-auto md:top-auto
+          bg-white rounded-xl shadow-xl border border-gray-200 z-[999] 
+          max-h-[80vh] md:max-h-[70vh] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
