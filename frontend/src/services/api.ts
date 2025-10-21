@@ -132,10 +132,10 @@ export const appointmentService = {
   },
 
   getPendingEvaluation: async (): Promise<{data: Appointment[], count: number}> => {
-    const response = await api.get<ApiResponse<Appointment[]>>('/appointments/pending-evaluation');
+    const response = await api.get<ApiResponse<Appointment[]> & { count?: number }>('/appointments/pending-evaluation');
     return {
       data: response.data.data || [],
-      count: response.data.count || 0
+      count: (response.data as any).count || 0
     };
   },
 
