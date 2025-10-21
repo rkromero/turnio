@@ -12,8 +12,6 @@ interface ConfirmationData {
   startTime: string;
   duration: number;
   businessName: string;
-  businessPhone?: string;
-  businessAddress?: string;
   wasAutoAssigned: boolean;
   branchName?: string;
   branchAddress?: string;
@@ -203,8 +201,7 @@ const BookingConfirmationPage: React.FC = () => {
                 <strong>📧 Confirmación enviada:</strong> Revisa tu email para más detalles.
               </p>
               <p className="text-sm text-gray-700">
-                <strong>📞 Cambios o consultas:</strong> Contacta con <strong>{confirmationData.businessName}</strong>
-                {confirmationData.businessPhone && <> al {confirmationData.businessPhone}</>}.
+                <strong>📞 Cambios o consultas:</strong> Contacta con <strong>{confirmationData.businessName}</strong>.
               </p>
             </div>
 

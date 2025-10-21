@@ -599,8 +599,6 @@ const BookingPage: React.FC = () => {
           startTime: responseData.startTime,
           duration: responseData.duration,
           businessName: responseData.businessName,
-          businessPhone: booking.business?.phone,
-          businessAddress: booking.business?.address,
           wasAutoAssigned: responseData.wasAutoAssigned,
           branchName: booking.selectedBranch?.name,
           branchAddress: booking.selectedBranch?.address
