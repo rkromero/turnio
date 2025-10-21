@@ -75,6 +75,21 @@ export interface Appointment {
   user?: User;
 }
 
+export interface InAppNotification {
+  id: string;
+  userId: string;
+  businessId: string;
+  appointmentId?: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  
+  // Relaciones
+  appointment?: Appointment;
+}
+
 export interface WorkingHours {
   id: string;
   userId: string;

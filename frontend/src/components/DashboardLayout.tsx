@@ -140,10 +140,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           showBack={showBackButton()}
           showNotifications={true}
           onBack={handleBack}
-          onNotificationClick={() => {
-            // TODO: Implementar notificaciones
-            console.log('Notificaciones clicked');
-          }}
         />
 
         {/* Mobile Container */}

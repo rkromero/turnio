@@ -22,7 +22,8 @@ import type {
   DashboardMetrics,
   RevenueReport,
   ServicesReport,
-  ClientsReport
+  ClientsReport,
+  InAppNotification
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
@@ -370,6 +371,26 @@ export const planService = {
     const response = await api.put('/plans/change', { newPlan });
     return response.data.data;
   },
+};
+
+// Servicios de notificaciones in-app
+export const notificationService = {
+  getNotifications: async (includeRead: boolean = false): Promise<{ data: InAppNotification[], unreadCount: number }> => {
+    const response = await api.get<ApiResponse<InAppNotification[]> & { unreadCount: number }>(`/notifications/in-app?includeRead=${includeRead}`);
+    return {
+      data: response.data.data || [],
+      unreadCount: response.data.unreadCount || 0
+    };
+  },
+
+  markAsRead: async (notificationId: string): Promise<InAppNotification> => {
+    const response = await api.patch<ApiResponse<InAppNotification>>(`/notifications/in-app/${notificationId}/read`);
+    return response.data.data!;
+  },
+
+  markAllAsRead: async (): Promise<void> => {
+    await api.post('/notifications/in-app/read-all');
+  }
 };
 
 export default api; 

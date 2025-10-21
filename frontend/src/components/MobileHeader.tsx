@@ -3,6 +3,8 @@ import { ArrowLeft, Menu, Bell, Search, Settings, LogOut, User, ChevronDown } fr
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import NotificationsDropdown from './NotificationsDropdown';
+import { notificationService } from '../services/api';
 
 interface MobileHeaderProps {
   title?: string;
@@ -12,7 +14,6 @@ interface MobileHeaderProps {
   showSearch?: boolean;
   onBack?: () => void;
   onMenuClick?: () => void;
-  onNotificationClick?: () => void;
   onSearchClick?: () => void;
   className?: string;
 }
@@ -25,14 +26,16 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   showSearch = false,
   onBack,
   onMenuClick,
-  onNotificationClick,
   onSearchClick,
   className = ''
 }) => {
   const { user, business, logout } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // Cerrar menú al hacer click fuera
   useEffect(() => {
@@ -50,6 +53,28 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showUserMenu]);
+
+  // Cargar contador de notificaciones
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const loadNotificationCount = async () => {
+      try {
+        const response = await notificationService.getNotifications(false);
+        setUnreadCount(response.unreadCount);
+      } catch (error) {
+        console.error('Error cargando contador de notificaciones:', error);
+      }
+    };
+
+    // Cargar inmediatamente
+    loadNotificationCount();
+
+    // Actualizar cada 30 segundos
+    const interval = setInterval(loadNotificationCount, 30000);
+
+    return () => clearInterval(interval);
+  }, [showNotifications]);
 
   const handleUserMenuClick = () => {
     setShowUserMenu(!showUserMenu);
@@ -141,15 +166,26 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           )}
           
           {showNotifications && (
-            <button
-              onClick={onNotificationClick}
-              className="relative p-2 text-gray-600 hover:text-gray-900 touch-manipulation"
-              aria-label="Notificaciones"
-            >
-              <Bell size={20} />
-              {/* Notification badge */}
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                className="relative p-2 text-gray-600 hover:text-gray-900 touch-manipulation"
+                aria-label="Notificaciones"
+              >
+                <Bell size={20} />
+                {/* Notification badge con contador */}
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown de notificaciones */}
+              {showNotificationsDropdown && (
+                <NotificationsDropdown onClose={() => setShowNotificationsDropdown(false)} />
+              )}
+            </div>
           )}
           
           {/* User Menu */}
