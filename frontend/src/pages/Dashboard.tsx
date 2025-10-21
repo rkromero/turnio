@@ -8,6 +8,7 @@ import { Calendar, Users, DollarSign, Settings, Plus, Copy, ExternalLink, Chevro
 import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import AppointmentModal from '../components/AppointmentModal';
+import PendingEvaluationWidget from '../components/PendingEvaluationWidget';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import toast from 'react-hot-toast';
 
@@ -336,6 +337,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Widget de Turnos Pendientes de Evaluación */}
+        <PendingEvaluationWidget onRefresh={loadDashboardData} />
 
         {/* Acciones Rápidas - Optimizadas para móvil */}
         <div>

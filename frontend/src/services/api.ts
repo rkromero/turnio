@@ -131,6 +131,14 @@ export const appointmentService = {
     return response.data.data || [];
   },
 
+  getPendingEvaluation: async (): Promise<{data: Appointment[], count: number}> => {
+    const response = await api.get<ApiResponse<Appointment[]>>('/appointments/pending-evaluation');
+    return {
+      data: response.data.data || [],
+      count: response.data.count || 0
+    };
+  },
+
   createAppointment: async (data: AppointmentForm): Promise<Appointment> => {
     const response = await api.post<ApiResponse<Appointment>>('/appointments', data);
     return response.data.data!;
