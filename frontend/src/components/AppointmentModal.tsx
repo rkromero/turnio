@@ -73,12 +73,12 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   useEffect(() => {
     if (appointment) {
       const startDateTime = new Date(appointment.startTime);
-      // Usar la hora local sin conversión UTC para evitar problemas de zona horaria
-      const year = startDateTime.getFullYear();
-      const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
-      const day = String(startDateTime.getDate()).padStart(2, '0');
-      const hours = String(startDateTime.getHours()).padStart(2, '0');
-      const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
+      // Usar UTC para evitar conversión de zona horaria
+      const year = startDateTime.getUTCFullYear();
+      const month = String(startDateTime.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(startDateTime.getUTCDate()).padStart(2, '0');
+      const hours = String(startDateTime.getUTCHours()).padStart(2, '0');
+      const minutes = String(startDateTime.getUTCMinutes()).padStart(2, '0');
       const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
       const formattedDate = `${year}-${month}-${day}`;
       const formattedTime = `${hours}:${minutes}`;
