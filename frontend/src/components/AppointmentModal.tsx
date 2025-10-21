@@ -812,7 +812,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
             }
           `}>
             {isMobile && !appointment ? (
-              // Mobile steps navigation
+              // Mobile steps navigation (crear nueva cita)
               <div className="space-y-3">
                 {currentStep === 1 ? (
                   <button
@@ -852,11 +852,42 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </button>
                   </div>
                 )}
-                {appointment && onDelete && (
+              </div>
+            ) : isMobile && appointment ? (
+              // Mobile edit mode (editar cita existente)
+              <div className="space-y-3">
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn-secondary flex-1"
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="btn-primary flex-1 flex items-center justify-center space-x-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="loading-spinner-mobile"></div>
+                        <span>Guardando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Actualizar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {onDelete && (
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center space-x-2"
+                    className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors font-medium text-sm flex items-center justify-center space-x-2"
                     disabled={isLoading}
                   >
                     <Trash2 className="w-4 h-4" />
