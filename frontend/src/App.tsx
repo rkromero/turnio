@@ -9,6 +9,7 @@ const Register = lazy(() => import('./pages/Register'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const DashboardRouter = lazy(() => import('./components/DashboardRouter'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
+const BookingConfirmationPage = lazy(() => import('./pages/BookingConfirmationPage'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 const PaymentFailure = lazy(() => import('./pages/PaymentFailure'));
 const PaymentPending = lazy(() => import('./pages/PaymentPending'));
@@ -87,6 +88,7 @@ function AppRoutes() {
         
         {/* Ruta para reservas públicas */}
         <Route path="/book/:businessSlug" element={<BookingPage />} />
+        <Route path="/booking/:businessSlug/confirmation" element={<BookingConfirmationPage />} />
         
         {/* Rutas de pago (públicas) */}
         <Route path="/subscription/success" element={<PaymentSuccess />} />

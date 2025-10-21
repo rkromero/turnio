@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, 
-  CheckCircle,
+  ArrowLeft,
   MapPin,
   Phone,
   User,
@@ -71,12 +70,12 @@ interface BookingState {
 
 const BookingPage: React.FC = () => {
   const { businessSlug } = useParams<{ businessSlug: string }>();
+  const navigate = useNavigate();
   const isMobile = useIsMobileSimple();
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [bookingMode, setBookingMode] = useState<'service' | 'professional'>('service');
   const [dateAvailability, setDateAvailability] = useState<Array<{ date: string; available: boolean; slotsCount: number; reason?: string }>>([]);
 
@@ -587,10 +586,31 @@ const BookingPage: React.FC = () => {
           return;
         }
         
-        // Reserva confirmada sin pago
-        setSuccessData(responseData);
-        setStep(5);
+        // Reserva confirmada sin pago - Redirigir a página de confirmación
         toast.success('¡Reserva confirmada exitosamente!');
+        
+        // Preparar datos para la página de confirmación
+        const confirmationData = {
+          appointmentId: responseData.appointmentId,
+          clientName: responseData.clientName,
+          serviceName: responseData.serviceName,
+          professionalName: responseData.professionalName,
+          professionalAvatar: responseData.professionalAvatar,
+          startTime: responseData.startTime,
+          duration: responseData.duration,
+          businessName: responseData.businessName,
+          businessPhone: booking.business?.phone,
+          businessAddress: booking.business?.address,
+          wasAutoAssigned: responseData.wasAutoAssigned,
+          branchName: booking.selectedBranch?.name,
+          branchAddress: booking.selectedBranch?.address
+        };
+        
+        // Redirigir a la página de confirmación
+        navigate(`/booking/${businessSlug}/confirmation`, { 
+          state: confirmationData,
+          replace: true 
+        });
       }
     } catch (error: unknown) {
       console.error('Error creando reserva:', error);
@@ -1442,63 +1462,6 @@ const BookingPage: React.FC = () => {
                   className="px-8 py-4 md:px-12 md:py-5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg min-h-[56px] w-full sm:w-auto"
                 >
                   {submitting ? 'Confirmando...' : booking.paymentMethod === 'online' ? 'Proceder al pago' : 'Confirmar reserva'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 5 && successData && (
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Reserva confirmada!</h2>
-              <p className="text-gray-600 mb-8">Tu cita ha sido reservada exitosamente</p>
-
-              <div className="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-8">
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cliente:</span>
-                    <span className="font-medium">{successData.clientName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Servicio:</span>
-                    <span className="font-medium">{successData.serviceName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Profesional:</span>
-                    <span className="font-medium">
-                      {successData.professionalName}
-                      {successData.wasAutoAssigned && (
-                        <span className="text-xs text-blue-600 ml-1">(asignado automáticamente)</span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Fecha y hora:</span>
-                    <span className="font-medium">
-                      {formatDateTime(successData.startTime).date} - {formatDateTime(successData.startTime).time}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Duración:</span>
-                    <span className="font-medium">{formatDuration(successData.duration)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Te recomendamos guardar esta información para referencia futura.
-                  Si necesitas hacer cambios, contacta directamente con {successData.businessName}.
-                </p>
-                
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Hacer otra reserva
                 </button>
               </div>
             </div>
