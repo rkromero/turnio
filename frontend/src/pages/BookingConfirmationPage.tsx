@@ -39,11 +39,12 @@ const BookingConfirmationPage: React.FC = () => {
     
     const date = new Date(year, month - 1, day, hours, minutes);
     
-    // Formato más corto para que quepa en pantalla
+    // Formato completo y elegante para el recibo
     const dateOptions: Intl.DateTimeFormatOptions = {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short'
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     };
     
     const timeOptions: Intl.DateTimeFormatOptions = {
@@ -77,144 +78,100 @@ const BookingConfirmationPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="max-w-4xl w-full">
-        {/* Card principal */}
-        <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-          {/* Header compacto con icono de éxito */}
-          <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 sm:p-6 text-center">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg">
-              <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4 md:p-8">
+      <div className="max-w-2xl w-full">
+        {/* Card principal estilo recibo */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header con icono de éxito */}
+          <div className="bg-gradient-to-r from-green-500 to-green-600 p-8 text-center">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <CheckCircle className="w-12 h-12 text-green-600" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">
+            <h1 className="text-3xl font-bold text-white mb-2">
               ¡Reserva Confirmada!
             </h1>
-            <p className="text-green-50 text-sm sm:text-base">
+            <p className="text-green-50 text-lg">
               Tu cita ha sido reservada exitosamente
             </p>
           </div>
 
-          {/* Detalles de la reserva - Grid compacto */}
-          <div className="p-4 sm:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Información del cliente */}
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-blue-600" />
+          {/* Detalles de la reserva - Estilo recibo */}
+          <div className="p-8">
+            <div className="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-8">
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between items-start border-b border-gray-200 pb-3">
+                  <span className="text-gray-600">Cliente:</span>
+                  <span className="font-semibold text-gray-900 text-right">{confirmationData.clientName}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">Cliente</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate">{confirmationData.clientName}</p>
+                
+                <div className="flex justify-between items-start border-b border-gray-200 pb-3">
+                  <span className="text-gray-600">Servicio:</span>
+                  <span className="font-semibold text-gray-900 text-right">{confirmationData.serviceName}</span>
                 </div>
-              </div>
-
-              {/* Servicio */}
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Briefcase className="w-5 h-5 text-purple-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">Servicio</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate">{confirmationData.serviceName}</p>
-                </div>
-              </div>
-
-              {/* Profesional */}
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  {confirmationData.professionalAvatar ? (
-                    <img 
-                      src={confirmationData.professionalAvatar} 
-                      alt={confirmationData.professionalName}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-5 h-5 text-indigo-600" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">Profesional</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate">
+                
+                <div className="flex justify-between items-start border-b border-gray-200 pb-3">
+                  <span className="text-gray-600">Profesional:</span>
+                  <span className="font-semibold text-gray-900 text-right">
                     {confirmationData.professionalName}
-                    {confirmationData.wasAutoAssigned && <span className="text-xs text-blue-600 ml-1">(Auto)</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Fecha */}
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-5 h-5 text-orange-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">Fecha</p>
-                  <p className="text-sm font-semibold text-gray-900 capitalize truncate">{date}</p>
-                </div>
-              </div>
-
-              {/* Hora */}
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-5 h-5 text-green-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">Hora</p>
-                  <p className="text-sm font-semibold text-gray-900">{time}</p>
-                  <p className="text-xs text-gray-500">({formatDuration(confirmationData.duration)})</p>
-                </div>
-              </div>
-
-              {/* Ubicación */}
-              {(confirmationData.branchName || confirmationData.branchAddress) && (
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500">Ubicación</p>
-                    {confirmationData.branchName && (
-                      <p className="text-sm font-semibold text-gray-900 truncate">{confirmationData.branchName}</p>
+                    {confirmationData.wasAutoAssigned && (
+                      <span className="text-xs text-blue-600 ml-1 block">(asignado automáticamente)</span>
                     )}
-                    {confirmationData.branchAddress && (
-                      <p className="text-xs text-gray-600 truncate">{confirmationData.branchAddress}</p>
-                    )}
-                  </div>
+                  </span>
                 </div>
-              )}
+                
+                <div className="flex justify-between items-start border-b border-gray-200 pb-3">
+                  <span className="text-gray-600">Fecha y hora:</span>
+                  <span className="font-semibold text-gray-900 text-right">
+                    {date} - {time}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-start">
+                  <span className="text-gray-600">Duración:</span>
+                  <span className="font-semibold text-gray-900">{formatDuration(confirmationData.duration)}</span>
+                </div>
+                
+                {(confirmationData.branchName || confirmationData.branchAddress) && (
+                  <div className="flex justify-between items-start pt-3 border-t border-gray-200">
+                    <span className="text-gray-600">Ubicación:</span>
+                    <span className="font-semibold text-gray-900 text-right">
+                      {confirmationData.branchName}
+                      {confirmationData.branchAddress && (
+                        <span className="text-xs text-gray-500 block mt-1">{confirmationData.branchAddress}</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Información adicional compacta */}
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-xs text-gray-700 mb-1">
-                <strong>📧</strong> Revisa tu email para más detalles.
+            <div className="space-y-4">
+              <p className="text-gray-600 text-center">
+                Te recomendamos guardar esta información para referencia futura.
+                Si necesitas hacer cambios, contacta directamente con {confirmationData.businessName}.
               </p>
-              <p className="text-xs text-gray-700">
-                <strong>📞</strong> Consultas: <strong>{confirmationData.businessName}</strong>
-              </p>
-            </div>
-
-            {/* Botones de acción compactos */}
-            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={handleNewBooking}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm hover:shadow"
-              >
-                Hacer otra reserva
-              </button>
-              <button
-                onClick={handleGoHome}
-                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm flex items-center justify-center space-x-2"
-              >
-                <Home className="w-4 h-4" />
-                <span>Volver al inicio</span>
-              </button>
-            </div>
-
-            {/* Número de reserva */}
-            <div className="mt-3 text-center">
-              <p className="text-xs text-gray-500">
-                ID: <span className="font-mono font-semibold text-gray-700">{confirmationData.appointmentId.slice(0, 8).toUpperCase()}</span>
-              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={handleNewBooking}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Hacer otra reserva
+                </button>
+                <button
+                  onClick={handleGoHome}
+                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  <Home className="w-5 h-5" />
+                  <span>Volver al inicio</span>
+                </button>
+              </div>
+              
+              <div className="text-center pt-4">
+                <p className="text-xs text-gray-500">
+                  Número de reserva: <span className="font-mono font-semibold text-gray-700">{confirmationData.appointmentId.slice(0, 8).toUpperCase()}</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
