@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Bell } from 'lucide-react';
 import Logo from './Logo';
 import MobileNavigation from './MobileNavigation';
 import MobileHeader from './MobileHeader';
+import NotificationsDropdown from './NotificationsDropdown';
+import { notificationService } from '../services/api';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -14,6 +17,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -22,6 +28,26 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const handleBack = () => {
     navigate(-1);
   };
+
+  // Cargar contador de notificaciones
+  useEffect(() => {
+    const loadNotificationCount = async () => {
+      try {
+        const response = await notificationService.getNotifications(false);
+        setUnreadCount(response.unreadCount);
+      } catch (error) {
+        console.error('Error cargando contador de notificaciones:', error);
+      }
+    };
+
+    // Cargar inmediatamente
+    loadNotificationCount();
+
+    // Actualizar cada 30 segundos
+    const interval = setInterval(loadNotificationCount, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Elementos de navegación según el rol del usuario
   const getNavigationItems = () => {
@@ -83,6 +109,28 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Campanita de notificaciones */}
+                <div className="relative" ref={notificationRef}>
+                  <button
+                    onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                    className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Notificaciones"
+                  >
+                    <Bell size={20} />
+                    {/* Badge con contador */}
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown de notificaciones */}
+                  {showNotificationsDropdown && (
+                    <NotificationsDropdown onClose={() => setShowNotificationsDropdown(false)} />
+                  )}
+                </div>
+
                 <span className="text-sm text-gray-700">
                   Hola, {user?.name}
                 </span>
