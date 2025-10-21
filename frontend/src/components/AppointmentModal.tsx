@@ -147,6 +147,19 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
           ...(formData.userId && { userId: formData.userId })
         });
         
+        // Si estamos editando un turno, agregar su horario actual a la lista
+        // (porque no aparecerá en los disponibles ya que está ocupado)
+        if (appointment && selectedTime) {
+          const currentTimeExists = times.some(t => t.time === selectedTime);
+          if (!currentTimeExists) {
+            const currentDateTime = `${selectedDate}T${selectedTime}`;
+            times.unshift({
+              time: selectedTime,
+              datetime: currentDateTime
+            });
+          }
+        }
+        
         setAvailableTimes(times);
       } catch (error) {
         console.error('Error cargando horarios disponibles:', error);
@@ -157,7 +170,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     };
 
     loadAvailableTimes();
-  }, [selectedDate, formData.serviceId, formData.userId]);
+  }, [selectedDate, formData.serviceId, formData.userId, appointment, selectedTime]);
 
   const validateField = (name: string, value: string): string => {
     switch (name) {
