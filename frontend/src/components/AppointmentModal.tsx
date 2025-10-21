@@ -145,9 +145,10 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!appointment && (serviceChanged || userChanged) && selectedTime) {
       setSelectedTime('');
       setFormData(prev => ({ ...prev, startTime: '' }));
-      toast.info('Los horarios disponibles han cambiado. Por favor, selecciona un nuevo horario.', {
+      toast('Los horarios disponibles han cambiado. Por favor, selecciona un nuevo horario.', {
         duration: 3000,
-        position: 'top-center'
+        position: 'top-center',
+        icon: 'ℹ️'
       });
     }
     
