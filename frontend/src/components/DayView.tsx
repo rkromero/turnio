@@ -160,26 +160,16 @@ const DayView: React.FC<DayViewProps> = ({
         </div>
         
         {/* Información del día */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <span className="flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
-              {todayAppointments.length} citas
+        <div className="mt-4 flex items-center space-x-4 text-sm text-gray-600">
+          <span className="flex items-center">
+            <Clock className="w-4 h-4 mr-1" />
+            {todayAppointments.length} citas
+          </span>
+          {isToday() && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              Hoy
             </span>
-            {isToday() && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                Hoy
-              </span>
-            )}
-          </div>
-          
-          <button
-            onClick={() => onCreateAppointment()}
-            className="btn-primary text-sm py-2 px-4"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Cita
-          </button>
+          )}
         </div>
       </div>
 
