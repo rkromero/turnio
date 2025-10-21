@@ -40,10 +40,8 @@ const PendingEvaluationWidget: React.FC<PendingEvaluationWidgetProps> = ({ onRef
       setPendingAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
       setCount(prev => prev - 1);
       
-      // Notificar al padre para que refresque si es necesario
-      if (onRefresh) {
-        onRefresh();
-      }
+      // NO refrescar el dashboard completo - solo actualizar localmente
+      // El usuario puede seguir evaluando otros turnos
     } catch (error) {
       console.error('Error actualizando turno:', error);
       alert('Error al actualizar el turno');
