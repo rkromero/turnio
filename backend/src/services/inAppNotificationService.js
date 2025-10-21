@@ -8,7 +8,7 @@ class InAppNotificationService {
 
   /**
    * Iniciar el servicio de notificaciones
-   * Verifica cada 10 minutos si hay turnos recién terminados
+   * Verifica cada 60 minutos si hay turnos recién terminados y auto-completa los antiguos
    */
   start() {
     if (this.isRunning) {
@@ -17,18 +17,26 @@ class InAppNotificationService {
     }
 
     console.log('🔔 [IN-APP NOTIFICATIONS] Iniciando servicio de notificaciones in-app');
-    console.log('   ⏰ Intervalo: cada 10 minutos');
+    console.log('   ⏰ Intervalo: cada 60 minutos');
 
     // Ejecutar inmediatamente
-    this.checkForCompletedAppointments();
+    this.processAppointments();
 
-    // Luego cada 10 minutos
+    // Luego cada 60 minutos
     this.checkInterval = setInterval(() => {
-      this.checkForCompletedAppointments();
-    }, 10 * 60 * 1000); // 10 minutos
+      this.processAppointments();
+    }, 60 * 60 * 1000); // 60 minutos
 
     this.isRunning = true;
     console.log('✅ [IN-APP NOTIFICATIONS] Servicio iniciado correctamente');
+  }
+
+  /**
+   * Procesar turnos: crear notificaciones y auto-completar antiguos
+   */
+  async processAppointments() {
+    await this.checkForCompletedAppointments();
+    await this.autoCompleteOldAppointments();
   }
 
   /**
@@ -108,13 +116,67 @@ class InAppNotificationService {
         }
       }
 
-      console.log(`✅ [IN-APP NOTIFICATIONS] Proceso completado:`);
+      console.log(`✅ [IN-APP NOTIFICATIONS] Proceso de notificaciones completado:`);
       console.log(`   📊 Turnos procesados: ${appointments.length}`);
       console.log(`   ✅ Notificaciones creadas: ${created}`);
       console.log(`   ⏭️ Omitidas (ya existían): ${skipped}`);
 
     } catch (error) {
       console.error('❌ [IN-APP NOTIFICATIONS] Error verificando turnos:', error);
+    }
+  }
+
+  /**
+   * Auto-completar turnos con más de 12 horas sin evaluar
+   * Los marca como COMPLETED (asumimos que asistió)
+   */
+  async autoCompleteOldAppointments() {
+    try {
+      console.log('🔄 [AUTO-COMPLETE] Verificando turnos antiguos sin evaluar...');
+
+      const now = new Date();
+      // Buscar turnos que terminaron hace más de 12 horas
+      const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+
+      // Buscar turnos CONFIRMED que ya pasaron hace más de 12 horas
+      const oldAppointments = await prisma.appointment.findMany({
+        where: {
+          status: 'CONFIRMED',
+          endTime: {
+            lt: twelveHoursAgo
+          }
+        },
+        include: {
+          client: true,
+          service: true
+        }
+      });
+
+      console.log(`   📋 Encontrados ${oldAppointments.length} turnos antiguos sin evaluar`);
+
+      let completed = 0;
+
+      for (const appointment of oldAppointments) {
+        try {
+          // Marcar como COMPLETED (asumimos que asistió)
+          await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { status: 'COMPLETED' }
+          });
+
+          completed++;
+          console.log(`   ✅ Turno ${appointment.id} auto-completado (${appointment.client.name} - ${appointment.service.name})`);
+        } catch (error) {
+          console.error(`   ❌ Error auto-completando turno ${appointment.id}:`, error);
+        }
+      }
+
+      console.log(`✅ [AUTO-COMPLETE] Proceso completado:`);
+      console.log(`   📊 Turnos procesados: ${oldAppointments.length}`);
+      console.log(`   ✅ Auto-completados: ${completed}`);
+
+    } catch (error) {
+      console.error('❌ [AUTO-COMPLETE] Error auto-completando turnos:', error);
     }
   }
 
