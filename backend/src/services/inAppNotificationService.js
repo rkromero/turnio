@@ -52,23 +52,24 @@ class InAppNotificationService {
   }
 
   /**
-   * Verificar si hay turnos que acaban de terminar
+   * Verificar si hay turnos que terminaron hace más de 15 minutos y crear notificaciones
+   * La notificación se crea UNA SOLA VEZ por turno
    */
   async checkForCompletedAppointments() {
     try {
       console.log('🔄 [IN-APP NOTIFICATIONS] Verificando turnos terminados...');
 
       const now = new Date();
-      // Buscar turnos que terminaron en los últimos 15 minutos
+      // Buscar turnos que terminaron hace MÁS de 15 minutos
       const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-      // Buscar turnos confirmados que ya terminaron pero aún no tienen notificación
+      // Buscar turnos confirmados que ya terminaron hace más de 15 min
+      // y que aún no tienen notificación
       const appointments = await prisma.appointment.findMany({
         where: {
           status: 'CONFIRMED',
           endTime: {
-            gte: fifteenMinutesAgo,
-            lt: now
+            lt: fifteenMinutesAgo // Terminaron hace MÁS de 15 minutos
           },
           userId: { not: null } // Solo si tiene profesional asignado
         },
