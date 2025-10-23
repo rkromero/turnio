@@ -219,6 +219,7 @@ async function startServer() {
     const debugRoutes = require('./routes/debugRoutes');
     const notificationRoutes = require('./routes/notificationRoutes');
     const notificationInAppRoutes = require('./routes/notificationInAppRoutes');
+    const testDataRoutes = require('./routes/testDataRoutes');
 
     // Rutas de salud
     app.get('/health', (req, res) => {
@@ -758,6 +759,9 @@ async function startServer() {
     // Rutas de testing (solo para desarrollo y testing)
     const testingRoutes = require('./routes/testingRoutes');
     app.use('/api/testing', testingRoutes);
+    
+    // Rutas de datos de prueba
+    app.use('/api/test-data', testDataRoutes);
 
     // Debug endpoint para diagnosticar problemas de booking
     app.post('/api/debug/book-test', async (req, res) => {
