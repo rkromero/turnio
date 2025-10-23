@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { createTestRiskData } = require('../../scripts/create-test-risk-data');
+const { fixTimeSlotStats } = require('../../scripts/fix-time-slot-stats');
 
 /**
  * @route   POST /api/test-data/create-risk-data
@@ -73,6 +74,33 @@ router.get('/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error verificando estado',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/test-data/fix-time-slot-stats
+ * @desc    Corregir estadísticas de franjas horarias
+ * @access  Public (solo para testing)
+ */
+router.post('/fix-time-slot-stats', async (req, res) => {
+  try {
+    console.log('🔧 Iniciando corrección de estadísticas de franjas horarias...');
+    
+    // Ejecutar el script
+    await fixTimeSlotStats();
+    
+    res.json({
+      success: true,
+      message: 'Estadísticas de franjas horarias corregidas exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error corrigiendo estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error corrigiendo estadísticas de franjas horarias',
       error: error.message
     });
   }
