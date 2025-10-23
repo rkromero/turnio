@@ -5,10 +5,10 @@
 const express = require('express');
 const router = express.Router();
 const riskPredictionController = require('../controllers/riskPredictionController');
-const { verifyToken } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Todas las rutas requieren autenticación
-router.use(verifyToken);
+router.use(authenticateToken);
 
 /**
  * @route   GET /api/risk-predictions/stats
