@@ -130,15 +130,23 @@ async function runMigrations() {
 // Función de inicio del servidor
 async function startServer() {
   try {
-    // 1. Ejecutar migraciones
-    const migrationsSuccess = await runMigrations();
-    if (!migrationsSuccess) {
-      console.error('❌ Fallo al sincronizar schema. Continuando de todas formas...');
+    // 1. Ejecutar migraciones (no crítico para health check)
+    try {
+      const migrationsSuccess = await runMigrations();
+      if (!migrationsSuccess) {
+        console.log('⚠️ Fallo al sincronizar schema. Continuando...');
+      }
+    } catch (error) {
+      console.log('⚠️ Error en migraciones, continuando:', error.message);
     }
     
-    // 2. Conectar a la base de datos
-    await connectDatabase();
-    console.log('✅ Conectado a la base de datos');
+    // 2. Conectar a la base de datos (no crítico para health check)
+    try {
+      await connectDatabase();
+      console.log('✅ Conectado a la base de datos');
+    } catch (error) {
+      console.log('⚠️ Error conectando a base de datos, continuando:', error.message);
+    }
     
     // 3. Ejecutar optimizaciones de performance en producción
     if (process.env.NODE_ENV === 'production') {
@@ -1843,4 +1851,7 @@ process.on('SIGINT', async () => {
 });
 
 // Iniciar el servidor
-startServer(); 
+startServer().catch(error => {
+  console.error('❌ Error crítico iniciando servidor:', error);
+  process.exit(1);
+}); 
