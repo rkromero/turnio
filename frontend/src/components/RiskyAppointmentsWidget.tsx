@@ -132,10 +132,10 @@ const RiskyAppointmentsWidget: React.FC = () => {
     );
   }
 
-  // No mostrar el widget si no hay citas con riesgo
-  if (riskyAppointments.length === 0) {
-    return null;
-  }
+  // Mostrar el widget siempre, incluso si no hay citas con riesgo
+  // if (riskyAppointments.length === 0) {
+  //   return null;
+  // }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -193,8 +193,25 @@ const RiskyAppointmentsWidget: React.FC = () => {
 
       {/* Lista de citas en riesgo */}
       <div className="p-6">
-        <div className="space-y-3">
-          {riskyAppointments.slice(0, 5).map((appointment) => (
+        {riskyAppointments.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-2">
+              <AlertTriangle className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay turnos en riesgo</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              El sistema analizará automáticamente tus turnos para identificar posibles cancelaciones.
+            </p>
+            <button 
+              onClick={loadRiskyAppointments}
+              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Actualizar análisis
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {riskyAppointments.slice(0, 5).map((appointment) => (
             <div
               key={appointment.id}
               className={`border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer ${getRiskColor(appointment.riskPrediction.riskLevel)}`}
@@ -244,7 +261,8 @@ const RiskyAppointmentsWidget: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         {riskyAppointments.length > 5 && (
           <div className="mt-4 text-center">
