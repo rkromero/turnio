@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, ChevronRight, Calendar, User, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+// Widget de Predicción de Riesgo - Actualizado
+
 interface RiskyAppointment {
   id: string;
   startTime: string;
