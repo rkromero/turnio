@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { createTestRiskData } = require('../scripts/create-test-risk-data');
+const { createTestRiskData } = require('../../scripts/create-test-risk-data');
 
 /**
  * @route   POST /api/test-data/create-risk-data
