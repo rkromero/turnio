@@ -126,14 +126,19 @@ const getDashboardStats = async (req, res) => {
       return total + (appointment.service?.price || 0);
     }, 0);
 
-    // Calcular estadísticas de cancelaciones (CANCELLED + NO_SHOW)
+    // Calcular estadísticas de cancelaciones y no show por separado
     const totalAppointments = cancellationStats.length;
     const cancelledAppointments = cancellationStats.filter(apt => apt.status === 'CANCELLED').length;
     const noShowAppointments = cancellationStats.filter(apt => apt.status === 'NO_SHOW').length;
-    const totalCancellations = cancelledAppointments + noShowAppointments;
     
+    // Porcentaje de cancelaciones (solo CANCELLED)
     const cancellationRate = totalAppointments > 0 
-      ? Math.round((totalCancellations / totalAppointments) * 100) 
+      ? Math.round((cancelledAppointments / totalAppointments) * 100) 
+      : 0;
+    
+    // Porcentaje de no show (solo NO_SHOW)
+    const noShowRate = totalAppointments > 0 
+      ? Math.round((noShowAppointments / totalAppointments) * 100) 
       : 0;
 
     res.json({
@@ -155,7 +160,9 @@ const getDashboardStats = async (req, res) => {
         })),
         cancellationRate,
         totalAppointments,
-        totalCancellations
+        cancelledAppointments,
+        noShowRate,
+        noShowAppointments
       }
     });
 

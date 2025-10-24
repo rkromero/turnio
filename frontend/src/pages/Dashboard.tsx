@@ -20,7 +20,9 @@ interface DashboardStats {
   totalServices: number;
   cancellationRate: number;
   totalAppointments: number;
-  totalCancellations: number;
+  cancelledAppointments: number;
+  noShowRate: number;
+  noShowAppointments: number;
   upcomingAppointments: Array<{
     id: string;
     clientName: string;
@@ -292,7 +294,7 @@ const Dashboard: React.FC = () => {
                 </p>
                 {!isMobile && (
                   <p className="text-xs text-gray-500 mt-1 truncate">
-                    {stats?.totalCancellations || 0} de {stats?.totalAppointments || 0} turnos
+                    {stats?.cancelledAppointments || 0} de {stats?.totalAppointments || 0} turnos
                   </p>
                 )}
               </div>
@@ -324,6 +326,29 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="w-8 h-8 md:w-12 md:h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
                 <DollarSign className="w-4 h-4 md:w-6 md:h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">
+                  {isMobile ? 'No Show' : 'No Show'}
+                </p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900 truncate">
+                  {stats?.noShowRate || 0}%
+                </p>
+                {!isMobile && (
+                  <p className="text-xs text-gray-500 mt-1 truncate">
+                    {stats?.noShowAppointments || 0} de {stats?.totalAppointments || 0} turnos
+                  </p>
+                )}
+              </div>
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
+                <svg className="w-4 h-4 md:w-6 md:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
               </div>
             </div>
           </div>
