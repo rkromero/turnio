@@ -1826,7 +1826,8 @@ async function startServer() {
     // Debug endpoint para verificar datos de predicción de riesgo
     app.get('/api/debug/risk-data-status', async (req, res) => {
       try {
-        const { prisma } = require('./config/database');
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
         
         // Verificar datos de predicción de riesgo
         const appointmentsCount = await prisma.appointment.count();
@@ -1898,6 +1899,8 @@ async function startServer() {
           error: error.message,
           details: error.stack
         });
+      } finally {
+        await prisma.$disconnect();
       }
     });
 
