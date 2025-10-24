@@ -18,6 +18,9 @@ interface DashboardStats {
   totalClients: number;
   monthRevenue: number;
   totalServices: number;
+  cancellationRate: number;
+  totalAppointments: number;
+  totalCancellations: number;
   upcomingAppointments: Array<{
     id: string;
     clientName: string;
@@ -324,16 +327,20 @@ const Dashboard: React.FC = () => {
           <div className="stats-card group overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">Servicios</p>
+                <p className="text-xs md:text-sm font-medium text-gray-600 mb-1 truncate">Cancelaciones</p>
                 <p className="text-xl md:text-3xl font-bold text-gray-900 truncate">
-                  {stats?.totalServices || 0}
+                  {stats?.cancellationRate || 0}%
                 </p>
                 {!isMobile && (
-                  <p className="text-xs text-gray-500 mt-1 truncate">Activos</p>
+                  <p className="text-xs text-gray-500 mt-1 truncate">
+                    {stats?.totalCancellations || 0} de {stats?.totalAppointments || 0} turnos
+                  </p>
                 )}
               </div>
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
-                <Settings className="w-4 h-4 md:w-6 md:h-6 text-orange-600" />
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-red-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 mt-2 md:mt-0 self-end md:self-auto flex-shrink-0">
+                <svg className="w-4 h-4 md:w-6 md:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
             </div>
           </div>

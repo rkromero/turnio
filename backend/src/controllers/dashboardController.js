@@ -33,7 +33,8 @@ const getDashboardStats = async (req, res) => {
       totalClients,
       monthlyRevenue,
       totalServices,
-      upcomingAppointments
+      upcomingAppointments,
+      cancellationStats
     ] = await Promise.all([
       // Turnos de hoy
       prisma.appointment.count({
@@ -104,6 +105,19 @@ const getDashboardStats = async (req, res) => {
         },
         orderBy: { startTime: 'asc' },
         take: 5
+      }),
+
+      // Estadísticas de cancelaciones (últimos 30 días)
+      prisma.appointment.findMany({
+        where: {
+          ...baseFilter,
+          startTime: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Últimos 30 días
+          }
+        },
+        select: {
+          status: true
+        }
       })
     ]);
 
@@ -111,6 +125,16 @@ const getDashboardStats = async (req, res) => {
     const monthRevenue = monthlyRevenue.reduce((total, appointment) => {
       return total + (appointment.service?.price || 0);
     }, 0);
+
+    // Calcular estadísticas de cancelaciones
+    const totalAppointments = cancellationStats.length;
+    const cancelledAppointments = cancellationStats.filter(apt => apt.status === 'CANCELLED').length;
+    const noShowAppointments = cancellationStats.filter(apt => apt.status === 'NO_SHOW').length;
+    const totalCancellations = cancelledAppointments + noShowAppointments;
+    
+    const cancellationRate = totalAppointments > 0 
+      ? Math.round((totalCancellations / totalAppointments) * 100) 
+      : 0;
 
     res.json({
       success: true,
@@ -128,7 +152,10 @@ const getDashboardStats = async (req, res) => {
           branchName: appointment.branch.name,
           startTime: appointment.startTime,
           status: appointment.status
-        }))
+        })),
+        cancellationRate,
+        totalAppointments,
+        totalCancellations
       }
     });
 
