@@ -1823,6 +1823,84 @@ async function startServer() {
       }
     });
 
+    // Debug endpoint para verificar datos de predicción de riesgo
+    app.get('/api/debug/risk-data-status', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        // Verificar datos de predicción de riesgo
+        const appointmentsCount = await prisma.appointment.count();
+        const predictionsCount = await prisma.appointmentRiskPrediction.count();
+        const clientScoresCount = await prisma.clientScore.count();
+        const timeSlotStatsCount = await prisma.timeSlotStat.count();
+        
+        // Verificar citas futuras sin predicción
+        const futureAppointments = await prisma.appointment.count({
+          where: {
+            status: 'CONFIRMED',
+            startTime: { gte: new Date() }
+          }
+        });
+
+        const futureAppointmentsWithPrediction = await prisma.appointment.count({
+          where: {
+            status: 'CONFIRMED',
+            startTime: { gte: new Date() },
+            riskPrediction: { isNot: null }
+          }
+        });
+
+        // Obtener algunas predicciones de ejemplo
+        const samplePredictions = await prisma.appointmentRiskPrediction.findMany({
+          take: 3,
+          include: {
+            appointment: {
+              include: {
+                client: { select: { name: true, email: true } },
+                service: { select: { name: true } }
+              }
+            }
+          }
+        });
+
+        res.json({
+          success: true,
+          message: 'Estado de datos de predicción de riesgo',
+          data: {
+            appointments: {
+              total: appointmentsCount,
+              future: futureAppointments,
+              withPrediction: futureAppointmentsWithPrediction,
+              withoutPrediction: futureAppointments - futureAppointmentsWithPrediction
+            },
+            predictions: {
+              total: predictionsCount,
+              samples: samplePredictions.map(p => ({
+                id: p.id,
+                riskLevel: p.riskLevel,
+                riskScore: p.riskScore,
+                client: p.appointment.client.name,
+                service: p.appointment.service.name,
+                date: p.appointment.startTime
+              }))
+            },
+            clientScores: clientScoresCount,
+            timeSlotStats: timeSlotStatsCount,
+            needsTestData: futureAppointments > 0 && futureAppointmentsWithPrediction === 0
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error verificando datos de riesgo:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Error verificando datos de riesgo',
+          error: error.message,
+          details: error.stack
+        });
+      }
+    });
+
     // Middleware de manejo de errores seguro - TEMPORALMENTE DESHABILITADO
     // PROBLEMA: El errorHandler está interfiriendo con las respuestas de MercadoPago
     // TODO: Reconfigurar para excluir rutas de pagos
