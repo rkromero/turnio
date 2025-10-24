@@ -248,9 +248,13 @@ export const clientService = {
     email?: string;
     phone?: string;
     notes?: string;
-  }): Promise<Client> => {
-    const response = await api.post<ApiResponse<Client>>('/clients', data);
-    return response.data.data!;
+  }): Promise<{ client: Client; wasExisting: boolean; message: string }> => {
+    const response = await api.post<ApiResponse<Client> & { wasExisting?: boolean; message?: string }>('/clients', data);
+    return {
+      client: response.data.data!,
+      wasExisting: response.data.wasExisting || false,
+      message: response.data.message || 'Cliente creado exitosamente'
+    };
   },
 
   updateClient: async (id: string, data: Partial<{

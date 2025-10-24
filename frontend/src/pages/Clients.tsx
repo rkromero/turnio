@@ -6,6 +6,7 @@ import ClientStarRating from '../components/ClientStarRating';
 import FloatingActionButton from '../components/FloatingActionButton';
 import { useIsMobileSimple } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 import { 
   Plus, 
   Search, 
@@ -145,7 +146,14 @@ const Clients: React.FC = () => {
           setSelectedClient(updatedClient);
         }
       } else {
-        await clientService.createClient(data);
+        const result = await clientService.createClient(data);
+        
+        // Mostrar mensaje apropiado si el cliente ya existía
+        if (result.wasExisting) {
+          toast.success(result.message || 'Cliente encontrado y agregado a tu lista');
+        } else {
+          toast.success(result.message || 'Cliente creado exitosamente');
+        }
       }
       
       await loadClients();
