@@ -54,7 +54,8 @@ const corsOptions = {
     process.env.FRONTEND_URL || 'https://turnio-frontend-production.up.railway.app',
     'http://localhost:5173', // Vite dev server
     'http://localhost:3000',  // Legacy
-    'https://turnio-frontend-production.up.railway.app'
+    'https://turnio-frontend-production.up.railway.app',
+    'https://turnio.com.ar' // Nuevo dominio personalizado
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
