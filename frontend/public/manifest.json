@@ -1,80 +1,40 @@
 {
-  "name": "TurnIO - Gestión de Turnos",
-  "short_name": "TurnIO",
-  "description": "Sistema completo de gestión de turnos para barberías y salones de belleza",
+  "name": "Turnio - Software de gestión de turnos",
+  "short_name": "Turnio",
+  "description": "Software de gestión de turnos para negocios argentinos",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#9333ea",
   "orientation": "portrait-primary",
-  "scope": "/",
-  "lang": "es",
-  "categories": ["business", "productivity", "lifestyle"],
   "icons": [
     {
-      "src": "/vite.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Reservar Turno",
-      "short_name": "Reservar",
-      "description": "Reservar un nuevo turno",
-      "url": "/book",
-      "icons": [
-        {
-          "src": "/vite.svg",
-          "sizes": "any"
-        }
-      ]
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
     },
     {
-      "name": "Mis Turnos",
-      "short_name": "Turnos",
-      "description": "Ver mis turnos programados",
-      "url": "/dashboard/appointments",
-      "icons": [
-        {
-          "src": "/vite.svg",
-          "sizes": "any"
-        }
-      ]
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
     },
     {
-      "name": "Dashboard",
-      "short_name": "Panel",
-      "description": "Panel de control principal",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/vite.svg",
-          "sizes": "any"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile-1.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Vista principal móvil"
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     },
     {
-      "src": "/screenshot-desktop-1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Vista principal escritorio"
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "edge_side_panel": {
-    "preferred_width": 400
-  }
-} 
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "es-AR",
+  "dir": "ltr"
+}

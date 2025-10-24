@@ -49,23 +49,23 @@ const LandingPage: React.FC = () => {
   const benefits = [
     {
       icon: Smartphone,
-      title: "Reservas desde celular en segundos",
-      description: "Tus clientes reservan turnos desde cualquier dispositivo, 24/7"
+      title: "Agenda de turnos online 24/7",
+      description: "Sistema de turnos para negocios que permite reservas desde cualquier dispositivo móvil o computadora"
     },
     {
       icon: Clock,
-      title: "Reducción de ausentismo",
-      description: "Recordatorios automáticos por WhatsApp y email"
+      title: "Recordatorios automáticos",
+      description: "Reducí el ausentismo con confirmaciones por WhatsApp y email para cada reserva de turnos"
     },
     {
       icon: Users,
-      title: "Organizá tu agenda y equipo",
-      description: "Gestiona múltiples profesionales y horarios sin esfuerzo"
+      title: "Gestión de múltiples profesionales",
+      description: "Organizá tu equipo con horarios individuales y gestión de turnos centralizada"
     },
     {
       icon: Shield,
       title: "Seguro y confiable",
-      description: "100% online, datos protegidos y respaldos automáticos"
+      description: "Software de gestión de turnos 100% online con datos protegidos y respaldos automáticos"
     }
   ];
 
@@ -104,49 +104,70 @@ const LandingPage: React.FC = () => {
   const testimonials = [
     {
       name: "Dr. María González",
-      business: "Clínica Dental",
-      content: "Turnio revolucionó mi consulta. Ahora mis pacientes sacan turno en segundos y yo me dedico a lo que realmente importa.",
+      business: "Clínica Dental - Buenos Aires",
+      content: "Turnio es el mejor software de gestión de turnos que probé. Mis pacientes reservan turnos online sin problemas y yo me dedico a la atención médica.",
       rating: 5
     },
     {
       name: "Carlos Mendez",
-      business: "Barbería Premium",
-      content: "Desde que uso Turnio, reduje a cero las cancelaciones de último momento. Los recordatorios automáticos son geniales.",
+      business: "Barbería Premium - Córdoba",
+      content: "Desde que uso Turnio, reduje a cero las cancelaciones. El sistema de turnos para negocios es perfecto para mi barbería.",
       rating: 5
     },
     {
       name: "Ana Ruiz",
-      business: "Centro de Estética",
-      content: "Súper fácil de usar y mis clientas lo aman. La agenda se maneja sola y yo tengo más tiempo para atender.",
+      business: "Centro de Estética - Rosario",
+      content: "La agenda de turnos online de Turnio es increíble. Mis clientas reservan desde el celular y yo tengo más tiempo para atender.",
       rating: 5
     }
   ];
 
   const faqs = [
     {
-      question: "¿Puedo cancelar cuando quiera?",
-      answer: "Sí, puedes cancelar tu suscripción en cualquier momento sin penalidades. Tu cuenta permanecerá activa hasta el final del período pagado."
+      question: "¿Turnio funciona para cualquier tipo de negocio en Argentina?",
+      answer: "Sí, Turnio es un software de gestión de turnos diseñado para todo tipo de negocios argentinos: peluquerías, consultorios médicos, spas, talleres, centros de estética, veterinarias y más. Nuestro sistema se adapta a cualquier rubro."
     },
     {
-      question: "¿Tengo soporte técnico?",
-      answer: "Todos nuestros planes incluyen soporte por email. Los planes Pro y Full tienen soporte prioritario con respuesta en menos de 2 horas."
+      question: "¿Cómo funciona la agenda de turnos online?",
+      answer: "Turnio te permite crear una agenda de turnos online donde tus clientes pueden reservar turnos 24/7 desde cualquier dispositivo. Incluye recordatorios automáticos por WhatsApp y email para reducir el ausentismo."
     },
     {
-      question: "¿Cómo me ayudan a configurarlo?",
-      answer: "Te enviamos un tutorial paso a paso y nuestro equipo te acompaña en la configuración inicial sin costo adicional."
+      question: "¿Es seguro usar Turnio para mi negocio?",
+      answer: "Absolutamente. Turnio usa encriptación de nivel bancario y todos los datos se respaldan automáticamente en servidores seguros. Cumplimos con todas las normativas de protección de datos argentinas."
     },
     {
-      question: "¿Es seguro?",
-      answer: "Absolutamente. Usamos encriptación de nivel bancario y todos los datos se respaldan automáticamente en servidores seguros."
+      question: "¿Qué incluye el sistema de turnos para negocios?",
+      answer: "Turnio incluye agenda online, recordatorios automáticos, gestión de múltiples profesionales, reportes de gestión, integración con WhatsApp y email, y mucho más. Todo lo que necesitás para gestionar turnos eficientemente."
     },
     {
-      question: "¿Qué necesito para empezar?",
-      answer: "Solo necesitas una conexión a internet. Turnio funciona en cualquier dispositivo: computadora, tablet o celular."
+      question: "¿Necesito conocimientos técnicos para usar Turnio?",
+      answer: "No, Turnio está diseñado para ser súper fácil de usar. Solo necesitás una conexión a internet y nuestro equipo te ayuda con la configuración inicial sin costo adicional."
     }
   ];
 
+  // Schema.org FAQPage structured data
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <>
+      {/* Schema.org FAQPage */}
+      <script 
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      
+      <div className="min-h-screen bg-white">
       {/* Header fijo */}
       <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -194,13 +215,12 @@ const LandingPage: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                Gestioná tus turnos en minutos. 
-                <span className="text-purple-600"> Desde cualquier lugar</span>, 
-                sin complicaciones.
+                Software de gestión de turnos para negocios en Argentina
               </h1>
               
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Turnio es la plataforma simple y rápida para gestionar turnos en tu negocio.
+                Turnio es la aplicación argentina de gestión de turnos para peluquerías, consultorios, spas, talleres y más. 
+                <span className="text-purple-600 font-semibold"> Automatizá tus reservas y ahorrá tiempo</span> con nuestro sistema de turnos online.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -284,10 +304,11 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              ¿Por qué elegir Turnio?
+              Hecho para negocios argentinos
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Simplificamos la gestión de turnos para que puedas concentrarte en lo que realmente importa: tu negocio.
+              Nuestro sistema de turnos está diseñado específicamente para el mercado argentino. 
+              <strong> Simplificamos la gestión de turnos</strong> para que puedas concentrarte en lo que realmente importa: tu negocio.
             </p>
           </div>
 
@@ -636,7 +657,8 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
   };
 
