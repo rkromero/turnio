@@ -1823,7 +1823,7 @@ async function startServer() {
       }
     });
 
-    // Debug endpoint para verificar datos de predicción de riesgo
+    // Debug endpoint público para verificar datos de predicción de riesgo
     app.get('/api/debug/risk-data-status', async (req, res) => {
       try {
         const { PrismaClient } = require('@prisma/client');
