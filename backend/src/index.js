@@ -751,6 +751,26 @@ async function startServer() {
       }
     });
 
+    // Endpoint de prueba simple para webhooks (ANTES de cualquier middleware)
+    app.get('/api/mercadopago/webhook-test', (req, res) => {
+      res.json({ 
+        success: true, 
+        message: 'Webhook endpoint is accessible',
+        timestamp: new Date().toISOString(),
+        headers: req.headers
+      });
+    });
+    
+    app.post('/api/mercadopago/webhook-test', (req, res) => {
+      res.json({ 
+        success: true, 
+        message: 'Webhook POST endpoint is accessible',
+        timestamp: new Date().toISOString(),
+        body: req.body,
+        headers: req.headers
+      });
+    });
+
     // Rutas de la API
     app.use('/api/auth', authRoutes);
     app.use('/api/appointments', appointmentRoutes);
