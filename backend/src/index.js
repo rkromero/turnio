@@ -39,30 +39,56 @@ if (process.env.NODE_ENV === 'production') {
 app.use(helmet());
 
 // Rate limiting (configurado para proxies)
+// Excluir webhooks de MercadoPago del rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 1000, // máximo 1000 requests por ventana por IP
   message: 'Demasiadas peticiones desde esta IP, intenta más tarde.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Excluir webhooks de MercadoPago del rate limiting
+    return req.path.includes('/webhook') || 
+           req.path.includes('/mercadopago/webhook') ||
+           req.path.includes('/payments/webhook');
+  }
 });
 app.use(limiter);
 
-// CORS
+// CORS - Configuración especial para webhooks de MercadoPago
 const corsOptions = {
-  origin: [
-    process.env.FRONTEND_URL || 'https://turnio-frontend-production.up.railway.app',
-    'http://localhost:5173', // Vite dev server
-    'http://localhost:3000',  // Legacy
-    'https://turnio-frontend-production.up.railway.app',
-    'https://turnio.com.ar' // Nuevo dominio personalizado
-  ],
+  origin: function (origin, callback) {
+    // Permitir requests sin origen (como webhooks de MercadoPago, curl, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Lista de orígenes permitidos
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'https://turnio-frontend-production.up.railway.app',
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:3000',  // Legacy
+      'https://turnio-frontend-production.up.railway.app',
+      'https://turnio.com.ar', // Nuevo dominio personalizado
+      // Orígenes de MercadoPago para webhooks
+      'https://www.mercadopago.com.ar',
+      'https://mercadopago.com.ar',
+      'https://api.mercadopago.com',
+      'https://www.mercadopago.com'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permitir todos los orígenes para webhooks
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-signature', 'x-request-id'],
   exposedHeaders: ['Set-Cookie'],
 };
-console.log('🌐 CORS configurado para:', corsOptions.origin);
+console.log('🌐 CORS configurado para permitir webhooks de MercadoPago');
 
 app.use(cors(corsOptions));
 

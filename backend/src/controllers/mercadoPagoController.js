@@ -418,9 +418,19 @@ const createSubscriptionPayment = async (req, res) => {
 // Webhook para recibir notificaciones de MercadoPago
 const handleWebhook = async (req, res) => {
   try {
+    // Log detallado para debugging
     console.log('🔔 Webhook de MercadoPago recibido:', {
       type: req.body.type,
-      data: req.body.data
+      data: req.body.data,
+      headers: {
+        'x-signature': req.headers['x-signature'],
+        'x-request-id': req.headers['x-request-id'],
+        'user-agent': req.headers['user-agent'],
+        origin: req.headers.origin
+      },
+      method: req.method,
+      path: req.path,
+      ip: req.ip
     });
 
     const { type, data } = req.body;
