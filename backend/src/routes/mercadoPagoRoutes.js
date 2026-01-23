@@ -14,8 +14,16 @@ const { createAutomaticSubscription, handleSubscriptionWebhook } = require('../c
 // DEPLOY TEST - Forzar rebuild en Railway
 console.log('🚀 DEPLOY TEST: MercadoPago routes loaded - v2.0');
 
-// Rutas públicas (webhooks)
+// Rutas públicas (webhooks) - SIN autenticación
 console.log('🔧 Configurando rutas públicas...');
+// Endpoint de prueba para webhooks
+router.get('/webhook-test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Webhook endpoint is accessible',
+    timestamp: new Date().toISOString()
+  });
+});
 router.post('/webhook', handleWebhook);
 router.post('/subscription-webhook', handleSubscriptionWebhook);
 

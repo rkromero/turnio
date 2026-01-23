@@ -418,6 +418,9 @@ const createSubscriptionPayment = async (req, res) => {
 // Webhook para recibir notificaciones de MercadoPago
 const handleWebhook = async (req, res) => {
   try {
+    // Responder inmediatamente a MercadoPago (importante para evitar reintentos)
+    res.status(200).json({ received: true });
+    
     // Log detallado para debugging
     console.log('🔔 Webhook de MercadoPago recibido:', {
       type: req.body.type,
@@ -430,7 +433,8 @@ const handleWebhook = async (req, res) => {
       },
       method: req.method,
       path: req.path,
-      ip: req.ip
+      ip: req.ip,
+      body: req.body
     });
 
     const { type, data } = req.body;
@@ -510,14 +514,18 @@ const handleWebhook = async (req, res) => {
           });
         }
       }
-
-      res.json({ received: true });
+      // Ya respondimos al inicio, no responder de nuevo
     } else {
-      res.json({ received: true });
+      // Para otros tipos de notificaciones, solo loguear
+      console.log('📨 Notificación de tipo diferente:', req.body.type);
+      // Ya respondimos al inicio, no responder de nuevo
     }
   } catch (error) {
     console.error('❌ Error en webhook de MercadoPago:', error);
-    res.status(500).json({ success: false, message: 'Error en webhook' });
+    // Aún así responder 200 para evitar reintentos de MercadoPago
+    if (!res.headersSent) {
+      res.status(200).json({ success: false, message: 'Error en webhook', error: error.message });
+    }
   }
 };
 

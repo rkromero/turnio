@@ -35,8 +35,11 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Middleware de seguridad
-app.use(helmet());
+// Middleware de seguridad - Configurar para permitir webhooks
+app.use(helmet({
+  contentSecurityPolicy: false, // Deshabilitar CSP para webhooks
+  crossOriginEmbedderPolicy: false
+}));
 
 // Rate limiting (configurado para proxies)
 // Excluir webhooks de MercadoPago del rate limiting
