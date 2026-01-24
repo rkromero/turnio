@@ -333,14 +333,16 @@ const createSubscriptionPayment = async (req, res) => {
         {
           title: `${planName} - ${billingCycle}`,
           description: `Suscripción ${planName} (${billingCycle}) para ${subscription.business.name}`,
-          unit_price: amountToPay,
           quantity: 1,
+          currency_id: 'ARS',
+          unit_price: parseFloat(amountToPay)
         }
       ],
       payer: {
-        name: subscription.business.name,
-        email: subscription.business.email
+        name: subscription.business.name || user.name,
+        email: subscription.business.email || user.email
       },
+      statement_descriptor: `Suscripción ${planName}`,
       payment_methods: {
         excluded_payment_types: [
           { id: "ticket" }
