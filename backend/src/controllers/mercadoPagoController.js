@@ -462,7 +462,10 @@ const handleWebhook = async (req, res) => {
       console.log('💳 Información del pago recibida:', {
         id: paymentData.id,
         status: paymentData.status,
-        externalReference: paymentData.external_reference
+        externalReference: paymentData.external_reference,
+        live_mode: paymentData.live_mode, // false = sandbox
+        transaction_amount: paymentData.transaction_amount,
+        date_created: paymentData.date_created
       });
 
       // Si no hay external_reference, es una notificación de prueba
