@@ -803,7 +803,8 @@ async function startServer() {
     app.use('/api/debug', debugRoutes);
     
     // Endpoint para corregir plan después de pago (útil cuando webhook no llega en sandbox)
-    app.post('/api/debug/corregir-plan-pago', async (req, res) => {
+    // Soporta tanto GET (desde navegador) como POST
+    const corregirPlanHandler = async (req, res) => {
       try {
         const { prisma } = require('./config/database');
         
@@ -919,7 +920,10 @@ async function startServer() {
           error: error.message
         });
       }
-    });
+    };
+    
+    app.get('/api/debug/corregir-plan-pago', corregirPlanHandler);
+    app.post('/api/debug/corregir-plan-pago', corregirPlanHandler);
     
     // Rutas de optimización de performance
     const performanceRoutes = require('./routes/performanceRoutes');
