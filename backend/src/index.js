@@ -802,6 +802,125 @@ async function startServer() {
     // Rutas de debug para índices de performance
     app.use('/api/debug', debugRoutes);
     
+    // Endpoint para corregir plan después de pago (útil cuando webhook no llega en sandbox)
+    app.post('/api/debug/corregir-plan-pago', async (req, res) => {
+      try {
+        const { prisma } = require('./config/database');
+        
+        // Límites de planes
+        const PLAN_LIMITS = {
+          FREE: { appointments: 30 },
+          BASIC: { appointments: 100 },
+          PREMIUM: { appointments: 500 },
+          ENTERPRISE: { appointments: 999999 }
+        };
+        
+        console.log('🔧 [DEBUG] Corrigiendo plan después de pago...');
+        
+        // Buscar el último pago aprobado
+        const lastPayment = await prisma.payment.findFirst({
+          where: { status: 'APPROVED' },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            subscription: {
+              include: {
+                business: true
+              }
+            }
+          }
+        });
+
+        if (!lastPayment) {
+          return res.json({
+            success: false,
+            message: 'No se encontraron pagos aprobados'
+          });
+        }
+
+        console.log('📋 Pago encontrado:', {
+          paymentId: lastPayment.id,
+          subscriptionPlan: lastPayment.subscription.planType,
+          businessPlan: lastPayment.subscription.business.planType
+        });
+
+        // Verificar si hay discrepancia
+        const subscriptionPlan = lastPayment.subscription.planType;
+        const businessPlan = lastPayment.subscription.business.planType;
+
+        if (subscriptionPlan === businessPlan && lastPayment.subscription.status === 'ACTIVE') {
+          return res.json({
+            success: true,
+            message: 'El plan ya está correcto',
+            data: {
+              paymentId: lastPayment.id,
+              planType: subscriptionPlan,
+              status: 'OK'
+            }
+          });
+        }
+
+        console.log('🔧 CORRIGIENDO PLAN...');
+        
+        // Calcular próxima fecha de facturación
+        const nextBillingDate = new Date();
+        if (lastPayment.subscription.billingCycle === 'MONTHLY') {
+          nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+        } else {
+          nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+        }
+
+        // Actualizar suscripción
+        await prisma.subscription.update({
+          where: { id: lastPayment.subscription.id },
+          data: { 
+            status: 'ACTIVE',
+            nextBillingDate: nextBillingDate
+          }
+        });
+
+        // Obtener límites del plan
+        const planLimits = PLAN_LIMITS[subscriptionPlan] || PLAN_LIMITS.FREE;
+        
+        // Actualizar negocio
+        await prisma.business.update({
+          where: { id: lastPayment.subscription.businessId },
+          data: { 
+            planType: subscriptionPlan,
+            maxAppointments: planLimits.appointments === -1 ? 999999 : planLimits.appointments
+          }
+        });
+
+        // Actualizar paidAt si no está
+        if (!lastPayment.paidAt) {
+          await prisma.payment.update({
+            where: { id: lastPayment.id },
+            data: { paidAt: new Date() }
+          });
+        }
+
+        console.log('✅ Plan corregido:', subscriptionPlan);
+
+        res.json({
+          success: true,
+          message: 'Plan corregido exitosamente',
+          data: {
+            paymentId: lastPayment.id,
+            oldPlan: businessPlan,
+            newPlan: subscriptionPlan,
+            maxAppointments: planLimits.appointments
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error corrigiendo plan:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Error corrigiendo plan',
+          error: error.message
+        });
+      }
+    });
+    
     // Rutas de optimización de performance
     const performanceRoutes = require('./routes/performanceRoutes');
     app.use('/api/performance', performanceRoutes);
