@@ -523,13 +523,54 @@ const handleWebhook = async (req, res) => {
         } else {
           // Pago regular (nueva suscripción o renovación)
           console.log('💳 Procesando pago regular de suscripción');
+          console.log('📋 Datos de la suscripción:', {
+            subscriptionId: payment.subscription.id,
+            planType: payment.subscription.planType,
+            businessId: payment.subscription.businessId,
+            status: payment.subscription.status
+          });
+          
+          // Calcular próxima fecha de facturación
+          const nextBillingDate = new Date();
+          if (payment.subscription.billingCycle === 'MONTHLY') {
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+          } else {
+            nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+          }
+          
+          // Actualizar suscripción
           await prisma.subscription.update({
             where: { id: payment.subscription.id },
-            data: { status: 'ACTIVE' }
+            data: { 
+              status: 'ACTIVE',
+              nextBillingDate: nextBillingDate,
+              paidAt: new Date()
+            }
           });
+          
+          // Obtener límites del plan
+          const AVAILABLE_PLANS = {
+            FREE: { appointments: 30 },
+            BASIC: { appointments: 100 },
+            PREMIUM: { appointments: 500 },
+            ENTERPRISE: { appointments: 999999 }
+          };
+          
+          const planLimits = AVAILABLE_PLANS[payment.subscription.planType] || AVAILABLE_PLANS.FREE;
+          
+          // Actualizar negocio con el plan de la suscripción
           await prisma.business.update({
             where: { id: payment.subscription.businessId },
-            data: { planType: payment.subscription.planType }
+            data: { 
+              planType: payment.subscription.planType,
+              maxAppointments: planLimits.appointments === -1 ? 999999 : planLimits.appointments
+            }
+          });
+          
+          console.log('✅ Plan actualizado:', {
+            businessId: payment.subscription.businessId,
+            newPlanType: payment.subscription.planType,
+            maxAppointments: planLimits.appointments
           });
         }
       }
