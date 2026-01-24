@@ -841,14 +841,27 @@ async function startServer() {
         console.log('📋 Pago encontrado:', {
           paymentId: lastPayment.id,
           subscriptionPlan: lastPayment.subscription.planType,
-          businessPlan: lastPayment.subscription.business.planType
+          businessPlan: lastPayment.subscription.business.planType,
+          metadata: lastPayment.subscription.metadata
         });
 
-        // Verificar si hay discrepancia
-        const subscriptionPlan = lastPayment.subscription.planType;
+        // Verificar si hay un upgrade pendiente en los metadatos
+        const pendingUpgrade = lastPayment.subscription.metadata?.pendingUpgrade;
+        const targetPlan = pendingUpgrade?.toPlan || lastPayment.subscription.planType;
+        
+        const subscriptionPlan = targetPlan; // Usar el plan objetivo (del upgrade si existe)
         const businessPlan = lastPayment.subscription.business.planType;
 
-        if (subscriptionPlan === businessPlan && lastPayment.subscription.status === 'ACTIVE') {
+        console.log('🔍 Análisis:', {
+          targetPlan,
+          subscriptionPlan,
+          businessPlan,
+          hasPendingUpgrade: !!pendingUpgrade,
+          subscriptionStatus: lastPayment.subscription.status
+        });
+
+        // Verificar si ya está correcto
+        if (subscriptionPlan === businessPlan && lastPayment.subscription.status === 'ACTIVE' && !pendingUpgrade) {
           return res.json({
             success: true,
             message: 'El plan ya está correcto',
@@ -870,13 +883,28 @@ async function startServer() {
           nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
         }
 
-        // Actualizar suscripción
+        // Actualizar suscripción (incluyendo el plan si hay upgrade pendiente)
+        const subscriptionUpdateData = {
+          status: 'ACTIVE',
+          nextBillingDate: nextBillingDate
+        };
+        
+        // Si hay upgrade pendiente, actualizar el planType y limpiar metadata
+        if (pendingUpgrade) {
+          subscriptionUpdateData.planType = pendingUpgrade.toPlan;
+          subscriptionUpdateData.metadata = {
+            ...lastPayment.subscription.metadata,
+            pendingUpgrade: null // Limpiar upgrade pendiente
+          };
+          console.log('🔄 Aplicando upgrade pendiente:', {
+            fromPlan: pendingUpgrade.fromPlan,
+            toPlan: pendingUpgrade.toPlan
+          });
+        }
+        
         await prisma.subscription.update({
           where: { id: lastPayment.subscription.id },
-          data: { 
-            status: 'ACTIVE',
-            nextBillingDate: nextBillingDate
-          }
+          data: subscriptionUpdateData
         });
 
         // Obtener límites del plan
