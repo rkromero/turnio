@@ -510,20 +510,55 @@ const handleWebhook = async (req, res) => {
 
       // Si el pago fue aprobado, verificar si es upgrade y procesarlo
       if (newStatus === 'APPROVED') {
-        const pendingUpgrade = payment.subscription.metadata?.pendingUpgrade;
+        // Recargar la suscripción para obtener los metadatos más recientes
+        const subscriptionWithMetadata = await prisma.subscription.findUnique({
+          where: { id: payment.subscription.id },
+          select: { metadata: true, planType: true }
+        });
         
-        if (pendingUpgrade && pendingUpgrade.paymentId === payment.id) {
-          // Es un pago de upgrade, procesarlo con el servicio especializado
-          console.log('🔄 Procesando upgrade pendiente:', {
-            fromPlan: pendingUpgrade.fromPlan,
-            toPlan: pendingUpgrade.toPlan,
-            amount: pendingUpgrade.amount
-          });
+        const pendingUpgrade = subscriptionWithMetadata?.metadata?.pendingUpgrade;
+        
+        // Verificar si hay upgrade pendiente
+        // Si hay upgrade pendiente y el monto coincide, procesar el upgrade
+        // (el paymentId puede no coincidir porque se crea un nuevo Payment para MercadoPago)
+        if (pendingUpgrade) {
+          // Verificar si este pago corresponde al upgrade
+          // Coincide si: mismo paymentId O (misma suscripción Y mismo monto)
+          const isUpgradePayment = pendingUpgrade.paymentId === payment.id || 
+                                   (Math.abs(payment.amount - pendingUpgrade.amount) < 0.01);
           
-          const PlanChangeService = require('../services/planChangeService');
-          await PlanChangeService.processUpgradePayment(payment.id);
-          console.log('✅ Upgrade procesado exitosamente');
-        } else {
+          if (isUpgradePayment) {
+            // Es un pago de upgrade, procesarlo con el servicio especializado
+            console.log('🔄 Procesando upgrade pendiente:', {
+              fromPlan: pendingUpgrade.fromPlan,
+              toPlan: pendingUpgrade.toPlan,
+              amount: pendingUpgrade.amount,
+              paymentId: payment.id,
+              pendingUpgradePaymentId: pendingUpgrade.paymentId,
+              currentSubscriptionPlan: subscriptionWithMetadata.planType
+            });
+            
+            try {
+              const PlanChangeService = require('../services/planChangeService');
+              await PlanChangeService.processUpgradePayment(payment.id);
+              console.log('✅ Upgrade procesado exitosamente');
+              return; // Ya procesamos el upgrade, no continuar con el flujo regular
+            } catch (upgradeError) {
+              console.error('❌ Error procesando upgrade:', upgradeError);
+              // Si falla el upgrade, continuar con el flujo regular como fallback
+            }
+          } else {
+            console.log('ℹ️ Hay upgrade pendiente pero este pago no corresponde:', {
+              thisPaymentId: payment.id,
+              thisAmount: payment.amount,
+              pendingUpgradePaymentId: pendingUpgrade.paymentId,
+              pendingUpgradeAmount: pendingUpgrade.amount
+            });
+          }
+        }
+        
+        // Si no es upgrade o no hay upgrade pendiente, procesar como pago regular
+        if (!pendingUpgrade) {
           // Pago regular (nueva suscripción o renovación)
           console.log('💳 Procesando pago regular de suscripción');
           console.log('📋 Datos de la suscripción:', {
