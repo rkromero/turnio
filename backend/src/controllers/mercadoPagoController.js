@@ -441,16 +441,33 @@ const handleWebhook = async (req, res) => {
 
     if (type === 'payment') {
       const paymentId = data.id;
+      
       // Obtener información del pago desde MercadoPago (SDK v2)
-      const paymentClient = new Payment(mpClient);
-      const paymentInfo = await paymentClient.get({ id: paymentId });
-      const paymentData = paymentInfo;
+      let paymentData;
+      try {
+        const paymentClient = new Payment(mpClient);
+        const paymentInfo = await paymentClient.get({ id: paymentId });
+        paymentData = paymentInfo;
+      } catch (error) {
+        // Si el pago no existe en MP (notificación de prueba), solo loguear y salir
+        if (error.status === 404 || error.cause?.some(c => c.code === 2000)) {
+          console.log('ℹ️ Notificación de prueba recibida (pago no existe en MP):', paymentId);
+          return; // Ya respondimos arriba, solo salir
+        }
+        throw error; // Re-lanzar otros errores
+      }
 
       console.log('💳 Información del pago recibida:', {
         id: paymentData.id,
         status: paymentData.status,
         externalReference: paymentData.external_reference
       });
+
+      // Si no hay external_reference, es una notificación de prueba
+      if (!paymentData.external_reference) {
+        console.log('ℹ️ Notificación sin external_reference (probablemente de prueba)');
+        return; // Ya respondimos arriba, solo salir
+      }
 
       // Buscar nuestro pago interno
       const payment = await prisma.payment.findUnique({
@@ -463,8 +480,8 @@ const handleWebhook = async (req, res) => {
       });
 
       if (!payment) {
-        console.error('❌ Pago no encontrado en nuestra base de datos:', paymentData.external_reference);
-        return res.status(404).json({ success: false, message: 'Payment not found' });
+        console.log('ℹ️ Pago no encontrado en nuestra base de datos (puede ser notificación de prueba):', paymentData.external_reference);
+        return; // Ya respondimos arriba, solo salir (no es un error crítico)
       }
 
       // Mapear estados de MercadoPago a nuestros estados
