@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { appointmentService, serviceService } from '../services/api';
+import { appointmentService, serviceService, BASE_URL } from '../services/api';
 import { userService } from '../services/userService';
 import type { Appointment, Service, AppointmentForm } from '../types';
 import AppointmentModal from '../components/AppointmentModal';
@@ -78,7 +78,7 @@ const Appointments: React.FC = () => {
             if (appointment.client.email) params.append('email', appointment.client.email);
             if (appointment.client.phone) params.append('phone', appointment.client.phone);
             
-            const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+            const response = await fetch(`${BASE_URL}/api/client-scoring/score?${params.toString()}`);
             const scoreData = await response.json();
             
             if (scoreData.success) {
@@ -273,7 +273,7 @@ const Appointments: React.FC = () => {
               notes
             };
 
-            await fetch('https://turnio-backend-production.up.railway.app/api/client-scoring/event/auto', {
+            await fetch(`${BASE_URL}/api/client-scoring/event/auto`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -281,7 +281,6 @@ const Appointments: React.FC = () => {
               body: JSON.stringify(scoringData)
             });
 
-            console.log(`✅ Evento de scoring registrado: ${eventType} para ${appointment.client.name}`);
           }
         } catch (scoringError) {
           console.error('Error registrando evento de scoring:', scoringError);
@@ -292,7 +291,7 @@ const Appointments: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error actualizando estado:', error);
-      alert('Error al actualizar el estado de la cita');
+      toast.error('Error al actualizar el estado de la cita');
     }
   };
 

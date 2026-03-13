@@ -22,6 +22,7 @@ const Register: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -350,7 +351,24 @@ const Register: React.FC = () => {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                   />
+                  {(passwordFocused || formData.password) && (
+                    <div className="mt-2 space-y-1">
+                      {[
+                        { label: 'Al menos 6 caracteres', ok: formData.password.length >= 6 },
+                        { label: 'Una letra mayúscula', ok: /[A-Z]/.test(formData.password) },
+                        { label: 'Una letra minúscula', ok: /[a-z]/.test(formData.password) },
+                        { label: 'Un número', ok: /\d/.test(formData.password) },
+                      ].map(({ label, ok }) => (
+                        <p key={label} className={`text-xs flex items-center gap-1 ${ok ? 'text-green-600' : 'text-gray-400'}`}>
+                          <span>{ok ? '✓' : '○'}</span>
+                          {label}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>

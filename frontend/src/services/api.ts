@@ -26,8 +26,7 @@ import type {
   InAppNotification
 } from '../types';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
-// DEBUG: Timestamp para forzar rebuild - 2025-01-26-02:15:00
+export const BASE_URL = import.meta.env.VITE_API_URL || 'https://turnio-backend-production.up.railway.app';
 
 // Configurar axios
 const api = axios.create({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, Crown, Building2, Zap, Rocket } from 'lucide-react';
+import { CheckCircle, Crown, Building2, Zap, Rocket } from 'lucide-react';
+import { CardSkeleton } from '../components/SkeletonLoader';
 import { subscriptionService } from '../services/subscriptionService';
 import { useToast } from '../hooks/useToast';
 
@@ -99,8 +100,19 @@ const Plans: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="h-7 w-48 bg-gray-200 animate-pulse rounded mb-3" />
+          <div className="h-4 w-72 bg-gray-200 animate-pulse rounded" />
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="h-5 w-32 bg-gray-200 animate-pulse rounded mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <CardSkeleton key={i} lines={4} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

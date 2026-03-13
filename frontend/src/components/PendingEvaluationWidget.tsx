@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Check, X, Clock, ChevronRight } from 'lucide-react';
 import { appointmentService } from '../services/api';
+import { toast } from 'react-hot-toast';
 import type { Appointment } from '../types';
 
 interface PendingEvaluationWidgetProps {
@@ -44,7 +45,7 @@ const PendingEvaluationWidget: React.FC<PendingEvaluationWidgetProps> = ({ onRef
       // El usuario puede seguir evaluando otros turnos
     } catch (error) {
       console.error('Error actualizando turno:', error);
-      alert('Error al actualizar el turno');
+      toast.error('Error al actualizar el turno');
     } finally {
       setUpdating(null);
     }

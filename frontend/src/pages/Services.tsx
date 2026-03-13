@@ -96,7 +96,7 @@ const Services: React.FC = () => {
       await loadServices();
     } catch (error) {
       console.error('Error eliminando servicio:', error);
-      alert('Error al eliminar el servicio');
+      toast.error('Error al eliminar el servicio');
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Clock, Edit2, Trash2, Coffee, AlertCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { BranchBreakTime, BranchBreakTimeForm } from '../../types';
 import { Branch } from '../../types/branch';
 
@@ -72,7 +73,7 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
       console.error('Error cargando horarios de descanso:', error);
       setBreakTimes([]);
       if (error instanceof Error) {
-        alert(error.message);
+        toast.error(error.message);
       }
     } finally {
       setIsLoading(false);
@@ -103,7 +104,7 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
       onRefresh();
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al guardar horario de descanso');
+      toast.error('Error al guardar horario de descanso');
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +125,7 @@ const BranchBreakTimesTab: React.FC<BranchBreakTimesTabProps> = ({ branches, onR
       onRefresh();
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al eliminar horario de descanso');
+      toast.error('Error al eliminar horario de descanso');
     } finally {
       setIsLoading(false);
     }

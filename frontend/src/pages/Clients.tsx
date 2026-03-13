@@ -192,7 +192,7 @@ const Clients: React.FC = () => {
       }
     } catch (error) {
       console.error('Error eliminando cliente:', error);
-      alert('Error al eliminar el cliente');
+      toast.error('Error al eliminar el cliente');
     }
   };
 

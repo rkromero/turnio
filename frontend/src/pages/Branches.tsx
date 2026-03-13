@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import BranchModal from '../components/branches/BranchModal';
 import BranchBreakTimesTab from '../components/branches/BranchBreakTimesTab';
 import { branchService } from '../services/branchService';
+import { toast } from 'react-hot-toast';
 import type { Branch, CreateBranchData } from '../types/branch';
 
 const Branches: React.FC = () => {
@@ -50,7 +51,7 @@ const Branches: React.FC = () => {
         await loadBranches();
       } catch (error) {
         console.error('Error eliminando sucursal:', error);
-        alert('Error al eliminar la sucursal');
+        toast.error('Error al eliminar la sucursal');
       }
     }
   };

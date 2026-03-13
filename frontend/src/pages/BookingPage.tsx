@@ -8,6 +8,7 @@ import {
   Building
 } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
+import { BASE_URL } from '../services/api';
 import { Professional, Service, BookingFormData, UrgencyStats, Branch, PaymentOptions } from '../types/booking';
 import ProfessionalSelector from '../components/ProfessionalSelector';
 import ClientStarRating from '../components/ClientStarRating';
@@ -254,28 +255,19 @@ const BookingPage: React.FC = () => {
 
   const loadProfessionalAvailability = async () => {
     if (!booking.selectedProfessional || !booking.selectedService) return;
-    
-    console.log('🔍 Cargando disponibilidad para:', {
-      professional: booking.selectedProfessional,
-      service: booking.selectedService.id,
-      businessSlug
-    });
-    
+
     try {
       const availabilityResponse = await bookingService.getProfessionalAvailability(
         businessSlug!,
         booking.selectedProfessional,
         booking.selectedService.id
       );
-      
-      console.log('📅 Respuesta de disponibilidad:', availabilityResponse);
-      
+
       if (availabilityResponse.success) {
         setDateAvailability(availabilityResponse.data.availability);
-        console.log('✅ Disponibilidad cargada:', availabilityResponse.data.availability);
       }
     } catch (error) {
-      console.error('❌ Error cargando disponibilidad del profesional:', error);
+      console.error('Error cargando disponibilidad del profesional:', error);
       toast.error('Error cargando disponibilidad');
     }
   };
@@ -462,7 +454,7 @@ const BookingPage: React.FC = () => {
       if (email) params.append('email', email);
       if (phone) params.append('phone', phone);
       
-      const response = await fetch(`https://turnio-backend-production.up.railway.app/api/client-scoring/score?${params.toString()}`);
+      const response = await fetch(`${BASE_URL}/api/client-scoring/score?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {
