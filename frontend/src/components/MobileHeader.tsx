@@ -62,8 +62,8 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
       try {
         const response = await notificationService.getNotifications(false);
         setUnreadCount(response.unreadCount);
-      } catch (error) {
-        console.error('Error cargando contador de notificaciones:', error);
+      } catch {
+        // 403 esperado en plan FREE — no tiene acceso a notificaciones in-app
       }
     };
 

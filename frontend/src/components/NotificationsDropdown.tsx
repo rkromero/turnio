@@ -38,9 +38,12 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ onClose }
       const response = await notificationService.getNotifications(false); // Solo no leídas
       setNotifications(response.data);
       setUnreadCount(response.unreadCount);
-    } catch (error) {
-      console.error('Error cargando notificaciones:', error);
-      toast.error('Error al cargar notificaciones');
+    } catch (error: unknown) {
+      // 403 = plan FREE sin acceso a notificaciones in-app, no mostrar error
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 403) {
+        toast.error('Error al cargar notificaciones');
+      }
     } finally {
       setIsLoading(false);
     }
