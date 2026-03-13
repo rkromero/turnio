@@ -9,20 +9,6 @@ const preloadCriticalResources = () => {
   fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
   fontLink.as = 'style';
   document.head.appendChild(fontLink);
-
-  // Preload critical images
-  const criticalImages = [
-    '/og-image.jpg',
-    '/favicon.svg'
-  ];
-
-  criticalImages.forEach(src => {
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.href = src;
-    link.as = 'image';
-    document.head.appendChild(link);
-  });
 };
 
 // Optimize images with lazy loading
@@ -62,49 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
   optimizeExternalScripts();
 });
 
-// Service Worker registration for caching
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
-
 // Performance monitoring
 const monitorPerformance = () => {
   // Monitor Core Web Vitals
   if ('PerformanceObserver' in window) {
     // Monitor Largest Contentful Paint (LCP)
-    const lcpObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      const lastEntry = entries[entries.length - 1];
-      console.log('LCP:', lastEntry.startTime);
-    });
+    const lcpObserver = new PerformanceObserver(() => {});
     lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
 
-    // Monitor First Input Delay (FID)
-    const fidObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach(entry => {
-        console.log('FID:', entry.processingStart - entry.startTime);
-      });
-    });
-    fidObserver.observe({ entryTypes: ['first-input'] });
-
     // Monitor Cumulative Layout Shift (CLS)
-    const clsObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach(entry => {
-        if (!entry.hadRecentInput) {
-          console.log('CLS:', entry.value);
-        }
-      });
-    });
+    const clsObserver = new PerformanceObserver(() => {});
     clsObserver.observe({ entryTypes: ['layout-shift'] });
   }
 };

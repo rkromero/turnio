@@ -663,11 +663,15 @@ const cancelAppointment = async (req, res) => {
     const branchIds = await getActiveBranchIds(businessId);
 
     // Primero obtener los datos completos de la cita para el email
+    // Se incluyen turnos sin branchId (null) para compatibilidad con registros anteriores
     const appointmentData = await prisma.appointment.findFirst({
       where: {
         id,
         businessId,
-        branchId: { in: branchIds }
+        OR: [
+          { branchId: { in: branchIds } },
+          { branchId: null }
+        ]
       },
       include: {
         business: true,
