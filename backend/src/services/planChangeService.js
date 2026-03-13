@@ -194,10 +194,14 @@ class PlanChangeService {
         throw new Error('No tienes permisos para cambiar esta suscripción');
       }
 
-      const currentPlan = currentSubscription.planType;
-      
-      // Si es el mismo plan, no hacer nada
-      if (currentPlan === newPlanType) {
+      // Cuando el pago anterior falló, la suscripción puede tener planType='BASIC'
+      // aunque el negocio siga activamente en FREE. Usamos el plan real del negocio.
+      const currentPlan = currentSubscription.status === 'PAYMENT_FAILED'
+        ? currentSubscription.business.planType
+        : currentSubscription.planType;
+
+      // Si es el mismo plan y el pago está activo, no hacer nada
+      if (currentPlan === newPlanType && currentSubscription.status !== 'PAYMENT_FAILED') {
         return {
           success: true,
           message: 'Ya tienes este plan activo',
