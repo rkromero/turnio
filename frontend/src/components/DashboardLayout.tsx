@@ -29,25 +29,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     navigate(-1);
   };
 
-  // Cargar contador de notificaciones
+  // Cargar contador de notificaciones (solo planes con acceso)
   useEffect(() => {
+    if (!business || business.planType === 'FREE') return;
+
     const loadNotificationCount = async () => {
       try {
         const response = await notificationService.getNotifications(false);
         setUnreadCount(response.unreadCount);
       } catch {
-        // 403 esperado en plan FREE — no tiene acceso a notificaciones in-app
+        // silencioso
       }
     };
 
-    // Cargar inmediatamente
     loadNotificationCount();
-
-    // Actualizar cada 30 segundos
     const interval = setInterval(loadNotificationCount, 30000);
-
     return () => clearInterval(interval);
-  }, []);
+  }, [business]);
 
   // Elementos de navegación según el rol del usuario
   const getNavigationItems = () => {

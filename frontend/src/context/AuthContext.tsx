@@ -27,13 +27,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      console.log('🔍 Verificando estado de autenticación...');
       const { user, business } = await authService.getProfile();
-      console.log('✅ Usuario autenticado:', user?.email);
       setUser(user);
       setBusiness(business);
-    } catch (error) {
-      console.log('❌ Usuario no autenticado:', error);
+    } catch {
       setUser(null);
       setBusiness(null);
     } finally {
@@ -43,58 +40,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔍 Intentando login con:', email);
       const { user, business } = await authService.login({ email, password });
-      console.log('✅ Login exitoso:', user?.email);
       setUser(user);
       setBusiness(business);
     } catch (error) {
-      console.log('❌ Error en login:', error);
-      // Asegurar que el estado se limpie en caso de error
       setUser(null);
       setBusiness(null);
-      // Re-lanzar el error para que el componente Login lo maneje
       throw error;
     }
   };
 
   const register = async (data: RegisterForm) => {
-    console.log('🔍 Iniciando registro en contexto...');
     const result = await authService.register(data);
-    console.log('🔍 Resultado del authService.register:', result);
-    
+
     if (!result || !result.user || !result.business) {
-      console.error('❌ Datos incompletos del registro:', result);
       throw new Error('Datos incompletos del registro');
     }
-    
+
     const { user, business } = result;
-    console.log('🔍 Actualizando contexto con user:', user);
-    console.log('🔍 Actualizando contexto con business:', business);
-    
     setUser(user);
     setBusiness(business);
-    
-    console.log('✅ Contexto actualizado exitosamente');
     return result;
   };
 
   const logout = async () => {
     try {
-      console.log('🚪 Iniciando logout...');
       await authService.logout();
-    } catch (error) {
-      console.log('⚠️ Error en logout del servidor:', error);
-      // Ignorar errores de logout del servidor, pero continuar limpieza local
+    } catch {
+      // Ignorar errores de logout del servidor
     } finally {
-      console.log('🧹 Limpiando estado local...');
-      // Limpiar completamente el estado
       setUser(null);
       setBusiness(null);
-      
-      // El backend limpia las cookies automáticamente
-      
-      console.log('✅ Logout completado');
     }
   };
 
