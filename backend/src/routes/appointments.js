@@ -60,9 +60,10 @@ router.get('/', authenticateTokenOnly, getAppointments);
 router.get('/available-times', authenticateTokenOnly, getAvailableTimes);
 router.get('/pending-evaluation', authenticateTokenOnly, getPendingEvaluation);
 
-// Rutas de modificación (requieren suscripción válida)
+// Crear turno requiere suscripción activa (usa límites del plan)
 router.post('/', authenticateToken, createAppointmentValidation, createAppointment);
-router.put('/:id', authenticateToken, updateAppointment);
-router.delete('/:id', authenticateToken, cancelAppointment);
+// Actualizar y cancelar son gestión de datos existentes — no requieren suscripción activa
+router.put('/:id', authenticateTokenOnly, updateAppointment);
+router.delete('/:id', authenticateTokenOnly, cancelAppointment);
 
 module.exports = router;
