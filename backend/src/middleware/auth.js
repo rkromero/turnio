@@ -173,7 +173,7 @@ const authenticateToken = async (req, res, next) => {
       if (isProblematicStatus || isExpiredByDate) {
         // Permitir acceso a endpoints de pago, suscripción y configuración básica
         const allowedEndpoints = [
-          // Endpoints de MercadoPago y pagos
+          // MercadoPago y pagos
           '/api/mercadopago/create-payment',
           '/api/mercadopago/payment-status',
           '/api/mercadopago/webhook',
@@ -181,28 +181,34 @@ const authenticateToken = async (req, res, next) => {
           '/api/payments/mp/status',
           '/api/payments/mp/disconnect',
           '/api/payments/settings',
-          
-          // Endpoints de suscripción y planes
-          '/api/subscriptions/current',
+
+          // Suscripción y planes (todos los endpoints necesarios para el flujo de pago)
           '/api/subscriptions/plans',
-          '/api/subscriptions/upgrade',
-          '/api/subscriptions/downgrade',
-          
-          // Endpoints de autenticación y perfil
+          '/api/subscriptions/current',
+          '/api/subscriptions/create-temp',
+          '/api/subscriptions/change-plan',
+          '/api/subscriptions/process-upgrade-payment',
+          '/api/subscriptions/process-downgrade-payment',
+          '/api/subscriptions/cancel',
+
+          // Auth y perfil
           '/api/auth/profile',
           '/api/auth/logout',
-          
-          // Endpoints de configuración básica (solo lectura)
+
+          // Configuración básica
           '/api/config/business',
           '/api/config/plan-usage',
           '/api/config/working-hours',
           '/api/config/holidays',
-          
-          // Dashboard básico (para mostrar estado y enlaces de pago)
+
+          // Dashboard básico
           '/api/dashboard/stats'
         ];
-        
-        if (!allowedEndpoints.includes(req.originalUrl)) {
+
+        // Usar startsWith para soportar URLs con parámetros (ej: /api/mercadopago/payment-status/:id)
+        const isAllowed = allowedEndpoints.some(endpoint => req.originalUrl.startsWith(endpoint));
+
+        if (!isAllowed) {
           let message = 'Tu suscripción ha vencido. Por favor, actualiza tu método de pago para continuar usando el sistema.';
           
           if (isExpiredByDate) {
