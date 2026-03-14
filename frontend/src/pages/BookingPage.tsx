@@ -679,7 +679,10 @@ const BookingPage: React.FC = () => {
     for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      const dateString = date.toISOString().split('T')[0];
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
       
       const availabilityInfo = dateAvailability.find(d => d.date === dateString);
       
@@ -1247,8 +1250,8 @@ const BookingPage: React.FC = () => {
                 <div>
                   <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Selecciona profesional y horario</h2>
                   <p className="text-gray-600 text-sm md:text-base">
-                    Fecha: {new Date(booking.selectedDate).toLocaleDateString('es-ES', { 
-                      weekday: 'long', day: 'numeric', month: 'long' 
+                    Fecha: {new Date(booking.selectedDate + 'T00:00:00').toLocaleDateString('es-ES', {
+                      weekday: 'long', day: 'numeric', month: 'long'
                     })}
                   </p>
                 </div>
