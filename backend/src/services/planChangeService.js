@@ -5,16 +5,7 @@ const {
   validateSubscriptionData,
   VALID_PLAN_TYPES
 } = require('../utils/subscriptionValidators');
-
-// Constantes de planes
-const PLAN_PRICES = {
-  'FREE': 0,
-  'BASIC': 18900,
-  'PREMIUM': 24900,
-  'ENTERPRISE': 90900
-};
-
-const PLAN_HIERARCHY = ['FREE', 'BASIC', 'PREMIUM', 'ENTERPRISE'];
+const { PLAN_PRICES, PLAN_HIERARCHY } = require('../config/plans');
 
 class PlanChangeService {
   

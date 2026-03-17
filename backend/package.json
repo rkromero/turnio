@@ -14,9 +14,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "test": "jest --verbose --runInBand",
-    "test:watch": "jest --watch --verbose",
-    "test:payment": "jest payment-validation.test.js --verbose",
+    "test": "prisma generate && jest --verbose --runInBand",
+    "test:watch": "prisma generate && jest --watch --verbose",
+    "test:payment": "prisma generate && jest payment-validation.test.js --verbose",
     "railway-fix": "node railway-fix.js"
   },
   "keywords": [

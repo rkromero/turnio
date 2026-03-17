@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database');
+const { AVAILABLE_PLANS } = require('../config/plans');
 
 // MercadoPago SDK v2
 const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
@@ -586,14 +587,7 @@ const handleWebhook = async (req, res) => {
             }
           });
           
-          // Obtener límites del plan
-          const AVAILABLE_PLANS = {
-            FREE: { appointments: 30 },
-            BASIC: { appointments: 100 },
-            PREMIUM: { appointments: 500 },
-            ENTERPRISE: { appointments: 999999 }
-          };
-          
+          // Obtener límites del plan (desde config central)
           const planLimits = AVAILABLE_PLANS[payment.subscription.planType] || AVAILABLE_PLANS.FREE;
           
           // Actualizar negocio con el plan de la suscripción
