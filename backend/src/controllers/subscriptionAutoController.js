@@ -4,9 +4,6 @@ const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercad
 
 const prismaClient = new PrismaClient();
 
-// Log para depuración del token de MercadoPago
-console.log('Access Token MercadoPago:', process.env.MERCADOPAGO_ACCESS_TOKEN);
-
 // MercadoPago SDK v2
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
@@ -15,9 +12,6 @@ const mpClient = new MercadoPagoConfig({
     idempotencyKey: 'abc'
   }
 });
-
-// Instanciar cliente de MercadoPago
-console.log('🔑 Inicializando MercadoPago con token:', process.env.MERCADOPAGO_ACCESS_TOKEN);
 
 // Estados de suscripción mejorados
 const SUBSCRIPTION_STATES = {
@@ -56,7 +50,6 @@ const calculateRetryDate = (currentDate, retryNumber) => {
 // Crear suscripción automática con MercadoPago (cobro recurrente)
 const createAutomaticSubscription = async (req, res) => {
   try {
-    console.log('🔑 Token MercadoPago al crear suscripción:', process.env.MERCADOPAGO_ACCESS_TOKEN);
     const { subscriptionId } = req.body;
     const { user } = req;
 
