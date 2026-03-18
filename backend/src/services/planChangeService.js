@@ -82,11 +82,14 @@ class PlanChangeService {
     // Crear pago por el plan completo
     const upgradePayment = await prisma.payment.create({ data: paymentData });
 
-    // Actualizar metadata de suscripción para marcar upgrade pendiente
-    // Mantener status ACTIVE hasta que se complete el pago
+    // Actualizar suscripción al nuevo plan con status PENDING
+    // Esto permite que createAutomaticSubscription lea el planType y priceAmount correctos
     await prisma.subscription.update({
       where: { id: currentSubscription.id },
       data: {
+        planType: newPlanType,
+        priceAmount: newPlanPrice,
+        status: 'PENDING',
         metadata: {
           ...currentSubscription.metadata,
           pendingUpgrade: {
@@ -185,14 +188,16 @@ class PlanChangeService {
         throw new Error('No tienes permisos para cambiar esta suscripción');
       }
 
-      // Cuando el pago anterior falló, la suscripción puede tener planType='BASIC'
-      // aunque el negocio siga activamente en FREE. Usamos el plan real del negocio.
-      const currentPlan = currentSubscription.status === 'PAYMENT_FAILED'
+      // Cuando la suscripción no está activa (pago fallido, suspendida, pendiente o cancelada),
+      // el plan efectivo del negocio es el que tiene en business.planType, no el de la suscripción.
+      const NON_ACTIVE_STATUSES = ['PAYMENT_FAILED', 'SUSPENDED', 'PENDING', 'CANCELLED'];
+      const isNonActive = NON_ACTIVE_STATUSES.includes(currentSubscription.status);
+      const currentPlan = isNonActive
         ? currentSubscription.business.planType
         : currentSubscription.planType;
 
-      // Si es el mismo plan y el pago está activo, no hacer nada
-      if (currentPlan === newPlanType && currentSubscription.status !== 'PAYMENT_FAILED') {
+      // Si es el mismo plan y la suscripción está activa, no hacer nada
+      if (currentPlan === newPlanType && !isNonActive) {
         return {
           success: true,
           message: 'Ya tienes este plan activo',
