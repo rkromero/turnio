@@ -6,19 +6,13 @@ const { AVAILABLE_PLANS } = require('../config/plans');
 // Obtener planes con precios mensuales y anuales
 const getPlansWithPricing = async (req, res) => {
   try {
-    console.log('📋 Obteniendo planes con precios...');
-    
-    // Verificar que AVAILABLE_PLANS esté definido
     if (!AVAILABLE_PLANS) {
-      console.error('❌ AVAILABLE_PLANS no está definido');
       return res.status(500).json({
         success: false,
         message: 'Planes no disponibles'
       });
     }
 
-    console.log('📋 AVAILABLE_PLANS keys:', Object.keys(AVAILABLE_PLANS));
-    
     // Calcular precios anuales con 10% descuento
     const plansWithPricing = Object.entries(AVAILABLE_PLANS).map(([key, plan]) => {
       const monthlyPrice = plan.price;
@@ -46,8 +40,6 @@ const getPlansWithPricing = async (req, res) => {
       };
     });
 
-    console.log(`✅ Devolviendo ${plansWithPricing.length} planes`);
-
     res.json({
       success: true,
       data: {
@@ -69,45 +61,26 @@ const getPlansWithPricing = async (req, res) => {
 // Crear suscripción (después del registro)
 const createSubscription = async (req, res) => {
   try {
-    console.log('🔍 createSubscription - Iniciando...');
-    console.log('🔍 req.body:', req.body);
-    console.log('🔍 req.user:', req.user);
-    console.log('🔍 req.cookies:', req.cookies);
-    console.log('🔍 req.path:', req.path);
-    
     const { businessId, planType, billingCycle = 'MONTHLY' } = req.body;
-    console.log('🔍 Datos extraídos:', { businessId, planType, billingCycle });
 
-    // Verificar que el plan sea válido
-    console.log('🔍 Verificando plan válido...');
-    console.log('🔍 AVAILABLE_PLANS keys:', Object.keys(AVAILABLE_PLANS));
-    console.log('🔍 planType recibido:', planType);
-    
     if (!AVAILABLE_PLANS[planType]) {
-      console.log('❌ Plan no válido:', planType);
       return res.status(400).json({
         success: false,
         message: 'Plan no válido'
       });
     }
-    console.log('✅ Plan válido confirmado');
 
-    // Verificar que el negocio existe
-    console.log('🔍 Buscando negocio con ID:', businessId);
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       include: { subscription: true }
     });
-    console.log('🔍 Negocio encontrado:', business ? 'SÍ' : 'NO');
 
     if (!business) {
-      console.log('❌ Negocio no encontrado con ID:', businessId);
       return res.status(404).json({
         success: false,
         message: 'Negocio no encontrado'
       });
     }
-    console.log('✅ Negocio encontrado:', business.name);
 
     // Verificar permisos solo si hay usuario autenticado
     if (req.user) {
@@ -121,19 +94,13 @@ const createSubscription = async (req, res) => {
     }
 
     // Verificar si ya tiene suscripción activa (solo bloquear si es plan de pago)
-    if (business.subscription && 
-        business.subscription.status === 'ACTIVE' && 
+    if (business.subscription &&
+        business.subscription.status === 'ACTIVE' &&
         business.subscription.planType !== 'FREE') {
-      console.log('❌ Ya tiene suscripción de pago activa:', business.subscription.planType);
       return res.status(400).json({
         success: false,
         message: `Ya tienes una suscripción ${business.subscription.planType} activa`
       });
-    }
-    
-    // Si tiene suscripción FREE, permitir upgrade
-    if (business.subscription && business.subscription.planType === 'FREE') {
-      console.log('✅ Actualizando desde plan FREE a:', planType);
     }
 
     const plan = AVAILABLE_PLANS[planType];
@@ -158,17 +125,8 @@ const createSubscription = async (req, res) => {
 
     // Crear o actualizar suscripción
     let subscription;
-    
+
     if (business.subscription) {
-      // Actualizar suscripción existente
-      console.log('🔍 Actualizando suscripción existente con datos:', {
-        planType,
-        billingCycle,
-        priceAmount,
-        nextBillingDate,
-        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-      });
-      
       subscription = await prisma.subscription.update({
         where: { id: business.subscription.id },
         data: {
@@ -181,19 +139,7 @@ const createSubscription = async (req, res) => {
           updatedAt: new Date()
         }
       });
-      console.log('✅ Suscripción actualizada exitosamente:', subscription.id);
     } else {
-      // Crear nueva suscripción
-      console.log('🔍 Creando nueva suscripción con datos:', {
-        businessId,
-        planType,
-        billingCycle,
-        priceAmount,
-        startDate,
-        nextBillingDate,
-        status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-      });
-      
       subscription = await prisma.subscription.create({
         data: {
           businessId,
@@ -206,11 +152,9 @@ const createSubscription = async (req, res) => {
           status: planType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
         }
       });
-      console.log('✅ Suscripción creada exitosamente:', subscription.id);
     }
 
     // Solo actualizar el plan del negocio si es FREE (no requiere pago)
-    // Para planes de pago, actualizar DESPUÉS de procesar el pago exitosamente
     if (planType === 'FREE') {
       await prisma.business.update({
         where: { id: businessId },
@@ -219,12 +163,7 @@ const createSubscription = async (req, res) => {
           maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
         }
       });
-      console.log(`✅ Plan ${planType} actualizado inmediatamente (sin pago requerido)`);
-    } else {
-      console.log(`⏳ Plan ${planType} pendiente de pago - negocio mantiene plan actual hasta completar pago`);
     }
-
-    console.log(`✅ Suscripción creada: ${planType} (${billingCycle}) para negocio ${business.name}`);
 
     res.json({
       success: true,
@@ -491,42 +430,28 @@ const changeSubscriptionPlan = async (req, res) => {
       });
     }
 
-    console.log(`🔄 Usuario ${user.email} solicitando cambio de plan a: ${newPlanType}`);
-    console.log(`📋 Datos recibidos:`, { subscriptionId, newPlanType, businessId: user.businessId });
-
     // Si no hay subscriptionId, es un usuario en plan gratuito que quiere crear suscripción
     if (!subscriptionId) {
-      console.log('📝 Usuario sin suscripción, creando nueva suscripción...');
-      
-      // Verificar que el negocio existe y está en plan gratuito
       const business = await prisma.business.findUnique({
         where: { id: user.businessId },
         include: { subscription: true }
       });
 
       if (!business) {
-        console.log('❌ Negocio no encontrado:', user.businessId);
         return res.status(404).json({
           success: false,
           message: 'Negocio no encontrado'
         });
       }
 
-      console.log(`🏢 Negocio encontrado: ${business.name}, plan actual: ${business.planType}`);
-      console.log(`🔍 Suscripción existente:`, business.subscription ? 'SÍ' : 'NO');
-
       if (business.subscription) {
-        console.log('❌ Ya tiene suscripción activa:', business.subscription.id);
         return res.status(400).json({
           success: false,
           message: 'Ya tienes una suscripción activa. Usa el endpoint de cambio de plan.'
         });
       }
 
-      // Verificar que el plan sea válido
-      console.log(`🔍 Verificando si plan '${newPlanType}' existe en AVAILABLE_PLANS:`, Object.keys(AVAILABLE_PLANS));
       if (!AVAILABLE_PLANS[newPlanType]) {
-        console.log(`❌ Plan '${newPlanType}' no válido. Planes disponibles:`, Object.keys(AVAILABLE_PLANS));
         return res.status(400).json({
           success: false,
           message: `Plan no válido: ${newPlanType}. Planes disponibles: ${Object.keys(AVAILABLE_PLANS).join(', ')}`
@@ -555,16 +480,6 @@ const changeSubscriptionPlan = async (req, res) => {
       }
 
       // Crear nueva suscripción
-      console.log('🔍 Creando nueva suscripción con datos:', {
-        businessId: user.businessId,
-        planType: newPlanType,
-        billingCycle,
-        priceAmount,
-        startDate,
-        nextBillingDate,
-        status: newPlanType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
-      });
-      
       const subscription = await prisma.subscription.create({
         data: {
           businessId: user.businessId,
@@ -577,9 +492,6 @@ const changeSubscriptionPlan = async (req, res) => {
           status: newPlanType === 'FREE' ? 'ACTIVE' : 'PAYMENT_FAILED'
         }
       });
-      console.log('✅ Suscripción creada exitosamente:', subscription.id);
-
-      // Solo actualizar el plan del negocio si es FREE (no requiere pago)
       if (newPlanType === 'FREE') {
         await prisma.business.update({
           where: { id: user.businessId },
@@ -588,9 +500,6 @@ const changeSubscriptionPlan = async (req, res) => {
             maxAppointments: plan.limits.appointments === -1 ? 999999 : plan.limits.appointments
           }
         });
-        console.log(`✅ Plan ${newPlanType} actualizado inmediatamente (sin pago requerido)`);
-      } else {
-        console.log(`⏳ Plan ${newPlanType} pendiente de pago - negocio mantiene plan actual hasta completar pago`);
       }
 
       return res.json({
@@ -604,7 +513,6 @@ const changeSubscriptionPlan = async (req, res) => {
     }
 
     // Usuario con suscripción existente
-    console.log(`🔄 Usuario con suscripción existente: ${subscriptionId} → ${newPlanType}`);
 
     const result = await PlanChangeService.changeSubscriptionPlan(
       subscriptionId, 

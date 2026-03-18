@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
+const { authenticateToken, authenticateTokenOnly, requireAdmin } = require('../middleware/auth');
 const {
   createSubscriptionPayment,
   handleWebhook,
@@ -27,9 +27,9 @@ router.use(authenticateToken);
 router.get('/payment-status/:paymentId', checkPaymentStatus);
 router.post('/cancel-subscription', cancelSubscription);
 
-// ── Rutas de administración (solo admin) ────────────────────────────────────
+// ── Rutas de administración (solo admin) — BUG-03 ───────────────────────────
 // Migración de precios: actualiza todas las preapprovals activas de un plan
 // Usar SOLO después de notificar a los usuarios del cambio de precio
-router.post('/admin/sync-plan-prices', syncPlanPrices);
+router.post('/admin/sync-plan-prices', authenticateToken, requireAdmin, syncPlanPrices);
 
 module.exports = router;

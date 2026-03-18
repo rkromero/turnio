@@ -1,6 +1,54 @@
+const crypto = require('crypto');
 const { prisma } = require('../config/database');
 const { MercadoPagoConfig, PreApproval, Payment } = require('mercadopago');
 const { AVAILABLE_PLANS } = require('../config/plans');
+
+// ─── VERIFICACIÓN DE FIRMA HMAC (BUG-02) ─────────────────────────────────────
+//
+// MP firma cada webhook con x-signature: ts=<timestamp>,v1=<hmac-sha256>
+// El hash se calcula sobre: id:<data_id>;request-id:<x-request-id>;ts:<ts>;
+// La clave es MERCADOPAGO_WEBHOOK_SECRET (distinta del access token).
+// Si la variable no está configurada se permite en desarrollo pero se loguea.
+//
+const verifyWebhookSignature = (req) => {
+  const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ MERCADOPAGO_WEBHOOK_SECRET no configurado — omitiendo verificación HMAC');
+    }
+    return true;
+  }
+
+  const xSignature = req.headers['x-signature'];
+  const xRequestId = req.headers['x-request-id'] || '';
+
+  if (!xSignature) {
+    console.warn('⚠️ Webhook sin x-signature header');
+    return false;
+  }
+
+  // Parsear ts y v1 del header
+  let ts, v1;
+  for (const part of xSignature.split(',')) {
+    const [key, value] = part.trim().split('=');
+    if (key === 'ts') ts = value;
+    if (key === 'v1') v1 = value;
+  }
+
+  if (!ts || !v1) {
+    console.warn('⚠️ x-signature malformado:', xSignature);
+    return false;
+  }
+
+  // data.id viene del body o del query param
+  const dataId = req.body?.data?.id || req.query?.id || '';
+
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const expected = crypto.createHmac('sha256', webhookSecret).update(manifest).digest('hex');
+
+  return v1 === expected;
+};
 
 // Cliente de MercadoPago (singleton, sin logs del token)
 const mpClient = new MercadoPagoConfig({
@@ -144,6 +192,12 @@ const createAutomaticSubscription = async (req, res) => {
 // y procesamos la lógica de forma asíncrona después.
 //
 const handleSubscriptionWebhook = async (req, res) => {
+  // Verificar firma HMAC antes de procesar (BUG-02)
+  if (!verifyWebhookSignature(req)) {
+    console.warn('🚫 Webhook rechazado: firma HMAC inválida');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   // Responder inmediatamente para que MP no reintente
   res.status(200).json({ received: true });
 
@@ -246,7 +300,7 @@ const handlePreapprovalEvent = async (preapprovalId) => {
 };
 
 // Maneja el cobro automático mensual/anual
-// (MP ya cobró la tarjeta del usuario de forma automática)
+// (MP ya intentó cobrar la tarjeta del usuario de forma automática)
 const handleRecurringPaymentEvent = async (paymentId) => {
   const paymentClient = new Payment(mpClient);
   const paymentData = await paymentClient.get({ id: paymentId });
@@ -262,23 +316,41 @@ const handleRecurringPaymentEvent = async (paymentId) => {
     include: { business: true }
   });
 
-  if (!subscription) {
-    // Intentar por external_reference directo (puede ser el paymentId de nuestra DB)
+  const resolvedSubscription = subscription || await (async () => {
     const paymentRecord = await prisma.payment.findFirst({
       where: { id: paymentData.external_reference },
       include: { subscription: { include: { business: true } } }
     });
+    return paymentRecord?.subscription || null;
+  })();
 
-    if (!paymentRecord?.subscription) {
-      console.log(`⚠️ No se encontró suscripción para pago automático ${paymentId}`);
-      return;
-    }
-
-    await processApprovedRecurringPayment(paymentRecord.subscription, paymentId, paymentData.transaction_amount);
+  if (!resolvedSubscription) {
+    console.log(`⚠️ No se encontró suscripción para pago automático ${paymentId}`);
     return;
   }
 
-  await processApprovedRecurringPayment(subscription, paymentId, paymentData.transaction_amount);
+  // Si el cobro fue rechazado, marcar la suscripción como fallida
+  const failedStatuses = ['rejected', 'cancelled', 'refunded', 'charged_back'];
+  if (failedStatuses.includes(paymentData.status)) {
+    await prisma.subscription.update({
+      where: { id: resolvedSubscription.id },
+      data: { status: 'PAYMENT_FAILED' }
+    });
+    await prisma.payment.create({
+      data: {
+        subscriptionId: resolvedSubscription.id,
+        amount: paymentData.transaction_amount || resolvedSubscription.priceAmount,
+        billingCycle: resolvedSubscription.billingCycle,
+        status: 'REJECTED',
+        mercadoPagoPaymentId: String(paymentId),
+        failureReason: paymentData.status_detail || paymentData.status
+      }
+    });
+    console.log(`❌ Cobro automático rechazado (${paymentData.status}): ${resolvedSubscription.business.name}`);
+    return;
+  }
+
+  await processApprovedRecurringPayment(resolvedSubscription, paymentId, paymentData.transaction_amount);
 };
 
 const processApprovedRecurringPayment = async (subscription, mpPaymentId, amount) => {

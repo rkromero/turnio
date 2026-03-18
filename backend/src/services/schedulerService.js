@@ -1,16 +1,19 @@
+const { prisma } = require('../config/database');
 const SubscriptionValidationService = require('./subscriptionValidationService');
 
+// Tiempo máximo que una suscripción puede estar en PENDING antes de marcarla PAYMENT_FAILED
+const STALE_PENDING_HOURS = 48;
+
 class SchedulerService {
-  
+
   constructor() {
     this.intervals = new Map();
   }
 
-  // Iniciar el scheduler de validaciones
+  // Iniciar el scheduler de validaciones (cada 6 horas)
   startValidationScheduler() {
     console.log('🚀 Iniciando scheduler de validaciones de suscripción...');
-    
-    // Ejecutar validaciones cada 6 horas
+
     const validationInterval = setInterval(async () => {
       try {
         console.log('\n⏰ Ejecutando validaciones programadas...');
@@ -21,8 +24,8 @@ class SchedulerService {
     }, 6 * 60 * 60 * 1000); // 6 horas
 
     this.intervals.set('validation', validationInterval);
-    
-    // Ejecutar validaciones inmediatamente al iniciar
+
+    // Ejecutar validaciones al iniciar (con delay para que la DB esté lista)
     setTimeout(async () => {
       try {
         console.log('🚀 Ejecutando validación inicial...');
@@ -30,12 +33,55 @@ class SchedulerService {
       } catch (error) {
         console.error('❌ Error en validación inicial:', error);
       }
-    }, 5000); // 5 segundos después de iniciar
+    }, 5000);
 
     console.log('✅ Scheduler de validaciones iniciado');
   }
 
-  // Detener el scheduler
+  // Recuperar suscripciones PENDING abandonadas (checkout iniciado pero nunca completado)
+  // Se ejecuta cada 6 horas para limpiar estados colgados.
+  startRenewalScheduler() {
+    console.log('🚀 Iniciando scheduler de recuperación de PENDING abandonados...');
+
+    const renewalInterval = setInterval(async () => {
+      try {
+        await this.recoverStalePendingSubscriptions();
+      } catch (error) {
+        console.error('❌ Error en scheduler de renovación:', error);
+      }
+    }, 6 * 60 * 60 * 1000); // 6 horas
+
+    this.intervals.set('renewal', renewalInterval);
+    console.log('✅ Scheduler de renovación iniciado');
+  }
+
+  // Marca como PAYMENT_FAILED las suscripciones en PENDING > STALE_PENDING_HOURS horas
+  // (el usuario abrió el checkout de MP pero nunca autorizó)
+  async recoverStalePendingSubscriptions() {
+    const cutoff = new Date(Date.now() - STALE_PENDING_HOURS * 60 * 60 * 1000);
+
+    const stale = await prisma.subscription.findMany({
+      where: {
+        status: 'PENDING',
+        updatedAt: { lt: cutoff }
+      },
+      include: { business: true }
+    });
+
+    if (stale.length === 0) return;
+
+    console.log(`🔍 Encontradas ${stale.length} suscripciones PENDING abandonadas`);
+
+    for (const sub of stale) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { status: 'PAYMENT_FAILED' }
+      });
+      console.log(`⚠️ PENDING → PAYMENT_FAILED: ${sub.business.name} (sin actividad por ${STALE_PENDING_HOURS}h)`);
+    }
+  }
+
+  // Detener todos los schedulers
   stopValidationScheduler() {
     const interval = this.intervals.get('validation');
     if (interval) {
@@ -45,23 +91,23 @@ class SchedulerService {
     }
   }
 
-  // Ejecutar validaciones una vez (para testing)
-  async runValidationsOnce() {
-    try {
-      console.log('🔍 Ejecutando validaciones una vez...');
-      const results = await SubscriptionValidationService.runAllValidations();
-      console.log('✅ Validaciones completadas:', results);
-      return results;
-    } catch (error) {
-      console.error('❌ Error ejecutando validaciones:', error);
-      throw error;
+  stopRenewalScheduler() {
+    const interval = this.intervals.get('renewal');
+    if (interval) {
+      clearInterval(interval);
+      this.intervals.delete('renewal');
+      console.log('⏹️  Scheduler de renovación detenido');
     }
   }
 
-  // Obtener estado del scheduler
+  async runValidationsOnce() {
+    return SubscriptionValidationService.runAllValidations();
+  }
+
   getSchedulerStatus() {
     return {
       validationScheduler: this.intervals.has('validation'),
+      renewalScheduler: this.intervals.has('renewal'),
       activeIntervals: Array.from(this.intervals.keys())
     };
   }

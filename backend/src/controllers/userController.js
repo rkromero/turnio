@@ -235,8 +235,7 @@ const createUser = async (req, res) => {
       }
     });
 
-    // Usar los límites del planController
-    const { AVAILABLE_PLANS } = require('./planController');
+    const { AVAILABLE_PLANS } = require('../config/plans');
     const userLimit = AVAILABLE_PLANS[business.planType].limits.users;
     
     if (userLimit !== -1 && activeUsersCount >= userLimit) {

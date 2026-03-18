@@ -10,12 +10,15 @@ class SubscriptionValidationService {
       
       const now = new Date();
       
-      // Buscar suscripciones que han vencido por fecha
+      // Buscar suscripciones que han vencido por fecha.
+      // Excluimos PENDING (checkout iniciado, esperando autorización de MP —
+      // el schedulerService las recupera a PAYMENT_FAILED después de 48h)
+      // y CANCELLED (ya no cobran).
       const expiredSubscriptions = await prisma.subscription.findMany({
         where: {
           AND: [
             { planType: { not: 'FREE' } },
-            { status: { not: 'CANCELLED' } },
+            { status: { notIn: ['CANCELLED', 'PENDING'] } },
             { nextBillingDate: { lt: now } }
           ]
         },

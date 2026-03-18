@@ -215,11 +215,11 @@ async function startServer() {
     // 🚀 Inicializar schedulers de suscripciones
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SUBSCRIPTION_SCHEDULER === 'true') {
       try {
-        const schedulerService = require('../schedulerService');
+        const schedulerService = require('./services/schedulerService');
         schedulerService.startValidationScheduler();
         schedulerService.startRenewalScheduler();
         console.log('✅ Scheduler de validaciones iniciado');
-        console.log('✅ Scheduler de recordatorios de renovación iniciado');
+        console.log('✅ Scheduler de recuperación de PENDING iniciado');
       } catch (error) {
         console.error('❌ Error iniciando schedulers:', error.message);
       }

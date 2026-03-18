@@ -101,8 +101,7 @@ const createService = async (req, res) => {
       where: { businessId, isActive: true }
     });
 
-    // Usar los límites del planController
-    const { AVAILABLE_PLANS } = require('./planController');
+    const { AVAILABLE_PLANS } = require('../config/plans');
     const serviceLimit = AVAILABLE_PLANS[business.planType].limits.services;
     
     if (serviceLimit !== -1 && activeServicesCount >= serviceLimit) {
