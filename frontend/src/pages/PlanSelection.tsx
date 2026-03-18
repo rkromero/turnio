@@ -88,14 +88,14 @@ const PlanSelection: React.FC = () => {
         return;
       }
 
-      // Crear pago con MercadoPago
-      const paymentResponse = await subscriptionService.createPayment({
+      // Crear suscripción automática con MercadoPago (PreApproval - cobro recurrente)
+      const paymentResponse = await subscriptionService.createAutomaticSubscription({
         subscriptionId: subscriptionResponse.data.subscription.id
       });
 
-      // Redirigir a MercadoPago
-      const initPoint = process.env.NODE_ENV === 'production' 
-        ? paymentResponse.data.initPoint 
+      // Redirigir al checkout de MercadoPago donde el usuario autoriza los cobros automáticos
+      const initPoint = import.meta.env.PROD
+        ? paymentResponse.data.initPoint
         : paymentResponse.data.sandboxInitPoint;
 
       window.location.href = initPoint;

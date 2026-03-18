@@ -1,6 +1,3 @@
-// DEBUG: Forzar cambio para ver logs de orden de rutas en Railway
-// CAMBIO NOTORIO: DEBUG DEPLOY - 2024-06-19
-const DEBUG_DEPLOY = true;
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, authenticateTokenOnly } = require('../middleware/auth');
@@ -9,38 +6,30 @@ const {
   handleWebhook,
   checkPaymentStatus
 } = require('../controllers/mercadoPagoController');
-const { createAutomaticSubscription, handleSubscriptionWebhook } = require('../controllers/subscriptionAutoController');
+const {
+  createAutomaticSubscription,
+  handleSubscriptionWebhook,
+  cancelSubscription,
+  syncPlanPrices
+} = require('../controllers/subscriptionAutoController');
 
-// DEPLOY TEST - Forzar rebuild en Railway
-console.log('🚀 DEPLOY TEST: MercadoPago routes loaded - v2.0');
-
-// Rutas públicas (webhooks) - SIN autenticación
-console.log('🔧 Configurando rutas públicas...');
-// Endpoint de prueba para webhooks
-router.get('/webhook-test', (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'Webhook endpoint is accessible',
-    timestamp: new Date().toISOString()
-  });
-});
+// ── Webhooks (públicos, sin auth — MP llama directamente) ───────────────────
 router.post('/webhook', handleWebhook);
 router.post('/subscription-webhook', handleSubscriptionWebhook);
 
-// Ruta de creación de pago - requiere autenticación pero NO verificación de suscripción
-// Esta ruta debe ir ANTES del middleware global para evitar bloqueo por estado de suscripción
-console.log('🔧 Configurando ruta create-payment con authenticateTokenOnly...');
+// ── Rutas de pago: requieren token pero NO verificación de suscripción ───────
+// (el usuario puede estar en estado SUSPENDED y aun así necesita pagar)
 router.post('/create-payment', authenticateTokenOnly, createSubscriptionPayment);
+router.post('/create-automatic-subscription', authenticateTokenOnly, createAutomaticSubscription);
 
-// Rutas protegidas (requieren autenticación Y verificación de suscripción)
-// Este middleware se aplica a TODAS las rutas que vengan después
-console.log('🔧 Aplicando middleware authenticateToken a rutas restantes...');
+// ── Rutas protegidas: requieren token + suscripción activa ──────────────────
 router.use(authenticateToken);
-
-console.log('🔧 Configurando rutas protegidas...');
-router.post('/create-automatic-subscription', createAutomaticSubscription);
 router.get('/payment-status/:paymentId', checkPaymentStatus);
+router.post('/cancel-subscription', cancelSubscription);
 
-console.log('✅ MercadoPago routes configuradas completamente');
+// ── Rutas de administración (solo admin) ────────────────────────────────────
+// Migración de precios: actualiza todas las preapprovals activas de un plan
+// Usar SOLO después de notificar a los usuarios del cambio de precio
+router.post('/admin/sync-plan-prices', syncPlanPrices);
 
-module.exports = router; 
+module.exports = router;

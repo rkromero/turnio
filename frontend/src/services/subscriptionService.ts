@@ -139,13 +139,25 @@ class SubscriptionService {
     }
   }
 
-  // Crear pago con MercadoPago
+  // Crear pago único con MercadoPago (legacy)
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
     try {
       const response = await this.api.post('/mercadopago/create-payment', request);
       return response.data;
     } catch (error) {
       console.error('Error en createPayment:', error);
+      throw error;
+    }
+  }
+
+  // Crear suscripción automática con MercadoPago (PreApproval - cobro recurrente)
+  // El usuario autoriza una vez y MP cobra automáticamente cada mes/año.
+  async createAutomaticSubscription(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
+    try {
+      const response = await this.api.post('/mercadopago/create-automatic-subscription', request);
+      return response.data;
+    } catch (error) {
+      console.error('Error en createAutomaticSubscription:', error);
       throw error;
     }
   }

@@ -1,97 +1,65 @@
 const { prisma } = require('../config/database');
-const { PrismaClient } = require('@prisma/client');
-const { MercadoPagoConfig, Preference, Payment, Subscription } = require('mercadopago');
+const { MercadoPagoConfig, PreApproval, Payment } = require('mercadopago');
+const { AVAILABLE_PLANS } = require('../config/plans');
 
-const prismaClient = new PrismaClient();
-
-// MercadoPago SDK v2
+// Cliente de MercadoPago (singleton, sin logs del token)
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
-  options: {
-    timeout: 5000,
-    idempotencyKey: 'abc'
-  }
+  options: { timeout: 10000 }
 });
 
-// Estados de suscripción mejorados
-const SUBSCRIPTION_STATES = {
-  ACTIVE: 'ACTIVE',
-  PAYMENT_FAILED: 'PAYMENT_FAILED',
-  SUSPENDED: 'SUSPENDED',
-  GRACE_PERIOD: 'GRACE_PERIOD',
-  CANCELLED: 'CANCELLED'
-};
-
-// Configuración de reintentos
-const RETRY_CONFIG = {
-  maxRetries: 3,           // Máximo 3 intentos
-  retryIntervals: [1, 3, 7], // Día 1, 3 y 7 después del fallo
-  gracePeriodDays: 10      // 10 días de período de gracia
-};
-
-// Función para calcular próxima fecha de cobro
-const calculateNextBillingDate = (currentDate, billingCycle) => {
-  const nextDate = new Date(currentDate);
-  if (billingCycle === 'MONTHLY') {
-    nextDate.setMonth(nextDate.getMonth() + 1);
-  } else {
-    nextDate.setFullYear(nextDate.getFullYear() + 1);
-  }
-  return nextDate;
-};
-
-// Función para calcular fecha de reintento
-const calculateRetryDate = (currentDate, retryNumber) => {
-  const retryDate = new Date(currentDate);
-  retryDate.setDate(retryDate.getDate() + RETRY_CONFIG.retryIntervals[retryNumber - 1]);
-  return retryDate;
-};
-
-// Crear suscripción automática con MercadoPago (cobro recurrente)
+// ─── CREAR SUSCRIPCIÓN AUTOMÁTICA ────────────────────────────────────────────
+//
+// Recibe el subscriptionId de nuestra DB (ya creada por subscriptionController),
+// crea una PreApproval en MercadoPago y devuelve el init_point para redirigir
+// al usuario. MP se encarga de cobrar mensualmente de forma automática.
+//
 const createAutomaticSubscription = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
     const { user } = req;
 
-    if (!user || !user.businessId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Acceso denegado'
-      });
+    if (!user?.businessId) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado' });
     }
 
-    // Buscar la suscripción
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
       include: { business: true }
     });
 
     if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: 'Suscripción no encontrada'
-      });
+      return res.status(404).json({ success: false, message: 'Suscripción no encontrada' });
     }
 
     if (subscription.businessId !== user.businessId) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para esta suscripción'
-      });
+      return res.status(403).json({ success: false, message: 'Sin permisos para esta suscripción' });
     }
 
-    // Determinar precio y descripción
-    const planNames = {
-      'FREE': 'Plan Gratuito',
-      'BASIC': 'Plan Básico', 
-      'PREMIUM': 'Plan Premium',
-      'ENTERPRISE': 'Plan Empresa'
-    };
+    if (subscription.planType === 'FREE') {
+      return res.status(400).json({ success: false, message: 'El plan gratuito no requiere pago' });
+    }
 
-    const planName = planNames[subscription.planType] || subscription.planType;
-    const billingCycle = subscription.billingCycle === 'YEARLY' ? 'Anual' : 'Mensual';
-    
-    // Crear el registro de pago en nuestra base de datos
+    const plan = AVAILABLE_PLANS[subscription.planType];
+    const planName = plan?.name || subscription.planType;
+    const billingLabel = subscription.billingCycle === 'YEARLY' ? 'Anual' : 'Mensual';
+
+    // Si ya tiene una preapproval activa en MP, la cancelamos antes de crear una nueva
+    // (evita que el usuario quede con dos cobros activos al cambiar de plan)
+    if (subscription.mercadoPagoSubscriptionId) {
+      try {
+        const preApprovalClient = new PreApproval(mpClient);
+        await preApprovalClient.update({
+          id: subscription.mercadoPagoSubscriptionId,
+          body: { status: 'cancelled' }
+        });
+      } catch (e) {
+        // Si ya estaba cancelada en MP, ignoramos el error
+        console.log('ℹ️ Preapproval anterior ya estaba cancelada o no existe en MP');
+      }
+    }
+
+    // Crear registro de pago PENDING en nuestra DB
     const payment = await prisma.payment.create({
       data: {
         subscriptionId: subscription.id,
@@ -101,48 +69,28 @@ const createAutomaticSubscription = async (req, res) => {
       }
     });
 
-    // Configurar la suscripción automática de MercadoPago
-    const subscriptionData = {
-      reason: `${planName} - ${billingCycle}`,
-      auto_recurring: {
-        frequency: subscription.billingCycle === 'YEARLY' ? 12 : 1, // 12 meses para anual, 1 mes para mensual
-        frequency_type: "months",
-        transaction_amount: subscription.priceAmount,
-        currency_id: "ARS"
-      },
-      back_url: `${process.env.FRONTEND_URL}/subscription/success?payment=${payment.id}`,
-      external_reference: payment.id,
-      notification_url: `${process.env.BACKEND_URL}/api/mercadopago/subscription-webhook`,
-      metadata: {
-        subscription_id: subscription.id,
-        business_id: subscription.businessId,
-        payment_id: payment.id,
-        plan_type: subscription.planType,
-        billing_cycle: subscription.billingCycle
-      }
-    };
-
-    console.log('💳 Creando suscripción automática de MercadoPago:', {
-      planType: subscription.planType,
-      amount: subscription.priceAmount,
-      billingCycle: subscription.billingCycle,
-      businessName: subscription.business.name
-    });
-
-    // Crear la suscripción en MercadoPago (SDK v2)
-    const subClient = new Subscription(mpClient);
-    const response = await subClient.create({ body: subscriptionData });
-
-    // Actualizar el pago con el ID de suscripción
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        preferenceId: response.id,
-        mercadoPagoOrderId: response.id
+    // Crear la PreApproval en MercadoPago
+    // Una PreApproval = suscripción recurrente. El usuario la autoriza una vez
+    // y MP cobra automáticamente en el intervalo configurado.
+    const preApprovalClient = new PreApproval(mpClient);
+    const response = await preApprovalClient.create({
+      body: {
+        reason: `${planName} - ${billingLabel} | Turnio`,
+        auto_recurring: {
+          frequency: subscription.billingCycle === 'YEARLY' ? 12 : 1,
+          frequency_type: 'months',
+          transaction_amount: subscription.priceAmount,
+          currency_id: 'ARS'
+        },
+        back_url: `${process.env.FRONTEND_URL}/payment/success?payment=${payment.id}`,
+        notification_url: `${process.env.BACKEND_URL}/api/mercadopago/subscription-webhook`,
+        external_reference: payment.id,
+        // Pre-cargamos el email del negocio en el checkout de MP
+        payer_email: subscription.business.email
       }
     });
 
-    // Actualizar la suscripción con el ID de MercadoPago
+    // Guardar el ID de preapproval en nuestra suscripción
     await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
@@ -151,14 +99,19 @@ const createAutomaticSubscription = async (req, res) => {
       }
     });
 
-    console.log('✅ Suscripción automática creada exitosamente:', response.id);
+    // Guardar el ID de preapproval en el pago también (como referencia)
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        preferenceId: response.id,
+        mercadoPagoOrderId: response.id
+      }
+    });
 
-    // Responder con los datos necesarios para el frontend
-    res.json({
+    return res.json({
       success: true,
       data: {
-        subscriptionId: response.id,
-        publicKey: process.env.MERCADOPAGO_PUBLIC_KEY,
+        preapprovalId: response.id,
         initPoint: response.init_point,
         sandboxInitPoint: response.sandbox_init_point,
         paymentId: payment.id,
@@ -166,386 +119,350 @@ const createAutomaticSubscription = async (req, res) => {
           id: subscription.id,
           planType: subscription.planType,
           billingCycle: subscription.billingCycle,
-          amount: subscription.priceAmount,
-          status: 'PENDING'
+          amount: subscription.priceAmount
         }
       }
     });
 
   } catch (error) {
-    console.error('❌ Error creando suscripción automática de MercadoPago:', error);
-    res.status(500).json({
+    console.error('❌ Error creando suscripción automática:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: 'Error al crear la suscripción',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// === SISTEMA MEJORADO DE MANEJO DE FALLOS ===
+// ─── WEBHOOK DE SUSCRIPCIONES ─────────────────────────────────────────────────
+//
+// MP envía dos tipos de eventos:
+//   - "preapproval": cuando el usuario autoriza, pausa o cancela la suscripción
+//   - "subscription_authorized_payment": cuando MP cobra automáticamente cada mes
+//
+// IMPORTANTE: respondemos 200 inmediatamente para evitar reintentos de MP,
+// y procesamos la lógica de forma asíncrona después.
+//
+const handleSubscriptionWebhook = async (req, res) => {
+  // Responder inmediatamente para que MP no reintente
+  res.status(200).json({ received: true });
 
-// Función para manejar el período de gracia
-const handleGracePeriod = async (subscription) => {
   try {
-    const now = new Date();
-    const gracePeriodEnd = subscription.gracePeriodEnd;
-    
-    if (now > gracePeriodEnd) {
-      // Se acabó el período de gracia - suspender servicio
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SUBSCRIPTION_STATES.SUSPENDED,
-          suspendedAt: now
-        }
-      });
-      
-      console.log(`🚫 Servicio suspendido para: ${subscription.business.name}`);
-      
-      // Enviar notificación de suspensión
-      await sendSuspensionNotification(subscription);
-      
-    } else {
-      // Recordatorio durante período de gracia
-      const daysLeft = Math.ceil((gracePeriodEnd - now) / (1000 * 60 * 60 * 24));
-      
-      if ([7, 3, 1].includes(daysLeft)) {
-        await sendGracePeriodReminder(subscription, daysLeft);
-      }
+    const { type, data } = req.body;
+
+    if (!type || !data?.id) {
+      return;
     }
-    
+
+    console.log(`📨 Webhook de suscripción recibido: type=${type}, id=${data.id}`);
+
+    if (type === 'preapproval') {
+      await handlePreapprovalEvent(data.id);
+    } else if (type === 'subscription_authorized_payment') {
+      await handleRecurringPaymentEvent(data.id);
+    }
+
   } catch (error) {
-    console.error('❌ Error manejando período de gracia:', error);
+    console.error('❌ Error procesando webhook de suscripción:', error);
   }
 };
 
-// Funciones de notificación (placeholder - implementar con email/SMS)
-const sendGracePeriodNotification = async (subscription, gracePeriodEnd) => {
-  console.log(`📧 Enviando notificación de período de gracia a: ${subscription.business.name} hasta ${gracePeriodEnd.toLocaleDateString()}`);
-  // TODO: Implementar envío de email/SMS
-};
+// Maneja cambios de estado en la PreApproval
+// (cuando el usuario autoriza, pausa o cancela la suscripción)
+const handlePreapprovalEvent = async (preapprovalId) => {
+  const preApprovalClient = new PreApproval(mpClient);
+  const preapprovalData = await preApprovalClient.get({ id: preapprovalId });
 
-const sendGracePeriodReminder = async (subscription, daysLeft) => {
-  console.log(`📧 Enviando recordatorio de período de gracia (${daysLeft} días restantes) a: ${subscription.business.name}`);
-  // TODO: Implementar envío de email/SMS
-};
+  const subscription = await prisma.subscription.findFirst({
+    where: { mercadoPagoSubscriptionId: preapprovalId },
+    include: { business: true }
+  });
 
-const sendSuspensionNotification = async (subscription) => {
-  console.log(`📧 Enviando notificación de suspensión a: ${subscription.business.name}`);
-  // TODO: Implementar envío de email/SMS
-};
+  if (!subscription) {
+    console.log(`⚠️ Preapproval ${preapprovalId} no encontrada en nuestra DB`);
+    return;
+  }
 
-// Webhook para suscripciones automáticas
-const handleSubscriptionWebhook = async (req, res) => {
-  try {
-    console.log('🔔 Webhook de suscripción automática recibido:', {
-      type: req.body.type,
-      data: req.body.data
+  console.log(`🔔 Preapproval ${preapprovalId} - estado MP: ${preapprovalData.status}`);
+
+  if (preapprovalData.status === 'authorized') {
+    // El usuario autorizó la suscripción y MP cobró el primer mes.
+    // Activamos la suscripción y calculamos la próxima fecha de cobro.
+    const nextBillingDate = new Date();
+    if (subscription.billingCycle === 'YEARLY') {
+      nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    } else {
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    }
+
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: 'ACTIVE',
+        nextBillingDate
+      }
     });
 
-    const { type, data } = req.body;
+    // Actualizar el planType en el negocio
+    await prisma.business.update({
+      where: { id: subscription.businessId },
+      data: { planType: subscription.planType }
+    });
 
-    if (type === 'subscription_authorized_payment') {
-      const paymentId = data.id;
-      
-      // Obtener información del pago desde MercadoPago
-      const paymentClient = new Payment(mpClient);
-      const paymentInfo = await paymentClient.get({ id: paymentId });
-      const paymentData = paymentInfo;
+    // Marcar el pago PENDING como APPROVED
+    await prisma.payment.updateMany({
+      where: {
+        subscriptionId: subscription.id,
+        status: 'PENDING',
+        mercadoPagoOrderId: preapprovalId
+      },
+      data: { status: 'APPROVED', paidAt: new Date() }
+    });
 
-      console.log('💳 Pago automático recibido:', {
-        id: paymentData.id,
-        status: paymentData.status,
-        externalReference: paymentData.external_reference
-      });
+    console.log(`✅ Suscripción activada: ${subscription.business.name} → ${subscription.planType}`);
 
-      // Buscar nuestro pago interno
-      const payment = await prisma.payment.findUnique({
-        where: { id: paymentData.external_reference },
-        include: { 
-          subscription: { 
-            include: { business: true } 
-          } 
-        }
-      });
+  } else if (preapprovalData.status === 'paused') {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { status: 'SUSPENDED' }
+    });
+    console.log(`⏸️ Suscripción pausada: ${subscription.business.name}`);
 
-      if (!payment) {
-        console.error('❌ Pago no encontrado en nuestra base de datos:', paymentData.external_reference);
-        return res.status(404).json({ success: false, message: 'Payment not found' });
+  } else if (preapprovalData.status === 'cancelled') {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date()
       }
+    });
+    // Al cancelar, volvemos al plan FREE
+    await prisma.business.update({
+      where: { id: subscription.businessId },
+      data: { planType: 'FREE' }
+    });
+    console.log(`🚫 Suscripción cancelada: ${subscription.business.name}`);
+  }
+};
 
-      // Mapear estados de MercadoPago a nuestros estados
-      let newStatus = 'PENDING';
-      switch (paymentData.status) {
-        case 'approved':
-          newStatus = 'APPROVED';
-          break;
-        case 'rejected':
-        case 'cancelled':
-          newStatus = 'REJECTED';
-          break;
-        default:
-          newStatus = 'PENDING';
+// Maneja el cobro automático mensual/anual
+// (MP ya cobró la tarjeta del usuario de forma automática)
+const handleRecurringPaymentEvent = async (paymentId) => {
+  const paymentClient = new Payment(mpClient);
+  const paymentData = await paymentClient.get({ id: paymentId });
+
+  if (!paymentData.external_reference) {
+    console.log(`⚠️ Pago automático ${paymentId} sin external_reference`);
+    return;
+  }
+
+  // external_reference es el preapproval_id que guardamos
+  const subscription = await prisma.subscription.findFirst({
+    where: { mercadoPagoSubscriptionId: paymentData.metadata?.preapproval_id || paymentData.external_reference },
+    include: { business: true }
+  });
+
+  if (!subscription) {
+    // Intentar por external_reference directo (puede ser el paymentId de nuestra DB)
+    const paymentRecord = await prisma.payment.findFirst({
+      where: { id: paymentData.external_reference },
+      include: { subscription: { include: { business: true } } }
+    });
+
+    if (!paymentRecord?.subscription) {
+      console.log(`⚠️ No se encontró suscripción para pago automático ${paymentId}`);
+      return;
+    }
+
+    await processApprovedRecurringPayment(paymentRecord.subscription, paymentId, paymentData.transaction_amount);
+    return;
+  }
+
+  await processApprovedRecurringPayment(subscription, paymentId, paymentData.transaction_amount);
+};
+
+const processApprovedRecurringPayment = async (subscription, mpPaymentId, amount) => {
+  const nextBillingDate = new Date();
+  if (subscription.billingCycle === 'YEARLY') {
+    nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+  } else {
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+  }
+
+  // Extender la suscripción
+  await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      status: 'ACTIVE',
+      nextBillingDate
+    }
+  });
+
+  // Registrar el pago automático en nuestro historial
+  await prisma.payment.create({
+    data: {
+      subscriptionId: subscription.id,
+      amount: amount || subscription.priceAmount,
+      billingCycle: subscription.billingCycle,
+      status: 'APPROVED',
+      paidAt: new Date(),
+      mercadoPagoPaymentId: String(mpPaymentId),
+      mercadoPagoOrderId: String(mpPaymentId)
+    }
+  });
+
+  console.log(`🔄 Renovación automática procesada: ${subscription.business.name} - próximo cobro: ${nextBillingDate.toLocaleDateString('es-AR')}`);
+};
+
+// ─── CANCELAR SUSCRIPCIÓN ────────────────────────────────────────────────────
+//
+// Cancela la PreApproval en MP y actualiza nuestra DB.
+// El acceso se mantiene hasta el fin del período ya pagado (nextBillingDate).
+//
+const cancelSubscription = async (req, res) => {
+  try {
+    const { user } = req;
+
+    if (!user?.businessId) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado' });
+    }
+
+    const subscription = await prisma.subscription.findFirst({
+      where: { businessId: user.businessId, status: 'ACTIVE' }
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, message: 'No tenés una suscripción activa' });
+    }
+
+    // Cancelar en MP si tiene preapproval
+    if (subscription.mercadoPagoSubscriptionId) {
+      try {
+        const preApprovalClient = new PreApproval(mpClient);
+        await preApprovalClient.update({
+          id: subscription.mercadoPagoSubscriptionId,
+          body: { status: 'cancelled' }
+        });
+      } catch (e) {
+        console.error('⚠️ Error cancelando en MP (continuamos igual):', e.message);
       }
+    }
 
-      // Actualizar el pago
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { 
-          status: newStatus,
-          paidAt: newStatus === 'APPROVED' ? new Date() : null
+    // Marcar como cancelada en nuestra DB.
+    // El acceso sigue activo hasta nextBillingDate (ya pagado).
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date()
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Suscripción cancelada. Tu acceso se mantiene hasta el fin del período actual.',
+      data: { accessUntil: subscription.nextBillingDate }
+    });
+
+  } catch (error) {
+    console.error('❌ Error cancelando suscripción:', error);
+    return res.status(500).json({ success: false, message: 'Error al cancelar la suscripción' });
+  }
+};
+
+// ─── MIGRACIÓN DE PRECIOS (ADMIN) ─────────────────────────────────────────────
+//
+// Actualiza el monto de cobro en todas las PreApprovals activas de un plan.
+// Usar cuando se cambia el precio de un plan y queremos que se aplique
+// a todos los suscriptores existentes (Opción 2 - precio uniforme).
+//
+// Solo debe ejecutarse después de notificar a los usuarios del cambio.
+//
+const syncPlanPrices = async (req, res) => {
+  try {
+    const { planType } = req.body;
+
+    if (!planType || !AVAILABLE_PLANS[planType]) {
+      return res.status(400).json({ success: false, message: 'planType inválido' });
+    }
+
+    const newPrice = AVAILABLE_PLANS[planType].price;
+
+    if (newPrice === 0) {
+      return res.status(400).json({ success: false, message: 'El plan FREE no tiene precio' });
+    }
+
+    // Buscar todas las suscripciones activas de ese plan con preapproval en MP
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        planType,
+        status: { in: ['ACTIVE', 'PENDING'] },
+        mercadoPagoSubscriptionId: { not: null }
+      },
+      include: { business: true }
+    });
+
+    const results = { updated: [], failed: [] };
+    const preApprovalClient = new PreApproval(mpClient);
+
+    for (const sub of subscriptions) {
+      try {
+        // Solo actualizar si el precio cambió
+        if (sub.priceAmount === newPrice) {
+          results.updated.push({ id: sub.id, business: sub.business.name, status: 'sin_cambio' });
+          continue;
         }
-      });
 
-      // Si el pago fue aprobado, actualizar la suscripción
-      if (newStatus === 'APPROVED') {
-        // Calcular la próxima fecha de cobro
-        const nextBillingDate = new Date();
-        if (payment.subscription.billingCycle === 'MONTHLY') {
-          nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-        } else {
-          nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
-        }
-
-        await prisma.subscription.update({
-          where: { id: payment.subscription.id },
-          data: {
-            status: 'ACTIVE',
-            nextBillingDate: nextBillingDate
+        // Actualizar monto en MP
+        await preApprovalClient.update({
+          id: sub.mercadoPagoSubscriptionId,
+          body: {
+            auto_recurring: { transaction_amount: newPrice }
           }
         });
 
-        console.log(`✅ Pago automático procesado: ${payment.subscription.planType} para ${payment.subscription.business.name}`);
-      }
+        // Actualizar monto en nuestra DB
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: { priceAmount: newPrice }
+        });
 
-      res.json({ received: true });
-    } else {
-      res.json({ received: true });
-    }
-  } catch (error) {
-    console.error('❌ Error en webhook de suscripción automática:', error);
-    res.status(500).json({ success: false, message: 'Error en webhook' });
-  }
-};
+        results.updated.push({
+          id: sub.id,
+          business: sub.business.name,
+          oldPrice: sub.priceAmount,
+          newPrice,
+          status: 'actualizado'
+        });
 
-// === SISTEMA MEJORADO DE MANEJO DE FALLOS ===
-
-// Función para manejar el período de gracia
-const handlePaymentFailure = async (subscription) => {
-  try {
-    console.log(`⚠️ Manejando fallo de pago para: ${subscription.business.name}`);
-    
-    const now = new Date();
-    const retryCount = subscription.retryCount || 0;
-    
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      // Programar siguiente intento
-      const nextRetryDate = calculateRetryDate(now, retryCount + 1);
-      
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SUBSCRIPTION_STATES.PAYMENT_FAILED,
-          retryCount: retryCount + 1,
-          lastRetryDate: now,
-          nextRetryDate: nextRetryDate
-        }
-      });
-      
-      console.log(`🔄 Programado reintento ${retryCount + 1}/${RETRY_CONFIG.maxRetries} para: ${nextRetryDate.toLocaleDateString()}`);
-      
-      // Enviar notificación al cliente
-      await sendPaymentFailureNotification(subscription, retryCount + 1);
-      
-    } else {
-      // Se agotaron los reintentos - iniciar período de gracia
-      const gracePeriodEnd = new Date(now);
-      gracePeriodEnd.setDate(gracePeriodEnd.getDate() + RETRY_CONFIG.gracePeriodDays);
-      
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SUBSCRIPTION_STATES.GRACE_PERIOD,
-          gracePeriodEnd: gracePeriodEnd,
-          retryCount: retryCount + 1
-        }
-      });
-      
-      console.log(`⏰ Iniciando período de gracia hasta: ${gracePeriodEnd.toLocaleDateString()}`);
-      
-      // Enviar notificación de período de gracia
-      await sendGracePeriodNotification(subscription, gracePeriodEnd);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error manejando fallo de pago:', error);
-  }
-};
-
-// Función para manejar el período de gracia
-const handleGracePeriodNotification = async (subscription, gracePeriodEnd) => {
-  console.log(`📧 Enviando notificación de período de gracia a: ${subscription.business.name} hasta ${gracePeriodEnd.toLocaleDateString()}`);
-  // TODO: Implementar envío de email/SMS
-};
-
-// Funciones de notificación (placeholder - implementar con email/SMS)
-const sendPaymentFailureNotification = async (subscription, retryNumber) => {
-  console.log(`📧 Enviando notificación de fallo de pago (intento ${retryNumber}) a: ${subscription.business.name}`);
-  // TODO: Implementar envío de email/SMS
-};
-
-// Verificar suscripciones vencidas (MEJORADO)
-const checkExpiredSubscriptions = async () => {
-  try {
-    console.log('🔍 Verificando suscripciones vencidas...');
-    
-    const now = new Date();
-    
-    // 1. Buscar suscripciones que deberían renovarse hoy
-    const expiredSubscriptions = await prisma.subscription.findMany({
-      where: {
-        status: SUBSCRIPTION_STATES.ACTIVE,
-        nextBillingDate: { lte: now },
-        planType: { not: 'FREE' }
-      },
-      include: { business: true }
-    });
-
-    // 2. Buscar suscripciones para reintento
-    const retrySubscriptions = await prisma.subscription.findMany({
-      where: {
-        status: SUBSCRIPTION_STATES.PAYMENT_FAILED,
-        nextRetryDate: { lte: now },
-        retryCount: { lt: RETRY_CONFIG.maxRetries }
-      },
-      include: { business: true }
-    });
-
-    // 3. Buscar suscripciones en período de gracia
-    const gracePeriodSubscriptions = await prisma.subscription.findMany({
-      where: {
-        status: SUBSCRIPTION_STATES.GRACE_PERIOD
-      },
-      include: { business: true }
-    });
-
-    console.log(`📊 Suscripciones encontradas - Vencidas: ${expiredSubscriptions.length}, Reintentos: ${retrySubscriptions.length}, Período de gracia: ${gracePeriodSubscriptions.length}`);
-
-    // Procesar suscripciones vencidas
-    for (const subscription of expiredSubscriptions) {
-      try {
-        console.log(`🔄 Procesando renovación para: ${subscription.business.name}`);
-        await processSubscriptionRenewal(subscription);
       } catch (error) {
-        console.error(`❌ Error procesando renovación:`, error);
-        await handlePaymentFailure(subscription);
+        console.error(`❌ Error actualizando suscripción ${sub.id}:`, error.message);
+        results.failed.push({
+          id: sub.id,
+          business: sub.business.name,
+          error: error.message
+        });
       }
     }
 
-    // Procesar reintentos
-    for (const subscription of retrySubscriptions) {
-      try {
-        console.log(`🔁 Procesando reintento para: ${subscription.business.name}`);
-        await processSubscriptionRenewal(subscription);
-      } catch (error) {
-        console.error(`❌ Error en reintento:`, error);
-        await handlePaymentFailure(subscription);
-      }
-    }
+    console.log(`💰 Migración de precios ${planType}: ${results.updated.length} actualizadas, ${results.failed.length} fallidas`);
 
-    // Procesar período de gracia
-    for (const subscription of gracePeriodSubscriptions) {
-      await handleGracePeriod(subscription);
-    }
+    return res.json({
+      success: true,
+      message: `Migración completada para plan ${planType}`,
+      newPrice,
+      data: results
+    });
 
-    console.log('✅ Verificación de suscripciones completada');
-    
   } catch (error) {
-    console.error('❌ Error verificando suscripciones:', error);
-  }
-};
-
-// Función auxiliar para procesar renovación
-const processSubscriptionRenewal = async (subscription) => {
-  if (subscription.mercadoPagoSubscriptionId) {
-    console.log(`💳 Procesando pago automático para: ${subscription.mercadoPagoSubscriptionId}`);
-    
-    const subClient = new Subscription(mpClient);
-    const paymentResponse = await subClient.get({ id: subscription.mercadoPagoSubscriptionId });
-
-    if (paymentResponse.status === 'authorized') {
-      // Crear registro de pago exitoso
-      await prisma.payment.create({
-        data: {
-          subscriptionId: subscription.id,
-          amount: subscription.priceAmount,
-          status: 'APPROVED',
-          billingCycle: subscription.billingCycle,
-          paidAt: new Date(),
-          mercadoPagoPaymentId: paymentResponse.last_payment?.id,
-          mercadoPagoOrderId: subscription.mercadoPagoSubscriptionId
-        }
-      });
-
-      // Actualizar suscripción como activa
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SUBSCRIPTION_STATES.ACTIVE,
-          nextBillingDate: calculateNextBillingDate(new Date(), subscription.billingCycle),
-          retryCount: 0,
-          lastRetryDate: null,
-          nextRetryDate: null
-        }
-      });
-
-      console.log(`✅ Pago automático exitoso para: ${subscription.business.name}`);
-    } else {
-      throw new Error(`Pago no autorizado: ${paymentResponse.status}`);
-    }
-  } else {
-    throw new Error('Sin suscripción automática configurada');
-  }
-};
-
-const handlePaymentSuccess = async (subscriptionId, paymentId, mercadoPagoSubscriptionId) => {
-  try {
-    console.log('🔍 Procesando pago exitoso:', {
-      subscriptionId,
-      paymentId,
-      mercadoPagoSubscriptionId
-    });
-
-    const updatedSubscription = await prisma.subscription.update({
-      where: { id: subscriptionId },
-      data: {
-        status: SUBSCRIPTION_STATES.ACTIVE,
-        mercadoPagoSubscriptionId,
-        retryCount: 0,
-        lastRetryDate: null,
-        nextRetryDate: null,
-        gracePeriodEnd: null,
-        suspendedAt: null
-      }
-    });
-
-    console.log('✅ Suscripción actualizada:', {
-      id: updatedSubscription.id,
-      status: updatedSubscription.status
-    });
-
-    return updatedSubscription;
-  } catch (error) {
-    console.error('❌ Error al procesar pago exitoso:', error);
-    throw error;
+    console.error('❌ Error en migración de precios:', error);
+    return res.status(500).json({ success: false, message: 'Error en migración de precios' });
   }
 };
 
 module.exports = {
   createAutomaticSubscription,
   handleSubscriptionWebhook,
-  checkExpiredSubscriptions,
-  handlePaymentSuccess,
-  SUBSCRIPTION_STATES,
-  RETRY_CONFIG
-}; 
+  cancelSubscription,
+  syncPlanPrices
+};

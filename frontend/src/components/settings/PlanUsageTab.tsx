@@ -243,16 +243,19 @@ const PlanUsageTab: React.FC<PlanUsageTabProps> = ({ planUsage, onPlanChanged })
           const subscriptionIdForPayment =
             response.data?.subscription?.id || currentSubscriptionId;
 
-          const paymentResponse = await subscriptionService.createPayment({
+          // Crear suscripción automática (PreApproval - cobro recurrente mensual/anual)
+          const paymentResponse = await subscriptionService.createAutomaticSubscription({
             subscriptionId: subscriptionIdForPayment
           });
-          
+
           if (paymentResponse.success) {
             toast.success('Redirigiendo al checkout...');
             setShowPlanModal(false);
-            
-            // Redirigir al checkout de MercadoPago
-            const checkoutUrl = paymentResponse.data.initPoint || paymentResponse.data.sandboxInitPoint;
+
+            // En sandbox usamos sandboxInitPoint, en producción initPoint
+            const checkoutUrl = import.meta.env.PROD
+              ? paymentResponse.data.initPoint
+              : (paymentResponse.data.sandboxInitPoint || paymentResponse.data.initPoint);
             window.location.href = checkoutUrl;
           } else {
             throw new Error('Error al crear el pago');
